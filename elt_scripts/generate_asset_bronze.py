@@ -180,6 +180,7 @@ def create_dataframe(spark, all_files):
         col_names = []
         content = []
         with open(csv_f, "r") as f:
+            portfolio_id = csv_f.split("/")[-2]
             for i, line in enumerate(csv.reader(f)):
                 if i == 0:
                     col_names = line
@@ -187,7 +188,9 @@ def create_dataframe(spark, all_files):
                     continue
                 else:
                     content.append(line)
-            df = spark.createDataFrame(content, col_names)
+            df = spark.createDataFrame(content, col_names).withColumn(
+                "ID", F.lit(portfolio_id)
+            )
             list_dfs.append(df)
     if list_dfs == []:
         logger.error("No dataframes were extracted from files. Exit process!")
@@ -257,6 +260,11 @@ def cast_to_datatype(df, columns):
                 .drop(col_name)
                 .withColumnRenamed("tmp_col_name", col_name)
             )
+    df = (
+        df.withColumn("year", F.year(F.col("AS1")))
+        .withColumn("month", F.month(F.col("AS1")))
+        .withColumn("day", F.dayofmonth(F.col("AS1")))
+    )
     return df
 
 
@@ -275,7 +283,12 @@ def main():
     tmp_df2 = replace_bool_data(tmp_df1)
     logger.info("Cast data to correct types.")
     final_df = cast_to_datatype(tmp_df2, run_props["ASSET_COLUMNS"])
-    final_df.write.parquet("../data/output/bronze/asset_bronze.parquet")
+    (
+        final_df.format("parquet")
+        .partitionBy("year", "month", "day")
+        .mode("append")
+        .save("../data/output/bronze/asset_bronze.parquet")
+    )
     return
 
 
