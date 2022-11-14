@@ -151,7 +151,7 @@ def main():
     """
     Run main steps of the module.
     """
-    logger.info("Start bonf info data job.")
+    logger.info("Start amortisation data job.")
     run_props = set_job_params()
     all_amortisation_files = get_raw_files(
         run_props["SOURCE_DIR"], run_props["FILE_KEY"]
@@ -172,6 +172,9 @@ def main():
         )
         .drop("DOUBLE_VALUE")
         .withColumnRenamed("tmp_col_name", "DOUBLE_VALUE")
+        .withColumn("year", F.year(F.col("DATE_VALUE")))
+        .withColumn("month", F.month(F.col("DATE_VALUE")))
+        .withColumn("day", F.dayofmonth(F.col("DATE_VALUE")))
     )
     (
         final_df.format("parquet")
