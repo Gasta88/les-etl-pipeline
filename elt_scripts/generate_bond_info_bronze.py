@@ -25,123 +25,21 @@ def set_job_params():
     """
     config = {}
     config["SOURCE_DIR"] = None
-    config["FILE_KEY"] = "Loan_Data"
+    config["FILE_KEY"] = "Bond_Info"
     # TODO: pass number of cores to the SPark application parametrically
     config["SPARK"] = SparkSession.builder.master("local").getOrCreate()
-    config["ASSET_COLUMNS"] = {
-        "AS1": DateType(),
-        "AS2": StringType(),
-        "AS3": StringType(),
-        "AS4": StringType(),
-        "AS5": StringType(),
-        "AS6": StringType(),
-        "AS7": StringType(),
-        "AS8": StringType(),
-        "AS15": StringType(),
-        "AS16": StringType(),
-        "AS17": StringType(),
-        "AS18": StringType(),
-        "AS19": DateType(),
-        "AS20": DateType(),
-        "AS21": StringType(),
-        "AS22": StringType(),
-        "AS23": BooleanType(),
-        "AS24": StringType(),
-        "AS25": StringType(),
-        "AS26": StringType(),
-        "AS27": DoubleType(),
-        "AS28": DoubleType(),
-        "AS29": BooleanType(),
-        "AS30": DoubleType(),
-        "AS31": DateType(),
-        "AS32": StringType(),
-        "AS33": StringType(),
-        "AS34": StringType(),
-        "AS35": StringType(),
-        "AS36": StringType(),
-        "AS37": DoubleType(),
-        "AS38": DoubleType(),
-        "AS39": DoubleType(),
-        "AS40": DoubleType(),
-        "AS41": DoubleType(),
-        "AS42": StringType(),
-        "AS43": StringType(),
-        "AS44": DoubleType(),
-        "AS45": StringType(),
-        "AS50": DateType(),
-        "AS51": DateType(),
-        "AS52": StringType(),
-        "AS53": BooleanType(),
-        "AS54": DoubleType(),
-        "AS55": DoubleType(),
-        "AS56": DoubleType(),
-        "AS57": StringType(),
-        "AS58": StringType(),
-        "AS59": StringType(),
-        "AS60": DoubleType(),
-        "AS61": DoubleType(),
-        "AS62": StringType(),
-        "AS63": DoubleType(),
-        "AS64": DoubleType(),
-        "AS65": StringType(),
-        "AS66": DoubleType(),
-        "AS67": DateType(),
-        "AS68": StringType(),
-        "AS69": DoubleType(),
-        "AS70": DateType(),
-        "AS71": DateType(),
-        "AS80": DoubleType(),
-        "AS81": DoubleType(),
-        "AS82": DoubleType(),
-        "AS83": StringType(),
-        "AS84": StringType(),
-        "AS85": DoubleType(),
-        "AS86": DoubleType(),
-        "AS87": DateType(),
-        "AS88": DoubleType(),
-        "AS89": StringType(),
-        "AS90": DoubleType(),
-        "AS91": DateType(),
-        "AS92": StringType(),
-        "AS93": DoubleType(),
-        "AS94": StringType(),
-        "AS100": DoubleType(),
-        "AS101": DoubleType(),
-        "AS102": DoubleType(),
-        "AS103": DoubleType(),
-        "AS104": DoubleType(),
-        "AS105": DoubleType(),
-        "AS106": DoubleType(),
-        "AS107": DoubleType(),
-        "AS108": DoubleType(),
-        "AS109": DoubleType(),
-        "AS110": DoubleType(),
-        "AS111": StringType(),
-        "AS112": DateType(),
-        "AS115": DoubleType(),
-        "AS116": DoubleType(),
-        "AS117": DoubleType(),
-        "AS118": DoubleType(),
-        "AS119": DoubleType(),
-        "AS120": DoubleType(),
-        "AS121": BooleanType(),
-        "AS122": BooleanType(),
-        "AS123": StringType(),
-        "AS124": DateType(),
-        "AS125": DoubleType(),
-        "AS126": DoubleType(),
-        "AS127": DateType(),
-        "AS128": DoubleType(),
-        "AS129": StringType(),
-        "AS130": DateType(),
-        "AS131": BooleanType(),
-        "AS132": DoubleType(),
-        "AS133": DateType(),
-        "AS134": DateType(),
-        "AS135": DoubleType(),
-        "AS136": DoubleType(),
-        "AS137": DateType(),
-        "AS138": DoubleType(),
+    config["BOND_COLUMNS"] = {
+        "BS1": DateType(),
+        "BS2": StringType(),
+        "BS3": DoubleType(),
+        "BS4": DoubleType(),
+        "BS5": BooleanType(),
+        "BS6": StringType(),
+        "BS11": DoubleType(),
+        "BS12": BooleanType(),
+        "BS13": DoubleType(),
+        "BS19": StringType(),
+        "BS20": StringType(),
     }
     return config
 
@@ -155,9 +53,7 @@ def get_raw_files(source_dir, file_key):
     :param file_key: label for file name that helps with the cherry picking.
     :return all_files: listof desired files from source_dir.
     """
-    all_files = [
-        f for f in glob.glob(f"{source_dir}/*/{file_key}/*.csv") if "Labeled0M" not in f
-    ]
+    all_files = [f for f in glob.glob(f"{source_dir}/*/{file_key}/*.csv")]
     if len(all_files) == 0:
         logger.error(
             f"No files with key {file_key.upper()} found in {source_dir}. Exit process!"
@@ -261,9 +157,9 @@ def cast_to_datatype(df, columns):
                 .withColumnRenamed("tmp_col_name", col_name)
             )
     df = (
-        df.withColumn("year", F.year(F.col("AS1")))
-        .withColumn("month", F.month(F.col("AS1")))
-        .withColumn("day", F.dayofmonth(F.col("AS1")))
+        df.withColumn("year", F.year(F.col("BS1")))
+        .withColumn("month", F.month(F.col("BS1")))
+        .withColumn("day", F.dayofmonth(F.col("BS1")))
     )
     return df
 
@@ -272,22 +168,22 @@ def main():
     """
     Run main steps of the module.
     """
-    logger.info("Start asset data job.")
+    logger.info("Start bonf info data job.")
     run_props = set_job_params()
-    all_asset_files = get_raw_files(run_props["SOURCE_DIR"], run_props["FILE_KEY"])
-    logger.info(f"Retrieved {len(all_asset_files)} asset data files.")
-    raw_asset_df = create_dataframe(run_props["SPARK"], all_asset_files)
+    all_bond_info_files = get_raw_files(run_props["SOURCE_DIR"], run_props["FILE_KEY"])
+    logger.info(f"Retrieved {len(all_bond_info_files)} bond info data files.")
+    raw_bond_info_df = create_dataframe(run_props["SPARK"], all_bond_info_files)
     logger.info("Remove ND values.")
-    tmp_df1 = replace_no_data(raw_asset_df)
+    tmp_df1 = replace_no_data(raw_bond_info_df)
     logger.info("Replace Y/N with boolean flags.")
     tmp_df2 = replace_bool_data(tmp_df1)
     logger.info("Cast data to correct types.")
-    final_df = cast_to_datatype(tmp_df2, run_props["ASSET_COLUMNS"])
+    final_df = cast_to_datatype(tmp_df2, run_props["BOND_COLUMNS"])
     (
         final_df.format("parquet")
         .partitionBy("year", "month", "day")
         .mode("append")
-        .save("../data/output/bronze/asset_bronze.parquet")
+        .save("../data/output/bronze/bond_info_bronze.parquet")
     )
     return
 
