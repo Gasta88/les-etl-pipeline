@@ -1,10 +1,7 @@
 import logging
 import sys
-from pyspark.sql import SparkSession, DataFrame
+from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
-from pyspark.sql.types import DateType, StringType, BooleanType, DoubleType
-import csv
-from functools import reduce
 
 # Setup logger
 logger = logging.getLogger(__name__)
