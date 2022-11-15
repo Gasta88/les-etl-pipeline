@@ -2,6 +2,7 @@ import logging
 import sys
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
+import os
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -20,25 +21,23 @@ def set_job_params():
     :return config: dictionary with properties used in this job.
     """
     config = {}
-    config["SOURCE_DIR"] = None
-    # TODO: pass number of cores to the SPark application parametrically
-    config["SPARK"] = SparkSession.builder.master("local").getOrCreate()
-    config["DATE_COLUMNS"] = ["CS11", "CS12", "CS22"]
+    config["SOURCE_DIR"] = os.environ["SOURCE_DIR"]
+    config["SPARK"] = SparkSession.builder.master(
+        f'local[{int(os.environ["WORKERS"])}]'
+    ).getOrCreate()
     return config
 
 
-def process_dates(df, date_cols_list):
+def process_dates(df):
     """
     Extract dates dimension from bronze Spark dataframe.
 
     :param df: Spark bronze dataframe.
-    :param date_cols_list: list of date columns.
     :return new_df: silver type Spark dataframe.
     """
-    date_cols = [c for c in date_cols_list if c in df.columns]
-
     new_df = (
-        df.select(F.explode(F.array(date_cols)).alias("date_col"))
+        df.select("DATE_VALUE")
+        .alias("date_col")
         .dropDuplicates()
         .withColumn("unix_date", F.unix_timestamp(F.col("date_col")))
         .withColumn("year", F.year(F.col("date_col")))
@@ -50,30 +49,16 @@ def process_dates(df, date_cols_list):
     return new_df
 
 
-def process_collateral_info(df):
+def process_info(df):
     """
-    Extract collateral info dimension from bronze Spark dataframe.
+    Extract amortisation values dimension from bronze Spark dataframe.
 
     :param df: Spark bronze dataframe.
     :return new_df: silver type Spark dataframe.
     """
-    new_df = (
-        df.withColumn(
-            "tmp_CS11", F.unix_timestamp(F.to_timestamp(F.col("CS11"), "yyyy-MM"))
-        )
-        .drop("CS11")
-        .withColumnRenamed("tmp_CS11", "CS11")
-        .withColumn(
-            "tmp_CS12", F.unix_timestamp(F.to_timestamp(F.col("CS12"), "yyyy-MM"))
-        )
-        .drop("CS12")
-        .withColumnRenamed("tmp_CS12", "CS12")
-        .withColumn(
-            "tmp_CS22", F.unix_timestamp(F.to_timestamp(F.col("CS22"), "yyyy-MM"))
-        )
-        .drop("CS22")
-        .withColumnRenamed("tmp_CS22", "CS22")
-    )
+    new_df = df.withColumn(
+        "tmp_DATE_VALUE", F.unix_timestamp(F.col("DATE_VALUE"))
+    ).drop("DATE_VALUE")
     return new_df
 
 
@@ -81,28 +66,27 @@ def main():
     """
     Run main steps of the module.
     """
-    logger.info("Start COLLATERAL SILVER job.")
+    logger.info("Start AMORTISATION SILVER job.")
     run_props = set_job_params()
     bronze_df = run_props["SPARK"].read.parquet(
-        f'{run_props["SOURCE_DIR"]}/bronze/collaterals.parquet'
+        f'{run_props["SOURCE_DIR"]}/bronze/amortisation.parquet'
     )
-    logger.info("Generate collateral info dataframe")
-    info_df = process_collateral_info(bronze_df)
     logger.info("Generate time dataframe")
     date_df = process_dates(bronze_df, run_props["DATE_COLUMNS"])
-
+    logger.info("Generate info dataframe")
+    info_df = process_info(bronze_df)
     logger.info("Write dataframe")
 
+    (
+        date_df.format("parquet")
+        .mode("append")
+        .save("../dataoutput/silver/amortisation/date_table.parquet")
+    )
     (
         info_df.format("parquet")
         .partitionBy("year", "month", "day")
         .mode("append")
-        .save("../../data/output/silver/collaterals/info_table.parquet")
-    )
-    (
-        date_df.format("parquet")
-        .mode("append")
-        .save("../../data/output/silver/collaterals/date_table.parquet")
+        .save("../dataoutput/silver/amortisation/info_table.parquet")
     )
 
     return

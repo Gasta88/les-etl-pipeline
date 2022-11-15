@@ -2,6 +2,7 @@ import logging
 import sys
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
+import os
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -20,9 +21,10 @@ def set_job_params():
     :return config: dictionary with properties used in this job.
     """
     config = {}
-    config["SOURCE_DIR"] = None
-    # TODO: pass number of cores to the SPark application parametrically
-    config["SPARK"] = SparkSession.builder.master("local").getOrCreate()
+    config["SOURCE_DIR"] = os.environ["SOURCE_DIR"]
+    config["SPARK"] = SparkSession.builder.master(
+        f'local[{int(os.environ["WORKERS"])}]'
+    ).getOrCreate()
     config["DATE_COLUMNS"] = [
         "AS1",
         "AS19",
@@ -254,37 +256,37 @@ def main():
     (
         date_df.format("parquet")
         .mode("append")
-        .save("../../data/output/silver/assets/date_table.parquet")
+        .save("../dataoutput/silver/assets/date_table.parquet")
     )
     (
         loan_info_df.format("parquet")
         .partitionBy("year", "month", "day")
         .mode("append")
-        .save("../../data/output/silver/assets/loan_info_table.parquet")
+        .save("../dataoutput/silver/assets/loan_info_table.parquet")
     )
     (
         obligor_info_df.format("parquet")
         .partitionBy("year", "month", "day")
         .mode("append")
-        .save("../../data/output/silver/assets/obligor_info_table.parquet")
+        .save("../dataoutput/silver/assets/obligor_info_table.parquet")
     )
     (
         financial_info_df.format("parquet")
         .partitionBy("year", "month", "day")
         .mode("append")
-        .save("../../data/output/silver/assets/financial_info_table.parquet")
+        .save("../dataoutput/silver/assets/financial_info_table.parquet")
     )
     (
         interest_rate_df.format("parquet")
         .partitionBy("year", "month", "day")
         .mode("append")
-        .save("../../data/output/silver/assets/interest_rate_table.parquet")
+        .save("../dataoutput/silver/assets/interest_rate_table.parquet")
     )
     (
         performance_info_df.format("parquet")
         .partitionBy("year", "month", "day")
         .mode("append")
-        .save("../../data/output/silver/assets/performance_info_table.parquet")
+        .save("../dataoutput/silver/assets/performance_info_table.parquet")
     )
     return
 

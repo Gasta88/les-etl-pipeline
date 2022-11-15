@@ -6,6 +6,7 @@ import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, StringType, BooleanType, DoubleType
 import csv
 from functools import reduce
+import os
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -24,10 +25,11 @@ def set_job_params():
     :return config: dictionary with properties used in this job.
     """
     config = {}
-    config["SOURCE_DIR"] = None
+    config["SOURCE_DIR"] = os.environ["SOURCE_DIR"]
     config["FILE_KEY"] = "Loan_Data"
-    # TODO: pass number of cores to the SPark application parametrically
-    config["SPARK"] = SparkSession.builder.master("local").getOrCreate()
+    config["SPARK"] = SparkSession.builder.master(
+        f'local[{int(os.environ["WORKERS"])}]'
+    ).getOrCreate()
     config["ASSET_COLUMNS"] = {
         "AS1": DateType(),
         "AS2": StringType(),
@@ -287,7 +289,7 @@ def main():
         final_df.format("parquet")
         .partitionBy("year", "month", "day")
         .mode("append")
-        .save("../../data/output/bronze/assets.parquet")
+        .save("../dataoutput/bronze/assets.parquet")
     )
     return
 

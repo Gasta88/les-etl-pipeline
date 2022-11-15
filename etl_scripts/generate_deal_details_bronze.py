@@ -3,6 +3,7 @@ import logging
 import sys
 from lxml import objectify
 import pandas as pd
+import os
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ def set_job_params():
     :return config: dictionary with properties used in this job.
     """
     config = {}
-    config["SOURCE_DIR"] = None
+    config["SOURCE_DIR"] = os.environ["SOURCE_DIR"]
     config["FILE_KEY"] = "Deal_Details"
     return config
 
@@ -89,8 +90,11 @@ def main():
     run_props = set_job_params()
     xml_file = get_raw_files(run_props["SOURCE_DIR"], run_props["FILE_KEY"])
     final_df = create_dataframe(xml_file)
-    ED_code = final_df["EDCode"]
-    final_df.to_csv(f"../../data/output/bronze/deal_details/{ED_code}.csv", index=False)
+    (
+        final_df.format("parquet")
+        .mode("append")
+        .save("../dataoutput/bronze/deal_details/info.parquet")
+    )
     return
 
 
