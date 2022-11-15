@@ -180,7 +180,7 @@ def main():
         final_df.format("parquet")
         .partitionBy("year", "month", "day")
         .mode("append")
-        .save("../../data/output/bronze/amortisation_bronze.parquet")
+        .save("../../data/output/bronze/amortisation.parquet")
     )
     return
 

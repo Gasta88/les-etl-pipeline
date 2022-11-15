@@ -174,9 +174,10 @@ def cast_to_datatype(df, columns):
                 .withColumnRenamed("tmp_col_name", col_name)
             )
     df = (
-        df.withColumn("year", F.year(F.col("CS1")))
-        .withColumn("month", F.month(F.col("CS1")))
-        .withColumn("day", F.dayofmonth(F.col("CS1")))
+        df.withColumn("year", F.year(F.col("AS1")))
+        .withColumn("month", F.month(F.col("AS1")))
+        .withColumn("day", F.dayofmonth(F.col("AS1")))
+        .drop("AS1")
     )
     return df
 
@@ -187,11 +188,24 @@ def main():
     """
     logger.info("Start COLLATERAL BRONZE job.")
     run_props = set_job_params()
-    all_bond_info_files = get_raw_files(run_props["SOURCE_DIR"], run_props["FILE_KEY"])
-    logger.info(f"Retrieved {len(all_bond_info_files)} collateral data files.")
-    raw_bond_info_df = create_dataframe(run_props["SPARK"], all_bond_info_files)
+    all_collateral_files = get_raw_files(run_props["SOURCE_DIR"], run_props["FILE_KEY"])
+    logger.info(f"Retrieved {len(all_collateral_files)} collateral data files.")
+    tmp_raw_collateral_df = create_dataframe(run_props["SPARK"], all_collateral_files)
+    try:
+        assets_bronze_df = (
+            run_props["SPARK"]
+            .read.parquet(f'{run_props["SOURCE_DIR"]}/bronze/assets.parquet')
+            .select("AS1", "AS3")
+            .withColumnRenamed("AS3", "CS2")
+        )
+        raw_collateral_df = tmp_raw_collateral_df.join(
+            assets_bronze_df, on="CS2", how="inner"
+        )
+    except Exception as e:
+        logger.error("No bronze asset dataframe found. Exit process!")
+        sys.exit(1)
     logger.info("Remove ND values.")
-    tmp_df1 = replace_no_data(raw_bond_info_df)
+    tmp_df1 = replace_no_data(raw_collateral_df)
     logger.info("Replace Y/N with boolean flags.")
     tmp_df2 = replace_bool_data(tmp_df1)
     logger.info("Cast data to correct types.")
@@ -200,7 +214,7 @@ def main():
         final_df.format("parquet")
         .partitionBy("year", "month", "day")
         .mode("append")
-        .save("../../data/output/bronze/collateral_bronze.parquet")
+        .save("../../data/output/bronze/collaterals.parquet")
     )
     return
 

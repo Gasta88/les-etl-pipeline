@@ -287,7 +287,7 @@ def main():
         final_df.format("parquet")
         .partitionBy("year", "month", "day")
         .mode("append")
-        .save("../../data/output/bronze/asset_bronze.parquet")
+        .save("../../data/output/bronze/assets.parquet")
     )
     return
 
