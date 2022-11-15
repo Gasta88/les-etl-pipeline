@@ -151,7 +151,7 @@ def main():
     """
     Run main steps of the module.
     """
-    logger.info("Start amortisation data job.")
+    logger.info("Start AMORTISATION BRONZE job.")
     run_props = set_job_params()
     all_amortisation_files = get_raw_files(
         run_props["SOURCE_DIR"], run_props["FILE_KEY"]
@@ -180,7 +180,7 @@ def main():
         final_df.format("parquet")
         .partitionBy("year", "month", "day")
         .mode("append")
-        .save("../data/output/bronze/amortisation_bronze.parquet")
+        .save("../../data/output/bronze/amortisation_bronze.parquet")
     )
     return
 

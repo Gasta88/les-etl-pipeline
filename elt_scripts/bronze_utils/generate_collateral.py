@@ -185,7 +185,7 @@ def main():
     """
     Run main steps of the module.
     """
-    logger.info("Start collateral data job.")
+    logger.info("Start COLLATERAL BRONZE job.")
     run_props = set_job_params()
     all_bond_info_files = get_raw_files(run_props["SOURCE_DIR"], run_props["FILE_KEY"])
     logger.info(f"Retrieved {len(all_bond_info_files)} collateral data files.")
@@ -200,7 +200,7 @@ def main():
         final_df.format("parquet")
         .partitionBy("year", "month", "day")
         .mode("append")
-        .save("../data/output/bronze/collateral_bronze.parquet")
+        .save("../../data/output/bronze/collateral_bronze.parquet")
     )
     return
 

@@ -272,7 +272,7 @@ def main():
     """
     Run main steps of the module.
     """
-    logger.info("Start asset data job.")
+    logger.info("Start ASSETS BRONZE job.")
     run_props = set_job_params()
     all_asset_files = get_raw_files(run_props["SOURCE_DIR"], run_props["FILE_KEY"])
     logger.info(f"Retrieved {len(all_asset_files)} asset data files.")
@@ -287,7 +287,7 @@ def main():
         final_df.format("parquet")
         .partitionBy("year", "month", "day")
         .mode("append")
-        .save("../data/output/bronze/asset_bronze.parquet")
+        .save("../../data/output/bronze/asset_bronze.parquet")
     )
     return
 

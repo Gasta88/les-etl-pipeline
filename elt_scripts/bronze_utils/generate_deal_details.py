@@ -85,12 +85,12 @@ def main():
     """
     Run main steps of the module.
     """
-    logger.info("Start deal details data job.")
+    logger.info("Start DEAL DETAILS BRONZE job.")
     run_props = set_job_params()
     xml_file = get_raw_files(run_props["SOURCE_DIR"], run_props["FILE_KEY"])
     final_df = create_dataframe(xml_file)
     ED_code = final_df["EDCode"]
-    final_df.to_csv(f"../data/output/bronze/deal_details/{ED_code}.csv", index=False)
+    final_df.to_csv(f"../../data/output/bronze/deal_details/{ED_code}.csv", index=False)
     return
 
 

@@ -168,7 +168,7 @@ def main():
     """
     Run main steps of the module.
     """
-    logger.info("Start bonf info data job.")
+    logger.info("Start BOND INFO BRONZE job.")
     run_props = set_job_params()
     all_bond_info_files = get_raw_files(run_props["SOURCE_DIR"], run_props["FILE_KEY"])
     logger.info(f"Retrieved {len(all_bond_info_files)} bond info data files.")
@@ -183,7 +183,7 @@ def main():
         final_df.format("parquet")
         .partitionBy("year", "month", "day")
         .mode("append")
-        .save("../data/output/bronze/bond_info_bronze.parquet")
+        .save("../../data/output/bronze/bond_info_bronze.parquet")
     )
     return
 
