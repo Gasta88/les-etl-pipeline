@@ -3,10 +3,11 @@ import logging
 import sys
 from pyspark.sql import SparkSession, DataFrame
 import pyspark.sql.functions as F
-from pyspark.sql.types import DateType, StringType, BooleanType, DoubleType
+from pyspark.sql.types import (
+    TimestampType,
+)
 import csv
 from functools import reduce
-import os
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -25,41 +26,9 @@ def set_job_params():
     :return config: dictionary with properties used in this job.
     """
     config = {}
-    config["SOURCE_DIR"] = os.environ["SOURCE_DIR"]
+    config["SOURCE_DIR"] = "../data/mini_source"
     config["FILE_KEY"] = "Collateral"
-    config["SPARK"] = SparkSession.builder.master(
-        f'local[{int(os.environ["WORKERS"])}]'
-    ).getOrCreate()
-    config["COLLATERAL_COLUMNS"] = {
-        "CS1": StringType(),
-        "CS2": StringType(),
-        "CS3": StringType(),
-        "CS4": DoubleType(),
-        "CS5": DoubleType(),
-        "CS6": StringType(),
-        "CS7": BooleanType(),
-        "CS8": BooleanType(),
-        "CS9": BooleanType(),
-        "CS10": DoubleType(),
-        "CS11": DateType(),
-        "CS12": DateType(),
-        "CS13": StringType(),
-        "CS14": StringType(),
-        "CS15": DoubleType(),
-        "CS16": StringType(),
-        "CS17": StringType(),
-        "CS18": DoubleType(),
-        "CS19": DoubleType(),
-        "CS20": StringType(),
-        "CS21": DoubleType(),
-        "CS22": DateType(),
-        "CS23": StringType(),
-        "CS24": StringType(),
-        "CS25": StringType(),
-        "CS26": StringType(),
-        "CS27": StringType(),
-        "CS28": DoubleType(),
-    }
+    config["SPARK"] = SparkSession.builder.master("local[*]").getOrCreate()
     return config
 
 
@@ -72,7 +41,7 @@ def get_raw_files(source_dir, file_key):
     :param file_key: label for file name that helps with the cherry picking.
     :return all_files: listof desired files from source_dir.
     """
-    all_files = [f for f in glob.glob(f"{source_dir}/*/{file_key}/*.csv")]
+    all_files = [f for f in glob.glob(f"{source_dir}/*/*{file_key}*.csv")]
     if len(all_files) == 0:
         logger.error(
             f"No files with key {file_key.upper()} found in {source_dir}. Exit process!"
@@ -95,93 +64,39 @@ def create_dataframe(spark, all_files):
         col_names = []
         content = []
         with open(csv_f, "r") as f:
-            portfolio_id = csv_f.split("/")[-2]
+            csv_id = csv_f.split("/")[-1].split("_")[0]
+            csv_date = "-".join(csv_f.split("/")[-1].split("_")[1:4])
             for i, line in enumerate(csv.reader(f)):
                 if i == 0:
                     col_names = line
+                    col_names[0] = "CS1"
                 elif i == 1:
                     continue
                 else:
                     content.append(line)
-            df = spark.createDataFrame(content, col_names).withColumn(
-                "ID", F.lit(portfolio_id)
+            df = (
+                spark.createDataFrame(content, col_names)
+                .withColumn("ed_code", F.lit(csv_id))
+                .replace("", None)
+                .withColumn("ImportDate", F.lit(csv_date))
+                .withColumn("year", F.year(F.col("ImportDate")))
+                .withColumn("month", F.month(F.col("ImportDate")))
+                .withColumn(
+                    "valid_from", F.lit(F.current_timestamp()).cast(TimestampType())
+                )
+                .withColumn("valid_to", F.lit("").cast(TimestampType()))
+                .withColumn("iscurrent", F.lit(1).cast("int"))
+                .withColumn(
+                    "checksum",
+                    F.md5(F.concat(F.col("ed_code"), F.col("CS1"), F.col("CS2"))),
+                )
+                .drop("ImportDate")
             )
             list_dfs.append(df)
     if list_dfs == []:
         logger.error("No dataframes were extracted from files. Exit process!")
         sys.exit(1)
     return reduce(DataFrame.union, list_dfs)
-
-
-def replace_no_data(df):
-    """
-    Replace ND values inside the dataframe
-    TODO: ND are associated with labels that explain why the vaue is missing.
-          Should handle this information better in future releases.
-    :param df: Spark dataframe with loan asset data.
-    :return df: Spark dataframe without ND values.
-    """
-    for col_name in df.columns:
-        df = df.withColumn(
-            col_name,
-            F.when(F.col(col_name).startswith("ND"), None).otherwise(F.col(col_name)),
-        )
-    return df
-
-
-def replace_bool_data(df):
-    """
-    Replace Y/N with boolean flags in the dataframe.
-
-    :param df: Spark dataframe with loan asset data.
-    :return df: Spark dataframe without Y/N values.
-    """
-    for col_name in df.columns:
-        df = df.withColumn(
-            col_name,
-            F.when(F.col(col_name) == "Y", "True")
-            .when(F.col(col_name) == "N", "False")
-            .otherwise(F.col(col_name)),
-        )
-    return df
-
-
-def cast_to_datatype(df, columns):
-    """
-    Cast data to the respective datatype.
-
-    :param df: Spark dataframe with loan asset data.
-    :param columns: collection of column names and respective data types.
-    :return df: Spark dataframe with correct values.
-    """
-    for col_name, data_type in columns.items():
-        if data_type == BooleanType():
-            df = (
-                df.withColumn("tmp_col_name", F.col(col_name).contains("True"))
-                .drop(col_name)
-                .withColumnRenamed("tmp_col_name", col_name)
-            )
-        if data_type == DateType():
-            df = (
-                df.withColumn("tmp_col_name", F.to_date(F.col(col_name)))
-                .drop(col_name)
-                .withColumnRenamed("tmp_col_name", col_name)
-            )
-        if data_type == DoubleType():
-            df = (
-                df.withColumn(
-                    "tmp_col_name", F.round(F.col(col_name).cast(DoubleType()), 2)
-                )
-                .drop(col_name)
-                .withColumnRenamed("tmp_col_name", col_name)
-            )
-    df = (
-        df.withColumn("year", F.year(F.col("AS1")))
-        .withColumn("month", F.month(F.col("AS1")))
-        .withColumn("day", F.dayofmonth(F.col("AS1")))
-        .drop("AS1")
-    )
-    return df
 
 
 def main():
@@ -191,32 +106,12 @@ def main():
     logger.info("Start COLLATERAL BRONZE job.")
     run_props = set_job_params()
     all_collateral_files = get_raw_files(run_props["SOURCE_DIR"], run_props["FILE_KEY"])
-    logger.info(f"Retrieved {len(all_collateral_files)} collateral data files.")
-    tmp_raw_collateral_df = create_dataframe(run_props["SPARK"], all_collateral_files)
-    try:
-        assets_bronze_df = (
-            run_props["SPARK"]
-            .read.parquet(f'{run_props["SOURCE_DIR"]}/bronze/assets.parquet')
-            .select("AS1", "AS3")
-            .withColumnRenamed("AS3", "CS2")
-        )
-        raw_collateral_df = tmp_raw_collateral_df.join(
-            assets_bronze_df, on="CS2", how="inner"
-        )
-    except Exception as e:
-        logger.error("No bronze asset dataframe found. Exit process!")
-        sys.exit(1)
-    logger.info("Remove ND values.")
-    tmp_df1 = replace_no_data(raw_collateral_df)
-    logger.info("Replace Y/N with boolean flags.")
-    tmp_df2 = replace_bool_data(tmp_df1)
-    logger.info("Cast data to correct types.")
-    final_df = cast_to_datatype(tmp_df2, run_props["COLLATERAL_COLUMNS"])
+    print(f"Retrieved {len(all_collateral_files)} collateral data files.")
+    raw_collateral_df = create_dataframe(run_props["SPARK"], all_collateral_files)
     (
-        final_df.format("parquet")
-        .partitionBy("year", "month", "day")
+        raw_collateral_df.write.partitionBy("year", "month")
         .mode("append")
-        .save("../dataoutput/bronze/collaterals.parquet")
+        .parquet("../data/output/bronze/collaterals.parquet")
     )
     return
 

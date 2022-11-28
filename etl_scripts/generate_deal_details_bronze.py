@@ -22,7 +22,7 @@ def set_job_params():
     :return config: dictionary with properties used in this job.
     """
     config = {}
-    config["SOURCE_DIR"] = os.environ["SOURCE_DIR"]
+    config["SOURCE_DIR"] = "../data/mini_source"
     config["FILE_KEY"] = "Deal_Details"
     return config
 
@@ -36,14 +36,14 @@ def get_raw_files(source_dir, file_key):
     :param file_key: label for file name that helps with the cherry picking.
     :return all_files: listof desired files from source_dir.
     """
-    all_files = [f for f in glob.glob(f"{source_dir}/*/{file_key}/*.xml")]
+    all_files = [f for f in glob.glob(f"{source_dir}/*/*{file_key}*.xml")]
     if len(all_files) == 0:
         logger.error(
             f"No files with key {file_key.upper()} found in {source_dir}. Exit process!"
         )
         sys.exit(1)
     else:
-        return all_files[0]
+        return all_files
 
 
 def create_dataframe(deal_detail_file):
@@ -53,33 +53,57 @@ def create_dataframe(deal_detail_file):
     :param deal_detail_file: file to be read to generate the dataframe.
     :return df: PySpark datafram for loan asset data.
     """
-    xml_data = objectify.parse(deal_detail_file)  # Parse XML data
-    root = xml_data.getroot()  # Root element
+    list_dfs = []
+    for xml_f in deal_detail_files:
+        xml_data = objectify.parse(xml_f)  # Parse XML data
+        root = xml_data.getroot()  # Root element
 
-    data = []
-    cols = []
-    for i in range(
-        len(
-            root.getchildren()[1]
-            .getchildren()[0]
-            .getchildren()[1]
-            .getchildren()[0]
-            .getchildren()
-        )
-    ):
-        child = (
-            root.getchildren()[1]
-            .getchildren()[0]
-            .getchildren()[1]
-            .getchildren()[0]
-            .getchildren()[i]
-        )
-        data.append(child.text)
-        cols.append(child.tag.replace("{http://edwin.eurodw.eu/EDServices/2.3}", ""))
+        data = []
+        cols = []
+        for i in range(
+            len(
+                root.getchildren()[1]
+                .getchildren()[0]
+                .getchildren()[1]
+                .getchildren()[0]
+                .getchildren()
+            )
+        ):
+            child = (
+                root.getchildren()[1]
+                .getchildren()[0]
+                .getchildren()[1]
+                .getchildren()[0]
+                .getchildren()[i]
+            )
+            tag = child.tag.replace("{http://edwin.eurodw.eu/EDServices/2.3}", "")
+            if tag == "ISIN":
+                # is array
+                data.append(";".join(map(str, child.getchildren())))
+            elif tag in [
+                "Country",
+                "DealVisibleToOrg",
+                "DealVisibleToUser",
+                "Submissions",
+            ]:
+                # usually null values
+                # TODO: Submissions might have interesting stuff. Ask to Luca.
+                continue
+            else:
+                data.append(child.text)
+            cols.append(tag)
 
-    df = pd.DataFrame(data).T  # Create DataFrame and transpose it
-    df.columns = cols  # Update column names
-    return df
+        df = pd.DataFrame(data).T  # Create DataFrame and transpose it
+        df.columns = cols  # Update column names
+        df["valid_from"] = pd.Timestamp.now()
+        df["valid_to"] = None
+        df["iscurrent"] = 1
+        df["checksum"] = pd.util.hash_pandas_object(
+            df["EDCode"]
+        )  # Check if you can add "year" and "month"
+        list_dfs.append(df)
+
+    return pd.concat(list_dfs, ignore_index=True)
 
 
 def main():
@@ -88,14 +112,16 @@ def main():
     """
     logger.info("Start DEAL DETAILS BRONZE job.")
     run_props = set_job_params()
-    xml_file = get_raw_files(run_props["SOURCE_DIR"], run_props["FILE_KEY"])
-    final_df = create_dataframe(xml_file)
+    all_xml_files = get_raw_files(run_props["SOURCE_DIR"], run_props["FILE_KEY"])
+    raw_deal_details_df = create_dataframe(all_xml_files)
+
     (
-        final_df.format("parquet")
-        .mode("append")
-        .save("../dataoutput/bronze/deal_details/info.parquet")
+        raw_deal_details_df.to_csv(
+            "../data/output/bronze/deal_details.csv",
+            mode="a",
+            header=not os.path.exists("../data/output/bronze/deal_details.csv"),
+        )
     )
-    return
 
 
 if __name__ == "__main__":

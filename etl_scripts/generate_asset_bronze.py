@@ -3,10 +3,11 @@ import logging
 import sys
 from pyspark.sql import SparkSession, DataFrame
 import pyspark.sql.functions as F
-from pyspark.sql.types import DateType, StringType, BooleanType, DoubleType
+from pyspark.sql.types import (
+    TimestampType,
+)
 import csv
 from functools import reduce
-import os
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -25,126 +26,9 @@ def set_job_params():
     :return config: dictionary with properties used in this job.
     """
     config = {}
-    config["SOURCE_DIR"] = os.environ["SOURCE_DIR"]
+    config["SOURCE_DIR"] = "../data/mini_source"
     config["FILE_KEY"] = "Loan_Data"
-    config["SPARK"] = SparkSession.builder.master(
-        f'local[{int(os.environ["WORKERS"])}]'
-    ).getOrCreate()
-    config["ASSET_COLUMNS"] = {
-        "AS1": DateType(),
-        "AS2": StringType(),
-        "AS3": StringType(),
-        "AS4": StringType(),
-        "AS5": StringType(),
-        "AS6": StringType(),
-        "AS7": StringType(),
-        "AS8": StringType(),
-        "AS15": StringType(),
-        "AS16": StringType(),
-        "AS17": StringType(),
-        "AS18": StringType(),
-        "AS19": DateType(),
-        "AS20": DateType(),
-        "AS21": StringType(),
-        "AS22": StringType(),
-        "AS23": BooleanType(),
-        "AS24": StringType(),
-        "AS25": StringType(),
-        "AS26": StringType(),
-        "AS27": DoubleType(),
-        "AS28": DoubleType(),
-        "AS29": BooleanType(),
-        "AS30": DoubleType(),
-        "AS31": DateType(),
-        "AS32": StringType(),
-        "AS33": StringType(),
-        "AS34": StringType(),
-        "AS35": StringType(),
-        "AS36": StringType(),
-        "AS37": DoubleType(),
-        "AS38": DoubleType(),
-        "AS39": DoubleType(),
-        "AS40": DoubleType(),
-        "AS41": DoubleType(),
-        "AS42": StringType(),
-        "AS43": StringType(),
-        "AS44": DoubleType(),
-        "AS45": StringType(),
-        "AS50": DateType(),
-        "AS51": DateType(),
-        "AS52": StringType(),
-        "AS53": BooleanType(),
-        "AS54": DoubleType(),
-        "AS55": DoubleType(),
-        "AS56": DoubleType(),
-        "AS57": StringType(),
-        "AS58": StringType(),
-        "AS59": StringType(),
-        "AS60": DoubleType(),
-        "AS61": DoubleType(),
-        "AS62": StringType(),
-        "AS63": DoubleType(),
-        "AS64": DoubleType(),
-        "AS65": StringType(),
-        "AS66": DoubleType(),
-        "AS67": DateType(),
-        "AS68": StringType(),
-        "AS69": DoubleType(),
-        "AS70": DateType(),
-        "AS71": DateType(),
-        "AS80": DoubleType(),
-        "AS81": DoubleType(),
-        "AS82": DoubleType(),
-        "AS83": StringType(),
-        "AS84": StringType(),
-        "AS85": DoubleType(),
-        "AS86": DoubleType(),
-        "AS87": DateType(),
-        "AS88": DoubleType(),
-        "AS89": StringType(),
-        "AS90": DoubleType(),
-        "AS91": DateType(),
-        "AS92": StringType(),
-        "AS93": DoubleType(),
-        "AS94": StringType(),
-        "AS100": DoubleType(),
-        "AS101": DoubleType(),
-        "AS102": DoubleType(),
-        "AS103": DoubleType(),
-        "AS104": DoubleType(),
-        "AS105": DoubleType(),
-        "AS106": DoubleType(),
-        "AS107": DoubleType(),
-        "AS108": DoubleType(),
-        "AS109": DoubleType(),
-        "AS110": DoubleType(),
-        "AS111": StringType(),
-        "AS112": DateType(),
-        "AS115": DoubleType(),
-        "AS116": DoubleType(),
-        "AS117": DoubleType(),
-        "AS118": DoubleType(),
-        "AS119": DoubleType(),
-        "AS120": DoubleType(),
-        "AS121": BooleanType(),
-        "AS122": BooleanType(),
-        "AS123": StringType(),
-        "AS124": DateType(),
-        "AS125": DoubleType(),
-        "AS126": DoubleType(),
-        "AS127": DateType(),
-        "AS128": DoubleType(),
-        "AS129": StringType(),
-        "AS130": DateType(),
-        "AS131": BooleanType(),
-        "AS132": DoubleType(),
-        "AS133": DateType(),
-        "AS134": DateType(),
-        "AS135": DoubleType(),
-        "AS136": DoubleType(),
-        "AS137": DateType(),
-        "AS138": DoubleType(),
-    }
+    config["SPARK"] = SparkSession.builder.master("local[*]").getOrCreate()
     return config
 
 
@@ -158,7 +42,7 @@ def get_raw_files(source_dir, file_key):
     :return all_files: listof desired files from source_dir.
     """
     all_files = [
-        f for f in glob.glob(f"{source_dir}/*/{file_key}/*.csv") if "Labeled0M" not in f
+        f for f in glob.glob(f"{source_dir}/*/*{file_key}*.csv") if "Labeled0M" not in f
     ]
     if len(all_files) == 0:
         logger.error(
@@ -182,92 +66,50 @@ def create_dataframe(spark, all_files):
         col_names = []
         content = []
         with open(csv_f, "r") as f:
-            portfolio_id = csv_f.split("/")[-2]
+            csv_id = csv_f.split("/")[-1].split("_")[0]
+            csv_date = "-".join(csv_f.split("/")[-1].split("_")[1:4])
             for i, line in enumerate(csv.reader(f)):
                 if i == 0:
                     col_names = line
+                    col_names[0] = "AS1"
                 elif i == 1:
                     continue
                 else:
                     content.append(line)
-            df = spark.createDataFrame(content, col_names).withColumn(
-                "ID", F.lit(portfolio_id)
+            df = (
+                spark.createDataFrame(content, col_names)
+                .withColumn("ed_code", F.lit(csv_id))
+                .replace("", None)
+                .withColumn("ImportDate", F.lit(csv_date))
+                .withColumn("year", F.year(F.col("ImportDate")))
+                .withColumn("month", F.month(F.col("ImportDate")))
+                .withColumn(
+                    "valid_from", F.lit(F.current_timestamp()).cast(TimestampType())
+                )
+                .withColumn("valid_to", F.lit("").cast(TimestampType()))
+                .withColumn("iscurrent", F.lit(1).cast("int"))
+                .withColumn(
+                    "checksum",
+                    F.md5(
+                        F.concat(
+                            F.col("ed_code"),
+                            F.col("AS1"),
+                            F.col("AS2"),
+                            F.col("AS3"),
+                            F.col("AS4"),
+                            F.col("AS5"),
+                            F.col("AS6"),
+                            F.col("AS7"),
+                        )
+                    ),
+                )
+                .drop("ImportDate")
             )
             list_dfs.append(df)
     if list_dfs == []:
         logger.error("No dataframes were extracted from files. Exit process!")
         sys.exit(1)
     return reduce(DataFrame.union, list_dfs)
-
-
-def replace_no_data(df):
-    """
-    Replace ND values inside the dataframe
-    TODO: ND are associated with labels that explain why the vaue is missing.
-          Should handle this information better in future releases.
-    :param df: Spark dataframe with loan asset data.
-    :return df: Spark dataframe without ND values.
-    """
-    for col_name in df.columns:
-        df = df.withColumn(
-            col_name,
-            F.when(F.col(col_name).startswith("ND"), None).otherwise(F.col(col_name)),
-        )
-    return df
-
-
-def replace_bool_data(df):
-    """
-    Replace Y/N with boolean flags in the dataframe.
-
-    :param df: Spark dataframe with loan asset data.
-    :return df: Spark dataframe without Y/N values.
-    """
-    for col_name in df.columns:
-        df = df.withColumn(
-            col_name,
-            F.when(F.col(col_name) == "Y", "True")
-            .when(F.col(col_name) == "N", "False")
-            .otherwise(F.col(col_name)),
-        )
-    return df
-
-
-def cast_to_datatype(df, columns):
-    """
-    Cast data to the respective datatype.
-
-    :param df: Spark dataframe with loan asset data.
-    :param columns: collection of column names and respective data types.
-    :return df: Spark dataframe with correct values.
-    """
-    for col_name, data_type in columns.items():
-        if data_type == BooleanType():
-            df = (
-                df.withColumn("tmp_col_name", F.col(col_name).contains("True"))
-                .drop(col_name)
-                .withColumnRenamed("tmp_col_name", col_name)
-            )
-        if data_type == DateType():
-            df = (
-                df.withColumn("tmp_col_name", F.to_date(F.col(col_name)))
-                .drop(col_name)
-                .withColumnRenamed("tmp_col_name", col_name)
-            )
-        if data_type == DoubleType():
-            df = (
-                df.withColumn(
-                    "tmp_col_name", F.round(F.col(col_name).cast(DoubleType()), 2)
-                )
-                .drop(col_name)
-                .withColumnRenamed("tmp_col_name", col_name)
-            )
-    df = (
-        df.withColumn("year", F.year(F.col("AS1")))
-        .withColumn("month", F.month(F.col("AS1")))
-        .withColumn("day", F.dayofmonth(F.col("AS1")))
-    )
-    return df
 
 
 def main():
@@ -279,17 +121,10 @@ def main():
     all_asset_files = get_raw_files(run_props["SOURCE_DIR"], run_props["FILE_KEY"])
     logger.info(f"Retrieved {len(all_asset_files)} asset data files.")
     raw_asset_df = create_dataframe(run_props["SPARK"], all_asset_files)
-    logger.info("Remove ND values.")
-    tmp_df1 = replace_no_data(raw_asset_df)
-    logger.info("Replace Y/N with boolean flags.")
-    tmp_df2 = replace_bool_data(tmp_df1)
-    logger.info("Cast data to correct types.")
-    final_df = cast_to_datatype(tmp_df2, run_props["ASSET_COLUMNS"])
     (
-        final_df.format("parquet")
-        .partitionBy("year", "month", "day")
+        raw_asset_df.write.partitionBy("year", "month")
         .mode("append")
-        .save("../dataoutput/bronze/assets.parquet")
+        .parquet("../data/output/bronze/assets.parquet")
     )
     return
 
