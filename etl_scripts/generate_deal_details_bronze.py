@@ -46,7 +46,7 @@ def get_raw_files(source_dir, file_key):
         return all_files
 
 
-def create_dataframe(deal_detail_file):
+def create_source_dataframe(deal_detail_files):
     """
     Read files and generate one PySpark DataFrame from them.
 
@@ -113,7 +113,7 @@ def main():
     logger.info("Start DEAL DETAILS BRONZE job.")
     run_props = set_job_params()
     all_xml_files = get_raw_files(run_props["SOURCE_DIR"], run_props["FILE_KEY"])
-    raw_deal_details_df = create_dataframe(all_xml_files)
+    raw_deal_details_df = create_source_dataframe(all_xml_files)
 
     (
         raw_deal_details_df.to_csv(

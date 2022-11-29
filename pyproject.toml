@@ -6,6 +6,7 @@ authors = ["francesco.gastaldello <francesco.gastaldello@docebo.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
+google-cloud-storage = "^2.6.0"
 
 [tool.poetry.dev-dependencies]
 

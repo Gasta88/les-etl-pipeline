@@ -53,7 +53,7 @@ def get_raw_files(source_dir, file_key):
         return all_files
 
 
-def create_dataframe(spark, all_files):
+def create_source_dataframe(spark, all_files):
     """
     Read files and generate one PySpark DataFrame from them.
 
@@ -62,12 +62,13 @@ def create_dataframe(spark, all_files):
     :return df: PySpark datafram for loan asset data.
     """
     list_dfs = []
+    pcds = []
     for csv_f in all_files:
         col_names = []
         content = []
         with open(csv_f, "r") as f:
             csv_id = csv_f.split("/")[-1].split("_")[0]
-            csv_date = "-".join(csv_f.split("/")[-1].split("_")[1:4])
+            pcds.append("-".join(csv_f.split("/")[-1].split("_")[1:4]))
             for i, line in enumerate(csv.reader(f)):
                 if i == 0:
                     col_names = line
@@ -75,14 +76,15 @@ def create_dataframe(spark, all_files):
                 elif i == 1:
                     continue
                 else:
+                    if len(line) == 0:
+                        continue
                     content.append(line)
             df = (
                 spark.createDataFrame(content, col_names)
                 .withColumn("ed_code", F.lit(csv_id))
                 .replace("", None)
-                .withColumn("ImportDate", F.lit(csv_date))
-                .withColumn("year", F.year(F.col("ImportDate")))
-                .withColumn("month", F.month(F.col("ImportDate")))
+                .withColumn("year", F.year(F.col("AS1")))
+                .withColumn("month", F.month(F.col("AS1")))
                 .withColumn(
                     "valid_from", F.lit(F.current_timestamp()).cast(TimestampType())
                 )
@@ -93,23 +95,16 @@ def create_dataframe(spark, all_files):
                     F.md5(
                         F.concat(
                             F.col("ed_code"),
-                            F.col("AS1"),
-                            F.col("AS2"),
                             F.col("AS3"),
-                            F.col("AS4"),
-                            F.col("AS5"),
-                            F.col("AS6"),
-                            F.col("AS7"),
                         )
                     ),
                 )
-                .drop("ImportDate")
             )
             list_dfs.append(df)
     if list_dfs == []:
         logger.error("No dataframes were extracted from files. Exit process!")
         sys.exit(1)
-    return reduce(DataFrame.union, list_dfs)
+    return (pcds, reduce(DataFrame.union, list_dfs))
 
 
 def main():
@@ -120,7 +115,7 @@ def main():
     run_props = set_job_params()
     all_asset_files = get_raw_files(run_props["SOURCE_DIR"], run_props["FILE_KEY"])
     logger.info(f"Retrieved {len(all_asset_files)} asset data files.")
-    raw_asset_df = create_dataframe(run_props["SPARK"], all_asset_files)
+    pcds, raw_asset_df = create_source_dataframe(run_props["SPARK"], all_asset_files)
     (
         raw_asset_df.write.partitionBy("year", "month")
         .mode("append")

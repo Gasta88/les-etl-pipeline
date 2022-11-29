@@ -51,7 +51,7 @@ def get_raw_files(source_dir, file_key):
         return all_files
 
 
-def create_dataframe(spark, all_files):
+def create_source_dataframe(spark, all_files):
     """
     Read files and generate one PySpark DataFrame from them.
 
@@ -73,6 +73,8 @@ def create_dataframe(spark, all_files):
                 elif i == 1:
                     continue
                 else:
+                    if len(line) == 0:
+                        continue
                     content.append(line)
             df = (
                 spark.createDataFrame(content, col_names)
@@ -107,7 +109,9 @@ def main():
     run_props = set_job_params()
     all_collateral_files = get_raw_files(run_props["SOURCE_DIR"], run_props["FILE_KEY"])
     print(f"Retrieved {len(all_collateral_files)} collateral data files.")
-    raw_collateral_df = create_dataframe(run_props["SPARK"], all_collateral_files)
+    raw_collateral_df = create_source_dataframe(
+        run_props["SPARK"], all_collateral_files
+    )
     (
         raw_collateral_df.write.partitionBy("year", "month")
         .mode("append")
