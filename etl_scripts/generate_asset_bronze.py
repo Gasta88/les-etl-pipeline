@@ -107,6 +107,18 @@ def create_source_dataframe(spark, all_files):
     return (pcds, reduce(DataFrame.union, list_dfs))
 
 
+def create_target_dataframe(spark, pcds):
+    """
+    Retrieve Spark dataframe from data lake and consider SCD-2.
+
+    :param spark: SparkSession object.
+    :params pcds: list of PCD from source files.
+    :return df: PySpark dataframe for loan asset data.
+    """
+
+    # TODO: check on GS if the partitions already exists.
+
+
 def main():
     """
     Run main steps of the module.
@@ -116,6 +128,7 @@ def main():
     all_asset_files = get_raw_files(run_props["SOURCE_DIR"], run_props["FILE_KEY"])
     logger.info(f"Retrieved {len(all_asset_files)} asset data files.")
     pcds, raw_asset_df = create_source_dataframe(run_props["SPARK"], all_asset_files)
+
     (
         raw_asset_df.write.partitionBy("year", "month")
         .mode("append")
