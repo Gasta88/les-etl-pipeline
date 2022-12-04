@@ -115,7 +115,7 @@ def main():
     (
         raw_collateral_df.write.partitionBy("year", "month")
         .mode("append")
-        .parquet("../data/output/bronze/collaterals.parquet")
+        .parquet("../data/output/SME/bronze/collaterals.parquet")
     )
     return
 

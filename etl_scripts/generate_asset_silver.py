@@ -3,7 +3,7 @@ import sys
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, StringType, DoubleType, BooleanType
-import os
+from delta import *
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -22,7 +22,20 @@ def set_job_params():
     :return config: dictionary with properties used in this job.
     """
     config = {}
-    config["SOURCE_DIR"] = "../data/output/bronze"
+    config["SPARK"] = (
+        SparkSession.builder.config(
+            "spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension"
+        )
+        .config(
+            "spark.sql.catalog.spark_catalog",
+            "org.apache.spark.sql.delta.catalog.DeltaCatalog",
+        )
+        .config("spark.jars.packages", "io.delta:delta-core:1.0.1")
+        .getOrCreate()
+    )
+    config["BUCKET_NAME"] = "fgasta_test"
+    config["BRONZE_PREFIX"] = "SME/bronze/"
+    config["SILVER_PREFIX"] = "SME/silver/"
     config["DATE_COLUMNS"] = [
         "AS1",
         "AS19",
@@ -361,7 +374,8 @@ def main():
     run_props = set_job_params()
     bronze_df = (
         run_props["SPARK"]
-        .read.parquet(f'{run_props["SOURCE_DIR"]}/assets.parquet')
+        .read.format("delta")
+        .table(f'{run_props["BUCKET_NAME"]}/{run_props["BRONZE_PREFIX"]}/assets')
         .filter("iscurrent == 1")
         .drop("valid_from", "valid_to", "checksum", "iscurrent")
     )
@@ -388,35 +402,46 @@ def main():
     logger.info("Write dataframe")
 
     (
-        date_df.write.mode("overwrite").parquet(
-            "../data/output/silver/assets/date_table.parquet"
+        date_df.write.format("delta")
+        .mode("overwrite")
+        .save(
+            f'gs://{run_props["BUCKET_NAME"]}/{run_props["SILVER_PREFIX"]}/assets/date_table'
         )
     )
     (
-        loan_info_df.write.partitionBy("year", "month")
+        loan_info_df.write.format("delta")
         .mode("overwrite")
-        .parquet("../data/output/silver/assets/loan_info_table.parquet")
+        .save(
+            f'gs://{run_props["BUCKET_NAME"]}/{run_props["SILVER_PREFIX"]}/assets/loan_info_table'
+        )
     )
     (
-        obligor_info_df.write.partitionBy("year", "month")
+        obligor_info_df.write.format("delta")
         .mode("overwrite")
-        .parquet("../data/output/silver/assets/obligor_info_table.parquet")
+        .save(
+            f'gs://{run_props["BUCKET_NAME"]}/{run_props["SILVER_PREFIX"]}/assets/obligor_info_table'
+        )
     )
     (
-        financial_info_df.write.partitionBy("year", "month")
+        financial_info_df.write.format("delta")
         .mode("overwrite")
-        .parquet("../data/output/silver/assets/financial_info_table.parquet")
+        .save(
+            f'gs://{run_props["BUCKET_NAME"]}/{run_props["SILVER_PREFIX"]}/assets/financial_info_table'
+        )
     )
     (
-        interest_rate_df.write.partitionBy("year", "month")
+        interest_rate_df.write.format("delta")
         .mode("overwrite")
-        .parquet("../data/output/silver/assets/interest_rate_table.parquet")
+        .save(
+            f'gs://{run_props["BUCKET_NAME"]}/{run_props["SILVER_PREFIX"]}/assets/interest_rate_table'
+        )
     )
     (
-        performance_info_df.write.partitionBy("year", "month")
-        .mode("overwrite")
-        .parquet("../data/output/silver/assets/performance_info_table.parquet")
+        performance_info_df.write.partitionBy("year", "month").mode("overwrite")(
+            "../data/output/SME/silver/assets/performance_info_table"
+        )
     )
+    logger.info("End ASSET SILVER job.")
     return
 
 

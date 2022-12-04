@@ -258,28 +258,28 @@ def main():
 
     (
         date_df.write.mode("overwrite").parquet(
-            "../data/output/silver/bond_info/date_table.parquet"
+            "../data/output/SME/silver/bond_info/date_table.parquet"
         )
     )
     (
         info_df.write.partitionBy("year", "month")
         .mode("overwrite")
-        .parquet("../data/output/silver/bond_info/info_table.parquet")
+        .parquet("../data/output/SME/silver/bond_info/info_table.parquet")
     )
     (
         collateral_df.write.partitionBy("year", "month")
         .mode("overwrite")
-        .parquet("../data/output/silver/bond_info/collaterals_table.parquet")
+        .parquet("../data/output/SME/silver/bond_info/collaterals_table.parquet")
     )
     (
         contact_df.write.partitionBy("year", "month")
         .mode("overwrite")
-        .parquet("../data/output/silver/bond_info/contacts_table.parquet")
+        .parquet("../data/output/SME/silver/bond_info/contacts_table.parquet")
     )
     (
         tranche_df.write.partitionBy("year", "month")
         .mode("overwrite")
-        .parquet("../data/output/silver/bond_info/trache_info_table.parquet")
+        .parquet("../data/output/SME/silver/bond_info/trache_info_table.parquet")
     )
 
     return

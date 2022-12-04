@@ -109,7 +109,7 @@ def main():
     (
         raw_amortisation_df.write.partitionBy("year", "month")
         .mode("append")
-        .parquet("../data/output/bronze/amortisation.parquet")
+        .parquet("../data/output/SME/bronze/amortisation.parquet")
     )
     return
 

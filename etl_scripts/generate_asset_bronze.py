@@ -8,6 +8,7 @@ from pyspark.sql.types import (
 import csv
 from functools import reduce
 from google.cloud import storage
+from delta import *
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -27,25 +28,36 @@ def set_job_params():
     """
     config = {}
     config["BUCKET_NAME"] = "fgasta_test"
+    config["UPLOAD_PREFIX"] = "mini_source/"
+    config["BRONZE_PREFIX"] = "SME/bronze/assets"
     config["FILE_KEY"] = "Loan_Data"
-    config["SPARK"] = SparkSession.builder.master("local[*]").getOrCreate()
+    config["SPARK"] = (
+        SparkSession.builder.config(
+            "spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension"
+        )
+        .config(
+            "spark.sql.catalog.spark_catalog",
+            "org.apache.spark.sql.delta.catalog.DeltaCatalog",
+        )
+        .config("spark.jars.packages", "io.delta:delta-core:1.0.1")
+        .getOrCreate()
+    )
     return config
 
 
-def get_files(bucket_name, file_key, pcds=None):
+def get_csv_files(bucket_name, prefix, file_key):
     """
-    Return list of files that satisfy the file_key parameter.
-    Works only on local machine so far.
+    Return list of CSV files that satisfy the file_key parameter from EDW.
 
     :param bucket_name: GS bucket where files are stored.
+    :param prefix: specific bucket prefix from where to collect files.
     :param file_key: label for file name that helps with the cherry picking.
-    :params pcds: list of PCD from source files (valid only when generating TARGET dataframe).
     :return all_files: list of desired files from source_dir.
     """
     storage_client = storage.Client(project="dataops-369610")
     all_files = [
         b.name
-        for b in storage_client.list_blobs(bucket_name)
+        for b in storage_client.list_blobs(bucket_name, prefix=prefix)
         if (b.name.endswith(".csv"))
         and (file_key in b.name)
         and not ("Labeled0M" in b.name)
@@ -56,16 +68,46 @@ def get_files(bucket_name, file_key, pcds=None):
         )
         sys.exit(1)
     else:
-        if pcds is None:
-            # These are for SOURCE dataframe
-            return all_files
-        # These are for TARGET dataframe
-        target_files = []
-        for f in all_files:
-            pcd = "_".join(f.split("/")[-1].split("_")[1:4])
-            if pcd in pcds:
-                target_files.append(f)
-        return target_files
+        return all_files
+
+
+def get_source_df(spark, bucket_name, prefix, pcds):
+    """
+    Return BRONZE ASSET table, but only the partitions from the specified pcds.
+
+    :param spark: SparkSession object.
+    :param bucket_name: GS bucket where files are stored.
+    :param prefix: specific bucket prefix from where to collect files.
+    :params pcds: list of PCD from source files (valid only when generating TARGET dataframe).
+    :return df: Spark dataframe with the Asset information.
+    """
+    storage_client = storage.Client(project="dataops-369610")
+    check_list = []
+    for pcd in pcds:
+        year = pcd.split("-")[0]
+        month = pcd.split("-")[1]
+        partition_prefix = f"{prefix}/year={year}/month={month}"
+        check_list.append(
+            len(
+                [
+                    b.name
+                    for b in storage_client.list_blobs(
+                        bucket_name, prefix=partition_prefix
+                    )
+                ]
+            )
+        )
+    if sum(check_list) > 0:
+        df = (
+            spark.read.format("delta")
+            .load(f"gs://{bucket_name}/{prefix}/assets")
+            .withColumn("lookup", F.concat_ws("-", F.col("year"), F.col("month")))
+            .filter(F.col("lookup").isin(pcds))
+            .drop("lookup")
+        )
+        return df
+    else:
+        return None
 
 
 def create_dataframe(spark, all_files):
@@ -163,26 +205,40 @@ def main():
     """
     logger.info("Start ASSETS BRONZE job.")
     run_props = set_job_params()
-    logger.info("Create SOURCE dataframe")
-    all_source_files = get_files(run_props["BUCKET_NAME"], run_props["FILE_KEY"])
-    logger.info(f"Retrieved {len(all_source_files)} asset data source files.")
-    pcds, source_asset_df = create_dataframe(run_props["SPARK"], all_source_files)
+
     logger.info("Create TARGET dataframe")
-    all_target_files = get_files(
-        run_props["BUCKET_NAME"], run_props["FILE_KEY"], pcds=pcds
+    all_target_files = get_csv_files(
+        run_props["BUCKET_NAME"],
+        run_props["UPLOAD_PREFIX"],
+        run_props["FILE_KEY"],
     )
-    logger.info(f"Retrieved {len(all_target_files)} asset data source files.")
-    if len(all_target_files) > 0:
-        logger.info("Legacy data to update")
-        _, target_asset_df = create_dataframe(run_props["SPARK"], all_target_files)
-        perform_scd2(run_props["SPARK"], source_asset_df, target_asset_df)
+    if len(all_target_files) == 0:
+        logger.warning("No new CSV files to retrieve. Workflow stopped!")
+        sys.exit(1)
     else:
-        logger.info("No legacy data to update")
-        (
-            source_asset_df.write.partitionBy("year", "month")
-            .mode("append")
-            .parquet(f'gs://{run_props["BUCKET_NAME"]}/bronze/assets.parquet')
+        logger.info(f"Retrieved {len(all_target_files)} asset data CSV files.")
+        pcds, target_asset_df = create_dataframe(run_props["SPARK"], all_target_files)
+
+        logger.info("Retrieve SOURCE dataframe")
+        source_asset_df = get_source_df(
+            run_props["SPARK"],
+            run_props["BUCKET_NAME"],
+            run_props["BRONZE_PREFIX"],
+            pcds,
         )
+        if source_asset_df is None:
+            logger.info("Initial load into ASSET BRONZE")
+            (
+                target_asset_df.write.partitionBy("year", "month")
+                .format("delta")
+                .mode("overwrite")
+                .save(f'gs://{run_props["BUCKET_NAME"]}/{run_props["BRONZE_PREFIX"]}')
+            )
+        else:
+            logger.info("Upsert data into ASSET BRONZE")
+            perform_scd2(run_props["SPARK"], source_asset_df, target_asset_df)
+
+    logger.info("End ASSETS BRONZE job.")
     return
 
 

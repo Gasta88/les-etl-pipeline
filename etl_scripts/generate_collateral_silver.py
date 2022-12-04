@@ -175,11 +175,11 @@ def main():
     (
         info_df.write.partitionBy("year", "month")
         .mode("overwrite")
-        .parquet("../data/output/silver/collaterals/info_table.parquet")
+        .parquet("../data/output/SME/silver/collaterals/info_table.parquet")
     )
     (
         date_df.write.mode("overwrite").parquet(
-            "../data/output/silver/collaterals/date_table.parquet"
+            "../data/output/SME/silver/collaterals/date_table.parquet"
         )
     )
 

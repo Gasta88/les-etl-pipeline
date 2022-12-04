@@ -119,7 +119,7 @@ def main():
         raw_deal_details_df.to_csv(
             "../data/output/bronze/deal_details.csv",
             mode="a",
-            header=not os.path.exists("../data/output/bronze/deal_details.csv"),
+            header=not os.path.exists("../data/output/SME/bronze/deal_details.csv"),
         )
     )
 

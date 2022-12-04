@@ -111,7 +111,7 @@ def main():
     (
         raw_bond_info_df.write.partitionBy("year", "month")
         .mode("append")
-        .parquet("../data/output/bronze/bond_info.parquet")
+        .parquet("../data/output/SME/bronze/bond_info.parquet")
     )
     return
 

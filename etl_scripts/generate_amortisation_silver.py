@@ -170,13 +170,13 @@ def main():
 
     (
         date_df.write.mode("overwrite").parquet(
-            "../data/output/silver/amortisation/date_table.parquet"
+            "../data/output/SME/silver/amortisation/date_table.parquet"
         )
     )
     (
         info_df.write.partitionBy("year", "month")
         .mode("overwrite")
-        .parquet("../data/output/silver/amortisation/info_table.parquet")
+        .parquet("../data/output/SME/silver/amortisation/info_table.parquet")
     )
 
     return
