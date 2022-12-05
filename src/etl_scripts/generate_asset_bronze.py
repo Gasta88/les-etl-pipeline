@@ -1,6 +1,6 @@
 import logging
 import sys
-from pyspark.sql import SparkSession, DataFrame
+from pyspark.sql import DataFrame
 import pyspark.sql.functions as F
 from pyspark.sql.types import (
     TimestampType,
@@ -18,31 +18,6 @@ handler.setLevel(logging.DEBUG)
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
-
-
-def set_job_params():
-    """
-    Setup parameters used for this module.
-
-    :return config: dictionary with properties used in this job.
-    """
-    config = {}
-    config["BUCKET_NAME"] = "fgasta_test"
-    config["UPLOAD_PREFIX"] = "mini_source/"
-    config["BRONZE_PREFIX"] = "SME/bronze/assets"
-    config["FILE_KEY"] = "Loan_Data"
-    config["SPARK"] = (
-        SparkSession.builder.config(
-            "spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension"
-        )
-        .config(
-            "spark.sql.catalog.spark_catalog",
-            "org.apache.spark.sql.delta.catalog.DeltaCatalog",
-        )
-        .config("spark.jars.packages", "io.delta:delta-core:1.0.1")
-        .getOrCreate()
-    )
-    return config
 
 
 def get_csv_files(bucket_name, prefix, file_key):
@@ -71,7 +46,7 @@ def get_csv_files(bucket_name, prefix, file_key):
         return all_files
 
 
-def get_source_df(spark, bucket_name, prefix, pcds):
+def get_old_df(spark, bucket_name, prefix, pcds):
     """
     Return BRONZE ASSET table, but only the partitions from the specified pcds.
 
@@ -107,6 +82,7 @@ def get_source_df(spark, bucket_name, prefix, pcds):
         )
         return df
     else:
+        logger.info("No old files for legacy dataframe.")
         return None
 
 
@@ -199,48 +175,46 @@ def perform_scd2(spark, source_df, target_df):
     return
 
 
-def main():
+def generate_asset_bronze(spark, bucket_name, upload_prefix, bronze_prefix, file_key):
     """
     Run main steps of the module.
+
+    :param spark: SparkSession object.
+    :param bucket_name: GS bucket where files are stored.
+    :param upload_prefix: specific bucket prefix from where to collect CSV files.
+    :param bronze_prefix: specific bucket prefix from where to collect bronze old data.
+    :param file_key: label for file name that helps with the cherry picking with Asset.
+    :return status: 0 if successful.
     """
     logger.info("Start ASSETS BRONZE job.")
-    run_props = set_job_params()
 
-    logger.info("Create TARGET dataframe")
-    all_target_files = get_csv_files(
-        run_props["BUCKET_NAME"],
-        run_props["UPLOAD_PREFIX"],
-        run_props["FILE_KEY"],
-    )
-    if len(all_target_files) == 0:
+    logger.info("Create NEW dataframe")
+    all_new_files = get_csv_files(bucket_name, upload_prefix, file_key)
+    if len(all_new_files) == 0:
         logger.warning("No new CSV files to retrieve. Workflow stopped!")
         sys.exit(1)
     else:
-        logger.info(f"Retrieved {len(all_target_files)} asset data CSV files.")
-        pcds, target_asset_df = create_dataframe(run_props["SPARK"], all_target_files)
+        logger.info(f"Retrieved {len(all_new_files)} asset data CSV files.")
+        pcds, new_asset_df = create_dataframe(spark, all_new_files)
 
-        logger.info("Retrieve SOURCE dataframe")
-        source_asset_df = get_source_df(
-            run_props["SPARK"],
-            run_props["BUCKET_NAME"],
-            run_props["BRONZE_PREFIX"],
+        logger.info("Retrieve OLD dataframe")
+        old_asset_df = get_old_df(
+            spark,
+            bucket_name,
+            bronze_prefix,
             pcds,
         )
-        if source_asset_df is None:
+        if old_asset_df is None:
             logger.info("Initial load into ASSET BRONZE")
             (
-                target_asset_df.write.partitionBy("year", "month")
+                new_asset_df.write.partitionBy("year", "month")
                 .format("delta")
                 .mode("overwrite")
-                .save(f'gs://{run_props["BUCKET_NAME"]}/{run_props["BRONZE_PREFIX"]}')
+                .save(f"gs://{bucket_name}/{bronze_prefix}")
             )
         else:
             logger.info("Upsert data into ASSET BRONZE")
-            perform_scd2(run_props["SPARK"], source_asset_df, target_asset_df)
+            perform_scd2(spark, old_asset_df, new_asset_df)
 
     logger.info("End ASSETS BRONZE job.")
-    return
-
-
-if __name__ == "__main__":
-    main()
+    return 0
