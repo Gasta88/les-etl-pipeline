@@ -1,4 +1,5 @@
 from pyspark.sql import SparkSession
+from delta import *
 
 
 def start_spark():
@@ -17,7 +18,11 @@ def start_spark():
             "spark.sql.catalog.spark_catalog",
             "org.apache.spark.sql.delta.catalog.DeltaCatalog",
         )
-        .config("spark.jars.packages", "io.delta:delta-core:1.0.1")
+        .config("spark.jars.packages", "io.delta:delta-core:2.1.0")
+        .config(
+            "spark.delta.logStore.gs.impl",
+            "io.delta.storage.GCSLogStore",
+        )
         .getOrCreate()
     )
     return spark

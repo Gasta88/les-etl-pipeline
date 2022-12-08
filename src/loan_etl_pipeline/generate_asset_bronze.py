@@ -86,22 +86,28 @@ def get_old_df(spark, bucket_name, prefix, pcds):
         return None
 
 
-def create_dataframe(spark, all_files):
+def create_dataframe(spark, bucket_name, all_files):
     """
     Read files and generate one PySpark DataFrame from them.
 
     :param spark: SparkSession object.
+    :param bucket_name: GS bucket where files are stored.
     :param all_files: list of files to be read to generate the dtaframe.
     :return df: PySpark datafram for loan asset data.
     """
     list_dfs = []
     pcds = []
+    storage_client = storage.Client(project="dataops-369610")
+    bucket = storage_client.get_bucket(bucket_name)
     for csv_f in all_files:
+        blob = bucket.blob(csv_f)
+        dest_csv_f = f'/tmp/{csv_f.split("/")[-1]}'
+        blob.download_to_filename(dest_csv_f)
         col_names = []
         content = []
-        with open(csv_f, "r") as f:
-            csv_id = csv_f.split("/")[-1].split("_")[0]
-            pcds.append("_".join(csv_f.split("/")[-1].split("_")[1:4]))
+        with open(dest_csv_f, "r") as f:
+            csv_id = dest_csv_f.split("/")[-1].split("_")[0]
+            pcds.append("-".join(dest_csv_f.split("/")[-1].split("_")[1:4]))
             for i, line in enumerate(csv.reader(f)):
                 if i == 0:
                     col_names = line
@@ -195,9 +201,9 @@ def generate_asset_bronze(spark, bucket_name, upload_prefix, bronze_prefix, file
         sys.exit(1)
     else:
         logger.info(f"Retrieved {len(all_new_files)} asset data CSV files.")
-        pcds, new_asset_df = create_dataframe(spark, all_new_files)
+        pcds, new_asset_df = create_dataframe(spark, bucket_name, all_new_files)
 
-        logger.info("Retrieve OLD dataframe")
+        logger.info(f"Retrieve OLD dataframe. Use following PCDs: {pcds}")
         old_asset_df = get_old_df(
             spark,
             bucket_name,

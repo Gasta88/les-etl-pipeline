@@ -8,7 +8,7 @@ python-versions = "~=3.7"
 
 [[package]]
 name = "certifi"
-version = "2022.9.24"
+version = "2022.12.7"
 description = "Python package for providing Mozilla's CA Bundle."
 category = "main"
 optional = false
@@ -27,15 +27,15 @@ unicode_backport = ["unicodedata2"]
 
 [[package]]
 name = "delta-spark"
-version = "1.0.1"
+version = "2.1.0"
 description = "Python APIs for using Delta Lake with Apache Spark"
 category = "main"
 optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
-importlib-metadata = ">=3.10.0"
-pyspark = ">=3.1.0,<3.2.0"
+importlib-metadata = ">=1.0.0"
+pyspark = ">=3.3.0,<3.4.0"
 
 [[package]]
 name = "google-api-core"
@@ -93,7 +93,7 @@ grpc = ["grpcio (>=1.38.0,<2.0dev)"]
 
 [[package]]
 name = "google-cloud-storage"
-version = "2.6.0"
+version = "2.7.0"
 description = "Google Cloud Storage API client library"
 category = "main"
 optional = false
@@ -175,7 +175,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "flake8 (<5)", "pytest-co
 
 [[package]]
 name = "protobuf"
-version = "4.21.10"
+version = "4.21.11"
 description = ""
 category = "main"
 optional = false
@@ -183,7 +183,7 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "py4j"
-version = "0.10.9"
+version = "0.10.9.5"
 description = "Enables Python programs to dynamically access arbitrary Java objects"
 category = "main"
 optional = false
@@ -210,19 +210,20 @@ pyasn1 = ">=0.4.6,<0.5.0"
 
 [[package]]
 name = "pyspark"
-version = "3.1.3"
+version = "3.3.1"
 description = "Apache Spark Python API"
 category = "main"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 
 [package.dependencies]
-py4j = "0.10.9"
+py4j = "0.10.9.5"
 
 [package.extras]
-ml = ["numpy (>=1.7)"]
-mllib = ["numpy (>=1.7)"]
-sql = ["pandas (>=0.23.2)", "pyarrow (>=1.0.0)"]
+ml = ["numpy (>=1.15)"]
+mllib = ["numpy (>=1.15)"]
+pandas_on_spark = ["numpy (>=1.15)", "pandas (>=1.0.5)", "pyarrow (>=1.0.0)"]
+sql = ["pandas (>=1.0.5)", "pyarrow (>=1.0.0)"]
 
 [[package]]
 name = "requests"
@@ -289,7 +290,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "flake8 (<5)", "pytest-co
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "495d2b9c85c51e786ee7b41a4ad730497b7d27f1810ff4daed11ec3431eae61a"
+content-hash = "34d37a830840e1f5eedb795e35d3fb3036220bd3258e1fed8150e88887b60229"
 
 [metadata.files]
 cachetools = [
@@ -297,16 +298,16 @@ cachetools = [
     {file = "cachetools-5.2.0.tar.gz", hash = "sha256:6a94c6402995a99c3970cc7e4884bb60b4a8639938157eeed436098bf9831757"},
 ]
 certifi = [
-    {file = "certifi-2022.9.24-py3-none-any.whl", hash = "sha256:90c1a32f1d68f940488354e36370f6cca89f0f106db09518524c88d6ed83f382"},
-    {file = "certifi-2022.9.24.tar.gz", hash = "sha256:0d9c601124e5a6ba9712dbc60d9c53c21e34f5f641fe83002317394311bdce14"},
+    {file = "certifi-2022.12.7-py3-none-any.whl", hash = "sha256:4ad3232f5e926d6718ec31cfc1fcadfde020920e278684144551c91769c7bc18"},
+    {file = "certifi-2022.12.7.tar.gz", hash = "sha256:35824b4c3a97115964b408844d64aa14db1cc518f6562e8d7261699d1350a9e3"},
 ]
 charset-normalizer = [
     {file = "charset-normalizer-2.1.1.tar.gz", hash = "sha256:5a3d016c7c547f69d6f81fb0db9449ce888b418b5b9952cc5e6e66843e9dd845"},
     {file = "charset_normalizer-2.1.1-py3-none-any.whl", hash = "sha256:83e9a75d1911279afd89352c68b45348559d1fc0506b054b346651b5e7fee29f"},
 ]
 delta-spark = [
-    {file = "delta-spark-1.0.1.tar.gz", hash = "sha256:f4bc1ff7d59117d9b1314d1311cf15a5bd15202918458397d553a60494bbc514"},
-    {file = "delta_spark-1.0.1-py3-none-any.whl", hash = "sha256:31cee84068403cfc386459dc92bab81b186c7b361862c821dce24c429699cf99"},
+    {file = "delta-spark-2.1.0.tar.gz", hash = "sha256:7f6d55d2344a39ad3ab3a0c08fb947a24a1a80d8bfa70318e66717d49ba8e8ce"},
+    {file = "delta_spark-2.1.0-py3-none-any.whl", hash = "sha256:f3586cfddc871ffc7f12923ff4a4d601fc5efbf7b550e60388b22ede7f492fa1"},
 ]
 google-api-core = [
     {file = "google-api-core-2.11.0.tar.gz", hash = "sha256:4b9bb5d5a380a0befa0573b302651b8a9a89262c1730e37bf423cec511804c22"},
@@ -321,8 +322,8 @@ google-cloud-core = [
     {file = "google_cloud_core-2.3.2-py2.py3-none-any.whl", hash = "sha256:8417acf6466be2fa85123441696c4badda48db314c607cf1e5d543fa8bdc22fe"},
 ]
 google-cloud-storage = [
-    {file = "google-cloud-storage-2.6.0.tar.gz", hash = "sha256:104ca28ae61243b637f2f01455cc8a05e8f15a2a18ced96cb587241cdd3820f5"},
-    {file = "google_cloud_storage-2.6.0-py2.py3-none-any.whl", hash = "sha256:4ad0415ff61abdd8bb2ae81c1f8f7ec7d91a1011613f2db87c614c550f97bfe9"},
+    {file = "google-cloud-storage-2.7.0.tar.gz", hash = "sha256:1ac2d58d2d693cb1341ebc48659a3527be778d9e2d8989697a2746025928ff17"},
+    {file = "google_cloud_storage-2.7.0-py2.py3-none-any.whl", hash = "sha256:f78a63525e72dd46406b255bbdf858a22c43d6bad8dc5bdeb7851a42967e95a1"},
 ]
 google-crc32c = [
     {file = "google-crc32c-1.5.0.tar.gz", hash = "sha256:89284716bc6a5a415d4eaa11b1726d2d60a0cd12aadf5439828353662ede9dd7"},
@@ -411,24 +412,24 @@ importlib-metadata = [
     {file = "importlib_metadata-5.1.0.tar.gz", hash = "sha256:d5059f9f1e8e41f80e9c56c2ee58811450c31984dfa625329ffd7c0dad88a73b"},
 ]
 protobuf = [
-    {file = "protobuf-4.21.10-cp310-abi3-win32.whl", hash = "sha256:e92768d17473657c87e98b79a4c7724b0ddfa23211b05ce137bfdc55e734e36f"},
-    {file = "protobuf-4.21.10-cp310-abi3-win_amd64.whl", hash = "sha256:0c968753028cb14b1d24cc839723f7e9505b305fc588a37a9e0f7d270cb59d89"},
-    {file = "protobuf-4.21.10-cp37-abi3-macosx_10_9_universal2.whl", hash = "sha256:e53165dd14d19abc7f50733f365de431e51d1d262db40c0ee22e271a074fac59"},
-    {file = "protobuf-4.21.10-cp37-abi3-manylinux2014_aarch64.whl", hash = "sha256:5efa8a8162ada7e10847140308fbf84fdc5b89dc21655d12ec04aed87284fe07"},
-    {file = "protobuf-4.21.10-cp37-abi3-manylinux2014_x86_64.whl", hash = "sha256:2a172741b5b041a896b621cef4277077afd571e0d3a6e524e7171f1c70e33200"},
-    {file = "protobuf-4.21.10-cp37-cp37m-win32.whl", hash = "sha256:05cbcb9a25cd781fd949f93f6f98a911883868c0360c6d2264fc99a903c8f0d7"},
-    {file = "protobuf-4.21.10-cp37-cp37m-win_amd64.whl", hash = "sha256:3f08f04b4f101dd469efbcc1731fbf48068eccd8a42f4e2ea530aa012a5f56f8"},
-    {file = "protobuf-4.21.10-cp38-cp38-win32.whl", hash = "sha256:6b809f20923b6ef49dc1755cb50bdb21be179b4a3c7ffcab1fe5d3f139b58a51"},
-    {file = "protobuf-4.21.10-cp38-cp38-win_amd64.whl", hash = "sha256:81b233a06c62387ea5c9be2cd9aedd2ba09940e91da53b920e9ff5bd98e48e7f"},
-    {file = "protobuf-4.21.10-cp39-cp39-win32.whl", hash = "sha256:b78d7c2c36b51c0041b9bf000be4adb09f4112bfc40bc7a9d48ac0b0dfad139e"},
-    {file = "protobuf-4.21.10-cp39-cp39-win_amd64.whl", hash = "sha256:0413addc126c40a5440ee59be098de1007183d68e9f5f20ed5fbc44848f417ca"},
-    {file = "protobuf-4.21.10-py2.py3-none-any.whl", hash = "sha256:a5e89eabaa0ca72ce1b7c8104a740d44cdb67942cbbed00c69a4c0541de17107"},
-    {file = "protobuf-4.21.10-py3-none-any.whl", hash = "sha256:5096b3922b45e4b7a04d3d3cb855d13bb5ccd4d5e44b129e706232ebf0ffb870"},
-    {file = "protobuf-4.21.10.tar.gz", hash = "sha256:4d97c16c0d11155b3714a29245461f0eb60cace294455077f3a3b8a629afa383"},
+    {file = "protobuf-4.21.11-cp310-abi3-win32.whl", hash = "sha256:25266bf373ee06d5d66f9eb1ec9d434b243dccce5c32faf151054cfa6f9dcbf1"},
+    {file = "protobuf-4.21.11-cp310-abi3-win_amd64.whl", hash = "sha256:260e346927fd4e6fbb49ab545137b19610c24a1d853dc5f29ddf777ab1987211"},
+    {file = "protobuf-4.21.11-cp37-abi3-macosx_10_9_universal2.whl", hash = "sha256:4d01ef83517c181d60ea1c6d0b2f644be250ade740d6554a2f5a021b1ad622e3"},
+    {file = "protobuf-4.21.11-cp37-abi3-manylinux2014_aarch64.whl", hash = "sha256:a5a14b907a191319e7a58b38c583bbf50deb21e002f723a912c5e4f6969a778e"},
+    {file = "protobuf-4.21.11-cp37-abi3-manylinux2014_x86_64.whl", hash = "sha256:553e35c0878f6855e55f01a14561e6bce6df79b6636a5acf83b9d9ac7eab7922"},
+    {file = "protobuf-4.21.11-cp37-cp37m-win32.whl", hash = "sha256:4b75c947289a2e9c1f37d21c593f1ef6fb4fed33977dfb2ac84f799eb29a8ff4"},
+    {file = "protobuf-4.21.11-cp37-cp37m-win_amd64.whl", hash = "sha256:efb16b16fd3eef25357f84d516062753014b76279ce4e0ec4880badd2fba7370"},
+    {file = "protobuf-4.21.11-cp38-cp38-win32.whl", hash = "sha256:d91a47c77b33580024b0271b65bb820c4e0264c25eb49151ad01e691de8fa0b6"},
+    {file = "protobuf-4.21.11-cp38-cp38-win_amd64.whl", hash = "sha256:bab4b21a986ded225b9392c07ce21c35d790951f51e1ebfd32e4d443b05c3726"},
+    {file = "protobuf-4.21.11-cp39-cp39-win32.whl", hash = "sha256:c3b9e329b4c247dc3ba5c50f60915a84e08278eb6d9e3fa674d0d04ff816bfd7"},
+    {file = "protobuf-4.21.11-cp39-cp39-win_amd64.whl", hash = "sha256:85ccb4753ee21de7dc81a7a68a051f25dbe133ffa01a639ac998427d0b223387"},
+    {file = "protobuf-4.21.11-py2.py3-none-any.whl", hash = "sha256:4922e3320ed70e81f05060822da36923d09fd9e04e17f411f2d8d8d0070f9f5c"},
+    {file = "protobuf-4.21.11-py3-none-any.whl", hash = "sha256:a944dc9550baae276afc7dc8193191d4c2ad660270a1e5ed5a71539817ebe2e2"},
+    {file = "protobuf-4.21.11.tar.gz", hash = "sha256:2c6a4d13732d9b094db31b3841986c38b17ac61a3fe05ee26a779d94c4c3fb43"},
 ]
 py4j = [
-    {file = "py4j-0.10.9-py2.py3-none-any.whl", hash = "sha256:859ba728a7bb43e9c2bf058832759fb97a598bb28cc12f34f5fc4abdec08ede6"},
-    {file = "py4j-0.10.9.tar.gz", hash = "sha256:36ec57f43ff8ced260a18aa9a4e46c3500a730cac8860e259cbaa546c2b9db2f"},
+    {file = "py4j-0.10.9.5-py2.py3-none-any.whl", hash = "sha256:52d171a6a2b031d8a5d1de6efe451cf4f5baff1a2819aabc3741c8406539ba04"},
+    {file = "py4j-0.10.9.5.tar.gz", hash = "sha256:276a4a3c5a2154df1860ef3303a927460e02e97b047dc0a47c1c3fb8cce34db6"},
 ]
 pyasn1 = [
     {file = "pyasn1-0.4.8-py2.4.egg", hash = "sha256:fec3e9d8e36808a28efb59b489e4528c10ad0f480e57dcc32b4de5c9d8c9fdf3"},
@@ -461,7 +462,7 @@ pyasn1-modules = [
     {file = "pyasn1_modules-0.2.8-py3.7.egg", hash = "sha256:c29a5e5cc7a3f05926aff34e097e84f8589cd790ce0ed41b67aed6857b26aafd"},
 ]
 pyspark = [
-    {file = "pyspark-3.1.3.tar.gz", hash = "sha256:39ac641ef5559a3d1286154779fc990316e9934520853615ae4785c1af52d14b"},
+    {file = "pyspark-3.3.1.tar.gz", hash = "sha256:e99fa7de92be406884bfd831c32b9306a3a99de44cfc39a2eefb6ed07445d5fa"},
 ]
 requests = [
     {file = "requests-2.28.1-py3-none-any.whl", hash = "sha256:8fefa2a1a1365bf5520aac41836fbee479da67864514bdb821f31ce07ce65349"},

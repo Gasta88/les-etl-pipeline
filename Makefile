@@ -7,6 +7,7 @@ DATA_BUCKET ?= fgasta_test
 APP_NAME ?= $$(cat pyproject.toml| grep name | cut -d" " -f3 | sed  's/"//g')
 VERSION_NO ?= $$(poetry version --short)
 SRC_WITH_DEPS ?= src_with_deps
+DELTA_JAR_FILE ?= delta-core_2.13-2.1.0.jar
 
 .PHONY: $(shell sed -n -e '/^$$/ { n ; /^[^ .\#][^ ]*:/ { s/:.*$$// ; p ; } ; }' $(MAKEFILE_LIST))
 
@@ -42,13 +43,18 @@ build: clean ## Build Python Package with Dependencies
 	@cp ./src/main.py ./dist
 	@mv ./dist/${SRC_WITH_DEPS}.zip ./dist/${APP_NAME}_${VERSION_NO}.zip
 	@gsutil cp -r ./dist gs://${CODE_BUCKET}
-	@gsutil cp -r dependencies/delta-core_2.12-1.0.1.jar gs://${CODE_BUCKET}/dependencies
+	# @gsutil cp -r dependencies/${DELTA_JAR_FILE} gs://${CODE_BUCKET}/dependencies/
+	@gsutil cp -r dependencies/*.jar gs://${CODE_BUCKET}/dependencies/
 
 
 run: ## Run the dataproc serverless job
-	gcloud dataproc batches submit --project ${PROJECT_ID} --region ${REGION} pyspark \
+	# @gcloud compute networks subnets update default \
+	# --region=${REGION} \
+	# --enable-private-ip-google-access
+	@gcloud dataproc batches submit --project ${PROJECT_ID} --region ${REGION} pyspark \
 	gs://${CODE_BUCKET}/dist/main.py --py-files=gs://${CODE_BUCKET}/dist/${APP_NAME}_${VERSION_NO}.zip \
 	--subnet default --properties spark.executor.instances=2,spark.driver.cores=4,spark.executor.cores=4,spark.app.name=loan_etl_pipeline \
-	--jars gs://${CODE_BUCKET}/dependencies/delta-core_2.12-1.0.1.jar \
-	--dataproc-metastore=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
+	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar \
+	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
+	--version=2.0 \
 	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --upload-prefix=mini_source --bronze-prefix=SME/bronze/assets --file-key=Loan_Data

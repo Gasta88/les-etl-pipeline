@@ -1,7 +1,7 @@
 # Import Python libraries.
 import argparse
 from src.utils.spark_setup import start_spark
-from src.etl_scripts.generate_asset_bronze import generate_asset_bronze
+from src.loan_etl_pipeline.generate_asset_bronze import generate_asset_bronze
 
 # from src.spark_serverless_repo_exemplar.save_to_bq import save_file_to_bq
 
