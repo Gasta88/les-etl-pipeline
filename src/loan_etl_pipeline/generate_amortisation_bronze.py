@@ -20,30 +20,6 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 
-def get_csv_files(bucket_name, prefix, file_key):
-    """
-    Return list of CSV files that satisfy the file_key parameter from EDW.
-
-    :param bucket_name: GS bucket where files are stored.
-    :param prefix: specific bucket prefix from where to collect files.
-    :param file_key: label for file name that helps with the cherry picking.
-    :return all_files: list of desired files from source_dir.
-    """
-    storage_client = storage.Client(project="dataops-369610")
-    all_files = [
-        b.name
-        for b in storage_client.list_blobs(bucket_name, prefix=prefix)
-        if (b.name.endswith(".csv")) and (file_key in b.name)
-    ]
-    if len(all_files) == 0:
-        logger.error(
-            f"No files with key {file_key.upper()} found in {bucket_name}. Exit process!"
-        )
-        sys.exit(1)
-    else:
-        return all_files
-
-
 def get_old_df(spark, bucket_name, prefix, pcds):
     """
     Return BRONZE AMORTisaTION table, but only the partitions from the specified pcds.
@@ -180,29 +156,25 @@ def perform_scd2(spark, source_df, target_df):
     return
 
 
-def generate_amortisation_bronze(
-    spark, bucket_name, upload_prefix, bronze_prefix, file_key
-):
+def generate_amortisation_bronze(spark, bucket_name, bronze_prefix, all_files):
     """
     Run main steps of the module.
 
     :param spark: SparkSession object.
     :param bucket_name: GS bucket where files are stored.
-    :param upload_prefix: specific bucket prefix from where to collect CSV files.
     :param bronze_prefix: specific bucket prefix from where to collect bronze old data.
-    :param file_key: label for file name that helps with the cherry picking with Asset.
+    :param all_files: list of clean CSV files from EDW.
     :return status: 0 if successful.
     """
     logger.info("Start AMORTISATION BRONZE job.")
 
     logger.info("Create NEW dataframe")
-    all_new_files = get_csv_files(bucket_name, upload_prefix, file_key)
-    if len(all_new_files) == 0:
+    if len(all_files) == 0:
         logger.warning("No new CSV files to retrieve. Workflow stopped!")
         sys.exit(1)
     else:
-        logger.info(f"Retrieved {len(all_new_files)} amortisation data CSV files.")
-        pcds, new_amortisation_df = create_dataframe(spark, bucket_name, all_new_files)
+        logger.info(f"Retrieved {len(all_files)} amortisation data CSV files.")
+        pcds, new_amortisation_df = create_dataframe(spark, bucket_name, all_files)
 
         logger.info(f"Retrieve OLD dataframe. Use following PCDs: {pcds}")
         old_amortisation_df = get_old_df(

@@ -1,9 +1,14 @@
-# Import Python libraries.
 import argparse
 from src.utils.spark_setup import start_spark
+from src.loan_etl_pipeline.profile_asset_bronze import profile_asset_bronze
 from src.loan_etl_pipeline.generate_asset_bronze import generate_asset_bronze
+from src.loan_etl_pipeline.profile_collateral_bronze import profile_collateral_bronze
 from src.loan_etl_pipeline.generate_collateral_bronze import generate_collateral_bronze
+from src.loan_etl_pipeline.profile_bond_info_bronze import profile_bond_info_bronze
 from src.loan_etl_pipeline.generate_bond_info_bronze import generate_bond_info_bronze
+from src.loan_etl_pipeline.profile_amortisation_bronze import (
+    profile_amortisation_bronze,
+)
 from src.loan_etl_pipeline.generate_amortisation_bronze import (
     generate_amortisation_bronze,
 )
@@ -20,22 +25,31 @@ def run(bucket_name, upload_prefix, bronze_prefix, file_key, stage_name):
     """
     spark = start_spark()
     if stage_name == "bronze_asset":
-        status = generate_asset_bronze(
-            spark, bucket_name, upload_prefix, bronze_prefix, file_key
-        )
+        clean_files = profile_asset_bronze(spark, bucket_name, upload_prefix, file_key)
+        status = generate_asset_bronze(spark, bucket_name, bronze_prefix, clean_files)
+
     if stage_name == "bronze_collateral":
+        clean_files = profile_collateral_bronze(
+            spark, bucket_name, upload_prefix, file_key
+        )
         status = generate_collateral_bronze(
-            spark, bucket_name, upload_prefix, bronze_prefix, file_key
+            spark, bucket_name, bronze_prefix, clean_files
         )
 
     if stage_name == "bronze_bond_info":
+        clean_files = profile_bond_info_bronze(
+            spark, bucket_name, upload_prefix, file_key
+        )
         status = generate_bond_info_bronze(
-            spark, bucket_name, upload_prefix, bronze_prefix, file_key
+            spark, bucket_name, bronze_prefix, clean_files
         )
 
     if stage_name == "bronze_amortisation":
+        clean_files = profile_amortisation_bronze(
+            spark, bucket_name, upload_prefix, file_key
+        )
         status = generate_amortisation_bronze(
-            spark, bucket_name, upload_prefix, bronze_prefix, file_key
+            spark, bucket_name, bronze_prefix, clean_files
         )
 
 
