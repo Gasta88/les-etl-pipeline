@@ -58,13 +58,13 @@ def _get_checks_dict(df):
     checks_dict = {
         "IsNotEmpty": n_rows > 0,
         "hasColumns": mandatory_cols.issubset(set(df.columns)),
-        "AS3_IdUnique": df.select("AS3").distinct().count() == n_rows,
-        "AS3_IsComplete": (
-            df.select(F.concat("AS3").alias("combined"))
-            .where(F.col("combined").isNull())
-            .count()
-            == 0
-        ),
+        # "AS3_IdUnique": df.select("AS3").distinct().count() == n_rows,
+        # "AS3_IsComplete": (
+        #     df.select(F.concat("AS3").alias("combined"))
+        #     .where(F.col("combined").isNull())
+        #     .count()
+        #     == 0
+        # ),
     }
     return checks_dict
 

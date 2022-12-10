@@ -1,6 +1,5 @@
 import logging
 import sys
-from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, StringType, DoubleType, BooleanType
 from delta import *
@@ -22,20 +21,6 @@ def set_job_params():
     :return config: dictionary with properties used in this job.
     """
     config = {}
-    config["SPARK"] = (
-        SparkSession.builder.config(
-            "spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension"
-        )
-        .config(
-            "spark.sql.catalog.spark_catalog",
-            "org.apache.spark.sql.delta.catalog.DeltaCatalog",
-        )
-        .config("spark.jars.packages", "io.delta:delta-core:1.0.1")
-        .getOrCreate()
-    )
-    config["BUCKET_NAME"] = "fgasta_test"
-    config["BRONZE_PREFIX"] = "SME/bronze/"
-    config["SILVER_PREFIX"] = "SME/silver/"
     config["DATE_COLUMNS"] = [
         "AS1",
         "AS19",
@@ -366,16 +351,21 @@ def process_performance_info(df, cols_dict):
     return new_df
 
 
-def main():
+def generate_asset_silver(spark, bucket_name, bronze_prefix, silver_prefix):
     """
     Run main steps of the module.
+
+    :param spark: SparkSession object.
+    :param bucket_name: GS bucket where files are stored.
+    :param bronze_prefix: specific bucket prefix from where to collect bronze data.
+    :param silver_prefix: specific bucket prefix from where to deposit silver data.
+    :return status: 0 if successful.
     """
     logger.info("Start ASSET SILVER job.")
     run_props = set_job_params()
     bronze_df = (
-        run_props["SPARK"]
-        .read.format("delta")
-        .table(f'{run_props["BUCKET_NAME"]}/{run_props["BRONZE_PREFIX"]}/assets')
+        spark.read.format("delta")
+        .table(f"gs://{bucket_name}/{bronze_prefix}")
         .filter("iscurrent == 1")
         .drop("valid_from", "valid_to", "checksum", "iscurrent")
     )
@@ -404,46 +394,32 @@ def main():
     (
         date_df.write.format("delta")
         .mode("overwrite")
-        .save(
-            f'gs://{run_props["BUCKET_NAME"]}/{run_props["SILVER_PREFIX"]}/assets/date_table'
-        )
+        .save(f"gs://{bucket_name}/{silver_prefix}/date_table")
     )
     (
         loan_info_df.write.format("delta")
         .mode("overwrite")
-        .save(
-            f'gs://{run_props["BUCKET_NAME"]}/{run_props["SILVER_PREFIX"]}/assets/loan_info_table'
-        )
+        .save(f"gs://{bucket_name}/{silver_prefix}/loan_info_table")
     )
     (
         obligor_info_df.write.format("delta")
         .mode("overwrite")
-        .save(
-            f'gs://{run_props["BUCKET_NAME"]}/{run_props["SILVER_PREFIX"]}/assets/obligor_info_table'
-        )
+        .save(f"gs://{bucket_name}/{silver_prefix}/obligor_info_table")
     )
     (
         financial_info_df.write.format("delta")
         .mode("overwrite")
-        .save(
-            f'gs://{run_props["BUCKET_NAME"]}/{run_props["SILVER_PREFIX"]}/assets/financial_info_table'
-        )
+        .save(f"gs://{bucket_name}/{silver_prefix}/financial_info_table")
     )
     (
         interest_rate_df.write.format("delta")
         .mode("overwrite")
-        .save(
-            f'gs://{run_props["BUCKET_NAME"]}/{run_props["SILVER_PREFIX"]}/assets/interest_rate_table'
-        )
+        .save(f"gs://{bucket_name}/{silver_prefix}/interest_rate_table")
     )
     (
-        performance_info_df.write.partitionBy("year", "month").mode("overwrite")(
-            "../data/output/SME/silver/assets/performance_info_table"
-        )
+        performance_info_df.write.partitionBy("year", "month")
+        .mode("overwrite")
+        .save(f"gs://{bucket_name}/{silver_prefix}/performance_info_table")
     )
     logger.info("End ASSET SILVER job.")
-    return
-
-
-if __name__ == "__main__":
-    main()
+    return 0

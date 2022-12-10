@@ -68,13 +68,13 @@ def _get_checks_dict(df):
     checks_dict = {
         "IsNotEmpty": n_rows > 0,
         "hasColumns": mandatory_cols.issubset(set(df.columns)),
-        "CS1+CS2_IdUnique": df.select("CS1", "CS2").distinct().count() == n_rows,
-        "CS1+CS2_IsComplete": (
-            df.select(F.concat(F.col("CS1"), F.col("CS2")).alias("combined"))
-            .where(F.col("combined").isNull())
-            .count()
-            == 0
-        ),
+        # "CS1+CS2_IdUnique": df.select("CS1", "CS2").distinct().count() == n_rows,
+        # "CS1+CS2_IsComplete": (
+        #     df.select(F.concat(F.col("CS1"), F.col("CS2")).alias("combined"))
+        #     .where(F.col("combined").isNull())
+        #     .count()
+        #     == 0
+        # ),
     }
     return checks_dict
 

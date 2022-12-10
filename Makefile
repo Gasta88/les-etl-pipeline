@@ -56,7 +56,7 @@ run_asset_bronze: ## Run the dataproc serverless job
 	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar \
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--version=2.0 \
-	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --upload-prefix=mini_source --bronze-prefix=SME/bronze/assets --file-key=Loan_Data --stage-name=bronze_asset
+	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=mini_source --target-prefix=SME/bronze/assets --file-key=Loan_Data --stage-name=bronze_asset
 
 run_collateral_bronze: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -68,7 +68,7 @@ run_collateral_bronze: ## Run the dataproc serverless job
 	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar \
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--version=2.0 \
-	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --upload-prefix=mini_source --bronze-prefix=SME/bronze/collaterals --file-key=Collateral --stage-name=bronze_collateral
+	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=mini_source --target-prefix=SME/bronze/collaterals --file-key=Collateral --stage-name=bronze_collateral
 
 run_bond_info_bronze: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -80,7 +80,7 @@ run_bond_info_bronze: ## Run the dataproc serverless job
 	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar \
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--version=2.0 \
-	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --upload-prefix=mini_source --bronze-prefix=SME/bronze/bond_info --file-key=Bond_Info --stage-name=bronze_bond_info
+	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=mini_source --target-prefix=SME/bronze/bond_info --file-key=Bond_Info --stage-name=bronze_bond_info
 
 run_amortisation_bronze: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -92,4 +92,16 @@ run_amortisation_bronze: ## Run the dataproc serverless job
 	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar \
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--version=2.0 \
-	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --upload-prefix=mini_source --bronze-prefix=SME/bronze/amortisation --file-key=Amortization --stage-name=bronze_amortisation
+	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=mini_source --target-prefix=SME/bronze/amortisation --file-key=Amortization --stage-name=bronze_amortisation
+
+run_asset_silver: ## Run the dataproc serverless job
+	# @gcloud compute networks subnets update default \
+	# --region=${REGION} \
+	# --enable-private-ip-google-access
+	@gcloud dataproc batches submit --project ${PROJECT_ID} --region ${REGION} pyspark \
+	gs://${CODE_BUCKET}/dist/main.py --py-files=gs://${CODE_BUCKET}/dist/${APP_NAME}_${VERSION_NO}.zip \
+	--subnet default --properties spark.executor.instances=4,spark.driver.cores=8,spark.executor.cores=8,spark.app.name=loan_etl_pipeline \
+	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar \
+	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
+	--version=2.0 \
+	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=SME/bronze/assets --target-prefix=SME/silver/assets --stage-name=silver_asset
