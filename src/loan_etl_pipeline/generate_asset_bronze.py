@@ -47,11 +47,12 @@ def get_old_df(spark, bucket_name, prefix, pcds):
             )
         )
     if sum(check_list) > 0:
+        truncated_pcds = ["-".join(pcd.split("-")[:2]) for pcd in pcds]
         df = (
             spark.read.format("delta")
             .load(f"gs://{bucket_name}/{prefix}/assets")
             .withColumn("lookup", F.concat_ws("-", F.col("year"), F.col("month")))
-            .filter(F.col("lookup").isin(pcds))
+            .filter(F.col("lookup").isin(truncated_pcds))
             .drop("lookup")
         )
         return df
@@ -163,7 +164,7 @@ def generate_asset_bronze(spark, bucket_name, bronze_prefix, all_files):
     :param bucket_name: GS bucket where files are stored.
     :param bronze_prefix: specific bucket prefix from where to collect bronze old data.
     :param all_files: list of clean CSV files from EDW.
-    :return status: 0 if successful.
+    :return pcds: list of PCDs that have been manipulated.
     """
     logger.info("Start ASSETS BRONZE job.")
 
@@ -195,4 +196,4 @@ def generate_asset_bronze(spark, bucket_name, bronze_prefix, all_files):
             perform_scd2(spark, old_asset_df, new_asset_df)
 
     logger.info("End ASSETS BRONZE job.")
-    return 0
+    return pcds

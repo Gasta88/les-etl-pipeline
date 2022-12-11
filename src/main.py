@@ -27,13 +27,14 @@ from src.loan_etl_pipeline.generate_asset_silver import generate_asset_silver
 # )
 
 
-def run(bucket_name, source_prefix, target_prefix, file_key, stage_name):
+def run(bucket_name, source_prefix, target_prefix, file_key, stage_name, pcds):
     """
     :param bucket_name: GS bucket where files are stored.
     :param source_prefix: specific bucket prefix from where to collect CSV files.
     :param target_prefix: specific bucket prefix from where to collect bronze old data.
-    :param file_key: label for file name that helps with the cherry picking with Asset.
+    :param file_key: label for file name that helps with the cherry picking with file type.
     :param stage_name: name of the ETL stage.
+    :param pcds: list of PCDs to be elaborated in Silver layer.
     :return: None
     """
     spark = start_spark()
@@ -67,7 +68,9 @@ def run(bucket_name, source_prefix, target_prefix, file_key, stage_name):
 
     # ----------------Silver layer ETL
     if stage_name == "silver_asset":
-        status = generate_asset_silver(spark, bucket_name, source_prefix, target_prefix)
+        status = generate_asset_silver(
+            spark, bucket_name, source_prefix, target_prefix, pcds
+        )
 
     if stage_name == "silver_collateral":
         status = generate_collateral_silver(
@@ -121,6 +124,14 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--pcds",
+        type=str,
+        dest="pcds",
+        required=False,
+        help="List of PCDs ingested in the Bronze layer",
+    )
+
+    parser.add_argument(
         "--stage-name",
         type=str,
         dest="stage_name",
@@ -135,5 +146,6 @@ if __name__ == "__main__":
         source_prefix=known_args.source_prefix,
         target_prefix=known_args.target_prefix,
         file_key=known_args.file_key,
+        pcds=known_args.pcds,
         stage_name=known_args.stage_name,
     )

@@ -351,7 +351,7 @@ def process_performance_info(df, cols_dict):
     return new_df
 
 
-def generate_asset_silver(spark, bucket_name, bronze_prefix, silver_prefix):
+def generate_asset_silver(spark, bucket_name, bronze_prefix, silver_prefix, pcds):
     """
     Run main steps of the module.
 
@@ -359,16 +359,28 @@ def generate_asset_silver(spark, bucket_name, bronze_prefix, silver_prefix):
     :param bucket_name: GS bucket where files are stored.
     :param bronze_prefix: specific bucket prefix from where to collect bronze data.
     :param silver_prefix: specific bucket prefix from where to deposit silver data.
+    :param pcds: list of PCDs that have been elaborated in the previous Bronze layer.
     :return status: 0 if successful.
     """
     logger.info("Start ASSET SILVER job.")
     run_props = set_job_params()
-    bronze_df = (
-        spark.read.format("delta")
-        .table(f"gs://{bucket_name}/{bronze_prefix}")
-        .filter("iscurrent == 1")
-        .drop("valid_from", "valid_to", "checksum", "iscurrent")
-    )
+    if pcds == "":
+        bronze_df = (
+            spark.read.format("delta")
+            .table(f"gs://{bucket_name}/{bronze_prefix}")
+            .filter("iscurrent == 1")
+            .drop("valid_from", "valid_to", "checksum", "iscurrent")
+        )
+    else:
+        truncated_pcds = ["-".join(pcd.split("-")[:2]) for pcd in pcds.split(",")]
+        bronze_df = (
+            spark.read.format("delta")
+            .table(f"gs://{bucket_name}/{bronze_prefix}")
+            .filter("iscurrent == 1")
+            .withColumn("lookup", F.concat_ws("-", F.col("year"), F.col("month")))
+            .filter(F.col("lookup").isin(truncated_pcds))
+            .drop("valid_from", "valid_to", "checksum", "iscurrent", "lookup")
+        )
     assets_columns = get_columns_collection(bronze_df)
     logger.info("Remove ND values.")
     tmp_df1 = replace_no_data(bronze_df)

@@ -104,4 +104,4 @@ run_asset_silver: ## Run the dataproc serverless job
 	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar \
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--version=2.0 \
-	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=SME/bronze/assets --target-prefix=SME/silver/assets --stage-name=silver_asset
+	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=SME/bronze/assets --target-prefix=SME/silver/assets --pcds="" --stage-name=silver_asset
