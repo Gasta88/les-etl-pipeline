@@ -1,9 +1,8 @@
 import logging
 import sys
-from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, StringType, DoubleType, BooleanType
-import os
+from delta import *
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -22,7 +21,6 @@ def set_job_params():
     :return config: dictionary with properties used in this job.
     """
     config = {}
-    config["SOURCE_DIR"] = "../data/output/bronze"
     config["DATE_COLUMNS"] = ["CS11", "CS12", "CS22"]
     config["COLLATERAL_COLUMNS"] = {
         "CS1": StringType(),
@@ -147,18 +145,36 @@ def process_collateral_info(df):
     return new_df
 
 
-def main():
+def generate_collateral_silver(spark, bucket_name, bronze_prefix, silver_prefix, pcds):
     """
     Run main steps of the module.
+
+    :param spark: SparkSession object.
+    :param bucket_name: GS bucket where files are stored.
+    :param bronze_prefix: specific bucket prefix from where to collect bronze data.
+    :param silver_prefix: specific bucket prefix from where to deposit silver data.
+    :param pcds: list of PCDs that have been elaborated in the previous Bronze layer.
+    :return status: 0 if successful.
     """
     logger.info("Start COLLATERAL SILVER job.")
     run_props = set_job_params()
-    bronze_df = (
-        run_props["SPARK"]
-        .read.parquet(f'{run_props["SOURCE_DIR"]}/collaterals.parquet')
-        .filter("iscurrent == 1")
-        .drop("valid_from", "valid_to", "checksum", "iscurrent")
-    )
+    if pcds == "":
+        bronze_df = (
+            spark.read.format("delta")
+            .load(f"gs://{bucket_name}/{bronze_prefix}")
+            .filter("iscurrent == 1")
+            .drop("valid_from", "valid_to", "checksum", "iscurrent")
+        )
+    else:
+        truncated_pcds = ["-".join(pcd.split("-")[:2]) for pcd in pcds.split(",")]
+        bronze_df = (
+            spark.read.format("delta")
+            .load(f"gs://{bucket_name}/{bronze_prefix}")
+            .filter("iscurrent == 1")
+            .withColumn("lookup", F.concat_ws("-", F.col("year"), F.col("month")))
+            .filter(F.col("lookup").isin(truncated_pcds))
+            .drop("valid_from", "valid_to", "checksum", "iscurrent", "lookup")
+        )
     logger.info("Remove ND values.")
     tmp_df1 = replace_no_data(bronze_df)
     logger.info("Replace Y/N with boolean flags.")
@@ -173,16 +189,12 @@ def main():
     logger.info("Write dataframe")
 
     (
-        info_df.write.partitionBy("year", "month")
+        info_df.write.format("delta")
         .mode("overwrite")
-        .parquet("../data/output/SME/silver/collaterals/info_table.parquet")
+        .save(f"gs://{bucket_name}/{silver_prefix}/info_table")
     )
     (
-        date_df.write.mode("overwrite").parquet(
-            "../data/output/SME/silver/collaterals/date_table.parquet"
-        )
+        date_df.write.format("delta")
+        .mode("overwrite")
+        .save(f"gs://{bucket_name}/{silver_prefix}/date_table")
     )
-
-
-if __name__ == "__main__":
-    main()

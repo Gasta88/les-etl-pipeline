@@ -367,7 +367,7 @@ def generate_asset_silver(spark, bucket_name, bronze_prefix, silver_prefix, pcds
     if pcds == "":
         bronze_df = (
             spark.read.format("delta")
-            .table(f"gs://{bucket_name}/{bronze_prefix}")
+            .load(f"gs://{bucket_name}/{bronze_prefix}")
             .filter("iscurrent == 1")
             .drop("valid_from", "valid_to", "checksum", "iscurrent")
         )
@@ -375,7 +375,7 @@ def generate_asset_silver(spark, bucket_name, bronze_prefix, silver_prefix, pcds
         truncated_pcds = ["-".join(pcd.split("-")[:2]) for pcd in pcds.split(",")]
         bronze_df = (
             spark.read.format("delta")
-            .table(f"gs://{bucket_name}/{bronze_prefix}")
+            .load(f"gs://{bucket_name}/{bronze_prefix}")
             .filter("iscurrent == 1")
             .withColumn("lookup", F.concat_ws("-", F.col("year"), F.col("month")))
             .filter(F.col("lookup").isin(truncated_pcds))
