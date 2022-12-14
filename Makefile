@@ -117,3 +117,27 @@ run_collateral_silver: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--version=2.0 \
 	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=SME/bronze/collaterals --target-prefix=SME/silver/collaterals --pcds="" --stage-name=silver_collateral
+
+run_bond_info_silver: ## Run the dataproc serverless job
+	# @gcloud compute networks subnets update default \
+	# --region=${REGION} \
+	# --enable-private-ip-google-access
+	@gcloud dataproc batches submit --project ${PROJECT_ID} --region ${REGION} pyspark \
+	gs://${CODE_BUCKET}/dist/main.py --py-files=gs://${CODE_BUCKET}/dist/${APP_NAME}_${VERSION_NO}.zip \
+	--subnet default --properties spark.executor.instances=4,spark.driver.cores=8,spark.executor.cores=8,spark.app.name=loan_etl_pipeline \
+	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar \
+	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
+	--version=2.0 \
+	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=SME/bronze/bond_info --target-prefix=SME/silver/bond_info --pcds="" --stage-name=silver_bond_info
+
+run_amortisation_silver: ## Run the dataproc serverless job
+	# @gcloud compute networks subnets update default \
+	# --region=${REGION} \
+	# --enable-private-ip-google-access
+	@gcloud dataproc batches submit --project ${PROJECT_ID} --region ${REGION} pyspark \
+	gs://${CODE_BUCKET}/dist/main.py --py-files=gs://${CODE_BUCKET}/dist/${APP_NAME}_${VERSION_NO}.zip \
+	--subnet default --properties spark.executor.instances=4,spark.driver.cores=8,spark.executor.cores=8,spark.app.name=loan_etl_pipeline \
+	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar \
+	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
+	--version=2.0 \
+	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=SME/bronze/amortisation --target-prefix=SME/silver/amortisation --pcds="" --stage-name=silver_amortisation

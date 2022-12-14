@@ -3,6 +3,7 @@ import sys
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, StringType, DoubleType, BooleanType
 from delta import *
+from google.cloud import storage
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -351,6 +352,37 @@ def process_performance_info(df, cols_dict):
     return new_df
 
 
+def return_write_mode(bucket_name, prefix, pcds):
+    """
+    If PCDs are already presents as partition return "overwrite", otherwise "append" mode.
+
+    :param bucket_name: GS bucket where files are stored.
+    :param prefix: specific bucket prefix from where to collect files.
+    :param pcds: list of PCDs that have been elaborated in the previous Silver layer.
+    :return write_mode: label that express how data should be written on storage.
+    """
+    storage_client = storage.Client(project="dataops-369610")
+    check_list = []
+    for pcd in pcds:
+        year = pcd.split("-")[0]
+        month = pcd.split("-")[1]
+        partition_prefix = f"{prefix}/year={year}/month={month}"
+        check_list.append(
+            len(
+                [
+                    b.name
+                    for b in storage_client.list_blobs(
+                        bucket_name, prefix=partition_prefix
+                    )
+                ]
+            )
+        )
+    if sum(check_list) > 0:
+        return "overwrite"
+    else:
+        return "append"
+
+
 def generate_asset_silver(spark, bucket_name, bronze_prefix, silver_prefix, pcds):
     """
     Run main steps of the module.
@@ -402,35 +434,42 @@ def generate_asset_silver(spark, bucket_name, bronze_prefix, silver_prefix, pcds
     performance_info_df = process_performance_info(cleaned_df, assets_columns)
 
     logger.info("Write dataframe")
+    write_mode = return_write_mode(bucket_name, silver_prefix, pcds)
 
     (
         date_df.write.format("delta")
-        .mode("overwrite")
+        .partitionBy("year", "month")
+        .mode(write_mode)
         .save(f"gs://{bucket_name}/{silver_prefix}/date_table")
     )
     (
         loan_info_df.write.format("delta")
-        .mode("overwrite")
+        .partitionBy("year", "month")
+        .mode(write_mode)
         .save(f"gs://{bucket_name}/{silver_prefix}/loan_info_table")
     )
     (
         obligor_info_df.write.format("delta")
-        .mode("overwrite")
+        .partitionBy("year", "month")
+        .mode(write_mode)
         .save(f"gs://{bucket_name}/{silver_prefix}/obligor_info_table")
     )
     (
         financial_info_df.write.format("delta")
-        .mode("overwrite")
+        .partitionBy("year", "month")
+        .mode(write_mode)
         .save(f"gs://{bucket_name}/{silver_prefix}/financial_info_table")
     )
     (
         interest_rate_df.write.format("delta")
-        .mode("overwrite")
+        .partitionBy("year", "month")
+        .mode(write_mode)
         .save(f"gs://{bucket_name}/{silver_prefix}/interest_rate_table")
     )
     (
-        performance_info_df.write.partitionBy("year", "month")
-        .mode("overwrite")
+        performance_info_df.write.format("delta")
+        .partitionBy("year", "month")
+        .mode(write_mode)
         .save(f"gs://{bucket_name}/{silver_prefix}/performance_info_table")
     )
     logger.info("End ASSET SILVER job.")

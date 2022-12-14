@@ -1,8 +1,9 @@
 import logging
 import sys
-from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, StringType, DoubleType, BooleanType
+from delta import *
+from google.cloud import storage
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -21,7 +22,6 @@ def set_job_params():
     :return config: dictionary with properties used in this job.
     """
     config = {}
-    config["SOURCE_DIR"] = "../data/output/bronze"
     config["DATE_COLUMNS"] = ["BS1", "BS27", "BS28", "BS38", "BS39"]
     config["BOND_COLUMNS"] = {
         "BS1": DateType(),
@@ -224,18 +224,67 @@ def process_tranche_info(df, cols_dict):
     return new_df
 
 
-def main():
+def return_write_mode(bucket_name, prefix, pcds):
+    """
+    If PCDs are already presents as partition return "overwrite", otherwise "append" mode.
+
+    :param bucket_name: GS bucket where files are stored.
+    :param prefix: specific bucket prefix from where to collect files.
+    :param pcds: list of PCDs that have been elaborated in the previous Silver layer.
+    :return write_mode: label that express how data should be written on storage.
+    """
+    storage_client = storage.Client(project="dataops-369610")
+    check_list = []
+    for pcd in pcds:
+        year = pcd.split("-")[0]
+        month = pcd.split("-")[1]
+        partition_prefix = f"{prefix}/year={year}/month={month}"
+        check_list.append(
+            len(
+                [
+                    b.name
+                    for b in storage_client.list_blobs(
+                        bucket_name, prefix=partition_prefix
+                    )
+                ]
+            )
+        )
+    if sum(check_list) > 0:
+        return "overwrite"
+    else:
+        return "append"
+
+
+def generate_bond_info_silver(spark, bucket_name, bronze_prefix, silver_prefix, pcds):
     """
     Run main steps of the module.
+
+    :param spark: SparkSession object.
+    :param bucket_name: GS bucket where files are stored.
+    :param bronze_prefix: specific bucket prefix from where to collect bronze data.
+    :param silver_prefix: specific bucket prefix from where to deposit silver data.
+    :param pcds: list of PCDs that have been elaborated in the previous Bronze layer.
+    :return status: 0 if successful.
     """
     logger.info("Start ASSET SILVER job.")
     run_props = set_job_params()
-    bronze_df = (
-        run_props["SPARK"]
-        .read.parquet(f'{run_props["SOURCE_DIR"]}/bond_info.parquet')
-        .filter("iscurrent == 1")
-        .drop("valid_from", "valid_to", "checksum", "iscurrent")
-    )
+    if pcds == "":
+        bronze_df = (
+            spark.read.format("delta")
+            .load(f"gs://{bucket_name}/{bronze_prefix}")
+            .filter("iscurrent == 1")
+            .drop("valid_from", "valid_to", "checksum", "iscurrent")
+        )
+    else:
+        truncated_pcds = ["-".join(pcd.split("-")[:2]) for pcd in pcds.split(",")]
+        bronze_df = (
+            spark.read.format("delta")
+            .load(f"gs://{bucket_name}/{bronze_prefix}")
+            .filter("iscurrent == 1")
+            .withColumn("lookup", F.concat_ws("-", F.col("year"), F.col("month")))
+            .filter(F.col("lookup").isin(truncated_pcds))
+            .drop("valid_from", "valid_to", "checksum", "iscurrent", "lookup")
+        )
     logger.info("Remove ND values.")
     tmp_df1 = replace_no_data(bronze_df)
     logger.info("Replace Y/N with boolean flags.")
@@ -255,35 +304,37 @@ def main():
     tranche_df = process_tranche_info(cleaned_df, bond_info_columns)
 
     logger.info("Write dataframe")
+    write_mode = return_write_mode(bucket_name, silver_prefix, pcds)
 
     (
-        date_df.write.mode("overwrite").parquet(
-            "../data/output/SME/silver/bond_info/date_table.parquet"
-        )
+        date_df.write.format("delta")
+        .partitionBy("year", "month")
+        .mode(write_mode)
+        .save(f"gs://{bucket_name}/{silver_prefix}/date_table")
     )
     (
-        info_df.write.partitionBy("year", "month")
-        .mode("overwrite")
-        .parquet("../data/output/SME/silver/bond_info/info_table.parquet")
+        info_df.write.format("delta")
+        .partitionBy("year", "month")
+        .mode(write_mode)
+        .save(f"gs://{bucket_name}/{silver_prefix}/info_table")
     )
     (
-        collateral_df.write.partitionBy("year", "month")
-        .mode("overwrite")
-        .parquet("../data/output/SME/silver/bond_info/collaterals_table.parquet")
+        collateral_df.write.format("delta")
+        .partitionBy("year", "month")
+        .mode(write_mode)
+        .save(f"gs://{bucket_name}/{silver_prefix}/collaterals_table")
     )
     (
-        contact_df.write.partitionBy("year", "month")
-        .mode("overwrite")
-        .parquet("../data/output/SME/silver/bond_info/contacts_table.parquet")
+        contact_df.write.format("delta")
+        .partitionBy("year", "month")
+        .mode(write_mode)
+        .save(f"gs://{bucket_name}/{silver_prefix}/contact_table")
     )
     (
-        tranche_df.write.partitionBy("year", "month")
-        .mode("overwrite")
-        .parquet("../data/output/SME/silver/bond_info/trache_info_table.parquet")
+        tranche_df.write.format("delta")
+        .partitionBy("year", "month")
+        .mode(write_mode)
+        .save(f"gs://{bucket_name}/{silver_prefix}/tranche_info_table")
     )
-
-    return
-
-
-if __name__ == "__main__":
-    main()
+    logger.info("End BOND INFO SILVER job.")
+    return 0

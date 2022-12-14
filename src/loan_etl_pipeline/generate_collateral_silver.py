@@ -3,6 +3,7 @@ import sys
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, StringType, DoubleType, BooleanType
 from delta import *
+from google.cloud import storage
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -145,6 +146,37 @@ def process_collateral_info(df):
     return new_df
 
 
+def return_write_mode(bucket_name, prefix, pcds):
+    """
+    If PCDs are already presents as partition return "overwrite", otherwise "append" mode.
+
+    :param bucket_name: GS bucket where files are stored.
+    :param prefix: specific bucket prefix from where to collect files.
+    :param pcds: list of PCDs that have been elaborated in the previous Silver layer.
+    :return write_mode: label that express how data should be written on storage.
+    """
+    storage_client = storage.Client(project="dataops-369610")
+    check_list = []
+    for pcd in pcds:
+        year = pcd.split("-")[0]
+        month = pcd.split("-")[1]
+        partition_prefix = f"{prefix}/year={year}/month={month}"
+        check_list.append(
+            len(
+                [
+                    b.name
+                    for b in storage_client.list_blobs(
+                        bucket_name, prefix=partition_prefix
+                    )
+                ]
+            )
+        )
+    if sum(check_list) > 0:
+        return "overwrite"
+    else:
+        return "append"
+
+
 def generate_collateral_silver(spark, bucket_name, bronze_prefix, silver_prefix, pcds):
     """
     Run main steps of the module.
@@ -187,14 +219,17 @@ def generate_collateral_silver(spark, bucket_name, bronze_prefix, silver_prefix,
     date_df = process_dates(cleaned_df, run_props["DATE_COLUMNS"])
 
     logger.info("Write dataframe")
+    write_mode = return_write_mode(bucket_name, silver_prefix, pcds)
 
     (
-        info_df.write.format("delta")
-        .mode("overwrite")
-        .save(f"gs://{bucket_name}/{silver_prefix}/info_table")
+        date_df.write.format("delta")
+        .partitionBy("year", "month")
+        .mode(write_mode)
+        .save(f"gs://{bucket_name}/{silver_prefix}/date_table")
     )
     (
-        date_df.write.format("delta")
-        .mode("overwrite")
-        .save(f"gs://{bucket_name}/{silver_prefix}/date_table")
+        info_df.write.format("delta")
+        .partitionBy("year", "month")
+        .mode(write_mode)
+        .save(f"gs://{bucket_name}/{silver_prefix}/info_table")
     )

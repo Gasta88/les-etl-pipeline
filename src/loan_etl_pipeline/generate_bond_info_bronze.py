@@ -190,7 +190,7 @@ def generate_bond_info_bronze(spark, bucket_name, bronze_prefix, all_files):
             (
                 new_bond_info_df.write.partitionBy("year", "month")
                 .format("delta")
-                .mode("overwrite")
+                .mode("append")
                 .save(f"gs://{bucket_name}/{bronze_prefix}")
             )
         else:
