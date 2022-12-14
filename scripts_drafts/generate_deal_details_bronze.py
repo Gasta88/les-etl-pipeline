@@ -50,7 +50,7 @@ def create_source_dataframe(deal_detail_files):
     """
     Read files and generate one PySpark DataFrame from them.
 
-    :param deal_detail_file: file to be read to generate the dataframe.
+    :param deal_detail_files: files to be read to generate the dataframe.
     :return df: PySpark datafram for loan asset data.
     """
     list_dfs = []
@@ -80,15 +80,14 @@ def create_source_dataframe(deal_detail_files):
             if tag == "ISIN":
                 # is array
                 data.append(";".join(map(str, child.getchildren())))
-            elif tag in [
-                "Country",
-                "DealVisibleToOrg",
-                "DealVisibleToUser",
-                "Submissions",
-            ]:
+            elif tag in ["Country", "DealVisibleToOrg", "DealVisibleToUser"]:
                 # usually null values
                 # TODO: Submissions might have interesting stuff. Ask to Luca.
                 continue
+            elif tag == "Submissions":
+                # get ECBDataQualityScore
+                data.append(child.getchildren()[0].getchildren()[3].text)
+                tag = "ECBDataQualityScore"
             else:
                 data.append(child.text)
             cols.append(tag)

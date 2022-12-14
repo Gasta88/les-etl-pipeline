@@ -98,8 +98,9 @@ def create_dataframe(spark, bucket_name, all_files):
                 spark.createDataFrame(content, col_names)
                 .withColumn("ed_code", F.lit(csv_id))
                 .replace("", None)
-                .withColumn("year", F.year(F.col("BS1")))
-                .withColumn("month", F.month(F.col("BS1")))
+                .withColumn("ImportDate", F.lit(csv_date))
+                .withColumn("year", F.year(F.col("ImportDate")))
+                .withColumn("month", F.month(F.col("ImportDate")))
                 .withColumn(
                     "valid_from", F.lit(F.current_timestamp()).cast(TimestampType())
                 )
@@ -115,6 +116,7 @@ def create_dataframe(spark, bucket_name, all_files):
                         )
                     ),
                 )
+                .drop("ImportDate")
             )
             list_dfs.append(df)
     if list_dfs == []:
