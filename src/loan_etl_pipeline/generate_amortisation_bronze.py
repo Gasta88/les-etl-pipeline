@@ -50,7 +50,7 @@ def get_old_df(spark, bucket_name, prefix, pcds):
         truncated_pcds = ["-".join(pcd.split("-")[:2]) for pcd in pcds]
         df = (
             spark.read.format("delta")
-            .load(f"gs://{bucket_name}/{prefix}/bond_info")
+            .load(f"gs://{bucket_name}/{prefix}/amortisation")
             .withColumn("lookup", F.concat_ws("-", F.col("year"), F.col("month")))
             .filter(F.col("lookup").isin(truncated_pcds))
             .drop("lookup")

@@ -16,6 +16,9 @@ from src.loan_etl_pipeline.generate_bond_info_bronze import generate_bond_info_b
 from src.loan_etl_pipeline.generate_amortisation_bronze import (
     generate_amortisation_bronze,
 )
+from src.loan_etl_pipeline.generate_deal_details_bronze import (
+    generate_deal_details_bronze,
+)
 
 # Silver layer packages
 from src.loan_etl_pipeline.generate_asset_silver import generate_asset_silver
@@ -23,6 +26,9 @@ from src.loan_etl_pipeline.generate_collateral_silver import generate_collateral
 from src.loan_etl_pipeline.generate_bond_info_silver import generate_bond_info_silver
 from src.loan_etl_pipeline.generate_amortisation_silver import (
     generate_amortisation_silver,
+)
+from src.loan_etl_pipeline.generate_deal_details_silver import (
+    generate_deal_details_silver,
 )
 
 
@@ -64,6 +70,10 @@ def run(bucket_name, source_prefix, target_prefix, file_key, stage_name, pcds):
         status = generate_amortisation_bronze(
             spark, bucket_name, target_prefix, clean_files
         )
+    if stage_name == "bronze_deal_details":
+        status = generate_deal_details_bronze(
+            spark, bucket_name, source_prefix, target_prefix, file_key
+        )
 
     # ----------------Silver layer ETL
     if stage_name == "silver_asset":
@@ -83,6 +93,11 @@ def run(bucket_name, source_prefix, target_prefix, file_key, stage_name, pcds):
 
     if stage_name == "silver_amortisation":
         status = generate_amortisation_silver(
+            spark, bucket_name, source_prefix, target_prefix, pcds
+        )
+
+    if stage_name == "silver_deal_details":
+        status = generate_deal_details_silver(
             spark, bucket_name, source_prefix, target_prefix, pcds
         )
 
