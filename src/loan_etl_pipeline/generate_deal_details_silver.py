@@ -124,15 +124,15 @@ def process_deal_info(df):
     """
     new_df = (
         df.dropDuplicates()
-        .withColumn("PoolCreationDate", F.unix_timestamp(F.col("PoolCreationDate")))
-        .withColumn("RestructureDates", F.unix_timestamp(F.col("RestructureDates")))
-        .withColumn(
-            "InterestPaymentDate", F.unix_timestamp(F.col("InterestPaymentDate"))
-        )
-        .withColumn("PoolCutOffDate", F.unix_timestamp(F.col("PoolCutOffDate")))
-        .withColumn(
-            "SubmissionTimestamp", F.unix_timestamp(F.col("SubmissionTimestamp"))
-        )
+        # .withColumn("PoolCreationDate", F.unix_timestamp(F.col("PoolCreationDate")))
+        # .withColumn("RestructureDates", F.unix_timestamp(F.col("RestructureDates")))
+        # .withColumn(
+        #     "InterestPaymentDate", F.unix_timestamp(F.col("InterestPaymentDate"))
+        # )
+        # .withColumn("PoolCutOffDate", F.unix_timestamp(F.col("PoolCutOffDate")))
+        # .withColumn(
+        #     "SubmissionTimestamp", F.unix_timestamp(F.col("SubmissionTimestamp"))
+        # )
     )
     return new_df
 
@@ -202,20 +202,20 @@ def generate_deal_details_silver(
         )
     logger.info("Cast data to correct types.")
     cleaned_df = cast_to_datatype(bronze_df, run_props["DEAL_DETAILS_COLUMNS"])
-    logger.info("Generate time dataframe")
-    date_df = process_dates(cleaned_df, run_props["DATE_COLUMNS"])
+    # logger.info("Generate time dataframe")
+    # date_df = process_dates(cleaned_df, run_props["DATE_COLUMNS"])
     logger.info("Generate deal info dataframe")
     deal_info_df = process_deal_info(cleaned_df)
 
     logger.info("Write dataframe")
     write_mode = return_write_mode(bucket_name, silver_prefix, pcds)
 
-    (
-        date_df.write.format("delta")
-        .partitionBy("year", "month")
-        .mode(write_mode)
-        .save(f"gs://{bucket_name}/{silver_prefix}/date_table")
-    )
+    # (
+    #     date_df.write.format("delta")
+    #     .partitionBy("year", "month")
+    #     .mode(write_mode)
+    #     .save(f"gs://{bucket_name}/{silver_prefix}/date_table")
+    # )
     (
         deal_info_df.write.format("delta")
         .partitionBy("year", "month")

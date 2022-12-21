@@ -157,9 +157,8 @@ def process_bond_info(df, cols_dict):
     :return new_df: silver type Spark dataframe.
     """
     new_df = (
-        df.select(cols_dict["bond_info"])
-        .dropDuplicates()
-        .withColumn("BS1", F.unix_timestamp(F.to_timestamp(F.col("BS1"), "yyyy-MM-dd")))
+        df.select(cols_dict["bond_info"]).dropDuplicates()
+        # .withColumn("BS1", F.unix_timestamp(F.to_timestamp(F.col("BS1"), "yyyy-MM-dd")))
     )
     return new_df
 
@@ -173,9 +172,8 @@ def process_collateral_info(df, cols_dict):
     :return new_df: silver type Spark dataframe.
     """
     new_df = (
-        df.select(["BS1", "BS2"] + cols_dict["collateral_info"])
-        .dropDuplicates()
-        .withColumn("BS1", F.unix_timestamp(F.to_timestamp(F.col("BS1"), "yyyy-MM-dd")))
+        df.select(["BS1", "BS2"] + cols_dict["collateral_info"]).dropDuplicates()
+        # .withColumn("BS1", F.unix_timestamp(F.to_timestamp(F.col("BS1"), "yyyy-MM-dd")))
     )
     return new_df
 
@@ -189,9 +187,8 @@ def process_contact_info(df, cols_dict):
     :return new_df: silver type Spark dataframe.
     """
     new_df = (
-        df.select(["BS1", "BS2"] + cols_dict["contact_info"])
-        .dropDuplicates()
-        .withColumn("BS1", F.unix_timestamp(F.to_timestamp(F.col("BS1"), "yyyy-MM-dd")))
+        df.select(["BS1", "BS2"] + cols_dict["contact_info"]).dropDuplicates()
+        # .withColumn("BS1", F.unix_timestamp(F.to_timestamp(F.col("BS1"), "yyyy-MM-dd")))
     )
     return new_df
 
@@ -205,21 +202,20 @@ def process_tranche_info(df, cols_dict):
     :return new_df: silver type Spark dataframe.
     """
     new_df = (
-        df.select(["BS1", "BS2"] + cols_dict["tranche_info"])
-        .dropDuplicates()
-        .withColumn("BS1", F.unix_timestamp(F.to_timestamp(F.col("BS1"), "yyyy-MM-dd")))
-        .withColumn(
-            "BS27", F.unix_timestamp(F.to_timestamp(F.col("BS27"), "yyyy-MM-dd"))
-        )
-        .withColumn(
-            "BS28", F.unix_timestamp(F.to_timestamp(F.col("BS28"), "yyyy-MM-dd"))
-        )
-        .withColumn(
-            "BS38", F.unix_timestamp(F.to_timestamp(F.col("BS38"), "yyyy-MM-dd"))
-        )
-        .withColumn(
-            "BS39", F.unix_timestamp(F.to_timestamp(F.col("BS39"), "yyyy-MM-dd"))
-        )
+        df.select(["BS1", "BS2"] + cols_dict["tranche_info"]).dropDuplicates()
+        # .withColumn("BS1", F.unix_timestamp(F.to_timestamp(F.col("BS1"), "yyyy-MM-dd")))
+        # .withColumn(
+        #     "BS27", F.unix_timestamp(F.to_timestamp(F.col("BS27"), "yyyy-MM-dd"))
+        # )
+        # .withColumn(
+        #     "BS28", F.unix_timestamp(F.to_timestamp(F.col("BS28"), "yyyy-MM-dd"))
+        # )
+        # .withColumn(
+        #     "BS38", F.unix_timestamp(F.to_timestamp(F.col("BS38"), "yyyy-MM-dd"))
+        # )
+        # .withColumn(
+        #     "BS39", F.unix_timestamp(F.to_timestamp(F.col("BS39"), "yyyy-MM-dd"))
+        # )
     )
     return new_df
 
@@ -292,8 +288,8 @@ def generate_bond_info_silver(spark, bucket_name, bronze_prefix, silver_prefix, 
     logger.info("Cast data to correct types.")
     cleaned_df = cast_to_datatype(tmp_df2, run_props["BOND_COLUMNS"])
     bond_info_columns = get_columns_collection(cleaned_df)
-    logger.info("Generate time dataframe")
-    date_df = process_dates(cleaned_df, run_props["DATE_COLUMNS"])
+    # logger.info("Generate time dataframe")
+    # date_df = process_dates(cleaned_df, run_props["DATE_COLUMNS"])
     logger.info("Generate bond info dataframe")
     info_df = process_bond_info(cleaned_df, bond_info_columns)
     logger.info("Generate collateral info dataframe")
@@ -306,12 +302,12 @@ def generate_bond_info_silver(spark, bucket_name, bronze_prefix, silver_prefix, 
     logger.info("Write dataframe")
     write_mode = return_write_mode(bucket_name, silver_prefix, pcds)
 
-    (
-        date_df.write.format("delta")
-        .partitionBy("year", "month")
-        .mode(write_mode)
-        .save(f"gs://{bucket_name}/{silver_prefix}/date_table")
-    )
+    # (
+    #     date_df.write.format("delta")
+    #     .partitionBy("year", "month")
+    #     .mode(write_mode)
+    #     .save(f"gs://{bucket_name}/{silver_prefix}/date_table")
+    # )
     (
         info_df.write.format("delta")
         .partitionBy("year", "month")

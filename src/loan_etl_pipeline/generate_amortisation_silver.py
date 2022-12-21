@@ -141,7 +141,8 @@ def process_info(df):
     :param df: Spark bronze dataframe.
     :return new_df: silver type Spark dataframe.
     """
-    new_df = df.withColumn("DATE_VALUE", F.unix_timestamp(F.col("DATE_VALUE")))
+    # new_df = df.withColumn("DATE_VALUE", F.unix_timestamp(F.col("DATE_VALUE")))
+    new_df = df
     return new_df
 
 
@@ -213,19 +214,19 @@ def generate_amortisation_silver(
     cleaned_df = tmp_df1.withColumn(
         "DATE_VALUE", F.to_date(F.col("DATE_VALUE"))
     ).withColumn("DOUBLE_VALUE", F.round(F.col("DOUBLE_VALUE").cast(DoubleType()), 2))
-    logger.info("Generate time dataframe")
-    date_df = process_dates(cleaned_df)
+    # logger.info("Generate time dataframe")
+    # date_df = process_dates(cleaned_df)
     logger.info("Generate info dataframe")
     info_df = process_info(cleaned_df)
 
     logger.info("Write dataframe")
     write_mode = return_write_mode(bucket_name, silver_prefix, pcds)
-    (
-        date_df.write.format("delta")
-        .partitionBy("year", "month")
-        .mode(write_mode)
-        .save(f"gs://{bucket_name}/{silver_prefix}/date_table")
-    )
+    # (
+    #     date_df.write.format("delta")
+    #     .partitionBy("year", "month")
+    #     .mode(write_mode)
+    #     .save(f"gs://{bucket_name}/{silver_prefix}/date_table")
+    # )
     (
         info_df.write.format("delta")
         .partitionBy("year", "month")

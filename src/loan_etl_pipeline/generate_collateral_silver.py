@@ -139,9 +139,9 @@ def process_collateral_info(df):
     """
     new_df = (
         df.dropDuplicates()
-        .withColumn("CS11", F.unix_timestamp(F.to_timestamp(F.col("CS11"), "yyyy-MM")))
-        .withColumn("CS12", F.unix_timestamp(F.to_timestamp(F.col("CS12"), "yyyy-MM")))
-        .withColumn("CS22", F.unix_timestamp(F.to_timestamp(F.col("CS22"), "yyyy-MM")))
+        # .withColumn("CS11", F.unix_timestamp(F.to_timestamp(F.col("CS11"), "yyyy-MM")))
+        # .withColumn("CS12", F.unix_timestamp(F.to_timestamp(F.col("CS12"), "yyyy-MM")))
+        # .withColumn("CS22", F.unix_timestamp(F.to_timestamp(F.col("CS22"), "yyyy-MM")))
     )
     return new_df
 
@@ -215,18 +215,18 @@ def generate_collateral_silver(spark, bucket_name, bronze_prefix, silver_prefix,
     cleaned_df = cast_to_datatype(tmp_df2, run_props["COLLATERAL_COLUMNS"])
     logger.info("Generate collateral info dataframe")
     info_df = process_collateral_info(cleaned_df)
-    logger.info("Generate time dataframe")
-    date_df = process_dates(cleaned_df, run_props["DATE_COLUMNS"])
+    # logger.info("Generate time dataframe")
+    # date_df = process_dates(cleaned_df, run_props["DATE_COLUMNS"])
 
     logger.info("Write dataframe")
     write_mode = return_write_mode(bucket_name, silver_prefix, pcds)
 
-    (
-        date_df.write.format("delta")
-        .partitionBy("year", "month")
-        .mode(write_mode)
-        .save(f"gs://{bucket_name}/{silver_prefix}/date_table")
-    )
+    # (
+    #     date_df.write.format("delta")
+    #     .partitionBy("year", "month")
+    #     .mode(write_mode)
+    #     .save(f"gs://{bucket_name}/{silver_prefix}/date_table")
+    # )
     (
         info_df.write.format("delta")
         .partitionBy("year", "month")

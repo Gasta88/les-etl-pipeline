@@ -264,12 +264,11 @@ def process_obligor_info(df, cols_dict):
     :return new_df: silver type Spark dataframe.
     """
     new_df = (
-        df.select(cols_dict["general"] + cols_dict["obligor_info"])
-        .dropDuplicates()
-        .withColumn("AS1", F.unix_timestamp(F.col("AS1")))
-        .withColumn("AS19", F.unix_timestamp(F.col("AS19")))
-        .withColumn("AS20", F.unix_timestamp(F.col("AS20")))
-        .withColumn("AS31", F.unix_timestamp(F.col("AS31")))
+        df.select(cols_dict["general"] + cols_dict["obligor_info"]).dropDuplicates()
+        # .withColumn("AS1", F.unix_timestamp(F.col("AS1")))
+        # .withColumn("AS19", F.unix_timestamp(F.col("AS19")))
+        # .withColumn("AS20", F.unix_timestamp(F.col("AS20")))
+        # .withColumn("AS31", F.unix_timestamp(F.col("AS31")))
     )
     return new_df
 
@@ -283,14 +282,13 @@ def process_loan_info(df, cols_dict):
     :return new_df: silver type Spark dataframe.
     """
     new_df = (
-        df.select(cols_dict["general"] + cols_dict["loan_info"])
-        .dropDuplicates()
-        .withColumn("AS1", F.unix_timestamp(F.col("AS1")))
-        .withColumn("AS50", F.unix_timestamp(F.col("AS50")))
-        .withColumn("AS51", F.unix_timestamp(F.col("AS51")))
-        .withColumn("AS67", F.unix_timestamp(F.col("AS67")))
-        .withColumn("AS70", F.unix_timestamp(F.col("AS70")))
-        .withColumn("AS71", F.unix_timestamp(F.col("AS71")))
+        df.select(cols_dict["general"] + cols_dict["loan_info"]).dropDuplicates()
+        # .withColumn("AS1", F.unix_timestamp(F.col("AS1")))
+        # .withColumn("AS50", F.unix_timestamp(F.col("AS50")))
+        # .withColumn("AS51", F.unix_timestamp(F.col("AS51")))
+        # .withColumn("AS67", F.unix_timestamp(F.col("AS67")))
+        # .withColumn("AS70", F.unix_timestamp(F.col("AS70")))
+        # .withColumn("AS71", F.unix_timestamp(F.col("AS71")))
     )
     return new_df
 
@@ -304,11 +302,10 @@ def process_interest_rate(df, cols_dict):
     :return new_df: silver type Spark dataframe.
     """
     new_df = (
-        df.select(cols_dict["general"] + cols_dict["interest_rate"])
-        .dropDuplicates()
-        .withColumn("AS1", F.unix_timestamp(F.col("AS1")))
-        .withColumn("AS87", F.unix_timestamp(F.col("AS87")))
-        .withColumn("AS91", F.unix_timestamp(F.col("AS91")))
+        df.select(cols_dict["general"] + cols_dict["interest_rate"]).dropDuplicates()
+        # .withColumn("AS1", F.unix_timestamp(F.col("AS1")))
+        # .withColumn("AS87", F.unix_timestamp(F.col("AS87")))
+        # .withColumn("AS91", F.unix_timestamp(F.col("AS91")))
     )
     return new_df
 
@@ -322,10 +319,9 @@ def process_financial_info(df, cols_dict):
     :return new_df: silver type Spark dataframe.
     """
     new_df = (
-        df.select(cols_dict["general"] + cols_dict["financial_info"])
-        .dropDuplicates()
-        .withColumn("AS1", F.unix_timestamp(F.col("AS1")))
-        .withColumn("AS112", F.unix_timestamp(F.col("AS112")))
+        df.select(cols_dict["general"] + cols_dict["financial_info"]).dropDuplicates()
+        # .withColumn("AS1", F.unix_timestamp(F.col("AS1")))
+        # .withColumn("AS112", F.unix_timestamp(F.col("AS112")))
     )
     return new_df
 
@@ -339,15 +335,14 @@ def process_performance_info(df, cols_dict):
     :return new_df: silver type Spark dataframe.
     """
     new_df = (
-        df.select(cols_dict["general"] + cols_dict["performance_info"])
-        .dropDuplicates()
-        .withColumn("AS1", F.unix_timestamp(F.col("AS1")))
-        .withColumn("AS124", F.unix_timestamp(F.col("AS124")))
-        .withColumn("AS127", F.unix_timestamp(F.col("AS127")))
-        .withColumn("AS130", F.unix_timestamp(F.col("AS130")))
-        .withColumn("AS133", F.unix_timestamp(F.col("AS133")))
-        .withColumn("AS134", F.unix_timestamp(F.col("AS134")))
-        .withColumn("AS137", F.unix_timestamp(F.col("AS137")))
+        df.select(cols_dict["general"] + cols_dict["performance_info"]).dropDuplicates()
+        # .withColumn("AS1", F.unix_timestamp(F.col("AS1")))
+        # .withColumn("AS124", F.unix_timestamp(F.col("AS124")))
+        # .withColumn("AS127", F.unix_timestamp(F.col("AS127")))
+        # .withColumn("AS130", F.unix_timestamp(F.col("AS130")))
+        # .withColumn("AS133", F.unix_timestamp(F.col("AS133")))
+        # .withColumn("AS134", F.unix_timestamp(F.col("AS134")))
+        # .withColumn("AS137", F.unix_timestamp(F.col("AS137")))
     )
     return new_df
 
@@ -420,8 +415,8 @@ def generate_asset_silver(spark, bucket_name, bronze_prefix, silver_prefix, pcds
     tmp_df2 = replace_bool_data(tmp_df1)
     logger.info("Cast data to correct types.")
     cleaned_df = cast_to_datatype(tmp_df2, run_props["ASSET_COLUMNS"])
-    logger.info("Generate time dataframe")
-    date_df = process_dates(cleaned_df, run_props["DATE_COLUMNS"])
+    # logger.info("Generate time dataframe")
+    # date_df = process_dates(cleaned_df, run_props["DATE_COLUMNS"])
     logger.info("Generate obligor info dataframe")
     obligor_info_df = process_obligor_info(cleaned_df, assets_columns)
     logger.info("Generate loan info dataframe")
@@ -436,12 +431,12 @@ def generate_asset_silver(spark, bucket_name, bronze_prefix, silver_prefix, pcds
     logger.info("Write dataframe")
     write_mode = return_write_mode(bucket_name, silver_prefix, pcds)
 
-    (
-        date_df.write.format("delta")
-        .partitionBy("year", "month")
-        .mode(write_mode)
-        .save(f"gs://{bucket_name}/{silver_prefix}/date_table")
-    )
+    # (
+    #     date_df.write.format("delta")
+    #     .partitionBy("year", "month")
+    #     .mode(write_mode)
+    #     .save(f"gs://{bucket_name}/{silver_prefix}/date_table")
+    # )
     (
         loan_info_df.write.format("delta")
         .partitionBy("year", "month")
