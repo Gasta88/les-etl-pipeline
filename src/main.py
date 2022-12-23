@@ -31,6 +31,9 @@ from src.loan_etl_pipeline.generate_deal_details_silver import (
     generate_deal_details_silver,
 )
 
+# External sources
+from src.loan_etl_pipeline.generate_quandl_silver import generate_quandl_silver
+
 
 def run(bucket_name, source_prefix, target_prefix, file_key, stage_name, pcds):
     """
@@ -100,6 +103,10 @@ def run(bucket_name, source_prefix, target_prefix, file_key, stage_name, pcds):
         status = generate_deal_details_silver(
             spark, bucket_name, source_prefix, target_prefix, pcds
         )
+
+    # ----------------External sources ETL
+    if stage_name == "silver_quandl":
+        status = generate_quandl_silver(bucket_name, source_prefix, target_prefix)
 
 
 if __name__ == "__main__":
