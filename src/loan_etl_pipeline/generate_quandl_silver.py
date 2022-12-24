@@ -32,7 +32,7 @@ def prepare_dataset(ds_code, data):
     return pd.DataFrame(new_data)
 
 
-def generate_quandl_bronze(bucket_name, bronze_prefix, silver_prefix):
+def generate_quandl_silver(bucket_name, bronze_prefix, silver_prefix):
     """
     Run main steps of the module.
 
@@ -44,7 +44,7 @@ def generate_quandl_bronze(bucket_name, bronze_prefix, silver_prefix):
     logger.info("Start QUANDL UPLOAD job.")
 
     logger.info("Create NEW dataframe")
-    quandl_file = f"gs://{bucket_name}/{bronze_prefix}/quandl_datasets.pkl"
+    quandl_file = f"{bronze_prefix}/quandl_datasets.pkl"
     storage_client = storage.Client(project="dataops-369610")
     bucket = storage_client.get_bucket(bucket_name)
     blob = bucket.blob(quandl_file)
@@ -53,6 +53,7 @@ def generate_quandl_bronze(bucket_name, bronze_prefix, silver_prefix):
     macro_econo_df = pd.read_pickle(dest_pkl_f)
 
     for k, d in macro_econo_df.items():
+        # TODO: The SGE label could not be always applicable. Need to re-engineer this part when/if new data from QUANDL is retrieved.
         code = k.replace("SGE/", "").replace(" - Value", "")
         df = prepare_dataset(code, d)
         bucket.blob(f"{silver_prefix}/{code}.csv").upload_from_string(
