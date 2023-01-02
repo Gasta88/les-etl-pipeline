@@ -13,9 +13,7 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 
-def generate_amortisation_bronze(
-    spark, bucket_name, bronze_prefix, all_files, data_type
-):
+def generate_bronze_tables(spark, bucket_name, bronze_prefix, all_files, data_type):
     """
     Run main steps of the module.
 

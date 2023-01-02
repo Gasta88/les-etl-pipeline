@@ -45,47 +45,6 @@ def get_raw_files(bucket_name, prefix, file_key):
         return all_files
 
 
-# def get_old_df(spark, bucket_name, prefix, pcds):
-#     """
-#     Return BRONZE DEAL DETAILS table, but only the partitions from the specified pcds.
-
-#     :param spark: SparkSession object.
-#     :param bucket_name: GS bucket where files are stored.
-#     :param prefix: specific bucket prefix from where to collect files.
-#     :params pcds: list of PCD from source files (valid only when generating TARGET dataframe).
-#     :return df: Spark dataframe with the Deal Details information.
-#     """
-#     storage_client = storage.Client(project="dataops-369610")
-#     check_list = []
-#     for pcd in pcds:
-#         year = pcd.split("-")[0]
-#         month = pcd.split("-")[1]
-#         partition_prefix = f"{prefix}/year={year}/month={month}"
-#         check_list.append(
-#             len(
-#                 [
-#                     b.name
-#                     for b in storage_client.list_blobs(
-#                         bucket_name, prefix=partition_prefix
-#                     )
-#                 ]
-#             )
-#         )
-#     if sum(check_list) > 0:
-#         truncated_pcds = ["-".join(pcd.split("-")[:2]) for pcd in pcds]
-#         df = (
-#             spark.read.format("delta")
-#             .load(f"gs://{bucket_name}/{prefix}/deal_details")
-#             .withColumn("lookup", F.concat_ws("-", F.col("year"), F.col("month")))
-#             .filter(F.col("lookup").isin(truncated_pcds))
-#             .drop("lookup")
-#         )
-#         return df
-#     else:
-#         logger.info("No old files for legacy dataframe.")
-#         return None
-
-
 def create_dataframe(spark, bucket_name, all_files):
     """
     Read files and generate one PySpark DataFrame from them.
@@ -174,42 +133,8 @@ def create_dataframe(spark, bucket_name, all_files):
     return (pcds, spark_df)
 
 
-# def perform_scd2(spark, source_df, target_df):
-#     """
-#     Perform SCD-2 to update legacy data at the bronze level tables.
-
-#     :param source_df: Pyspark dataframe with data from most recent filset.
-#     :param target_df: Pyspark dataframe with data from legacy filset.
-#     :param spark: SparkSession object.
-#     """
-#     source_df.createOrReplaceTempView("delta_table_deal_details")
-#     target_df.createOrReplaceTempView("staged_update")
-#     update_qry = """
-#         SELECT NULL AS mergeKey, source.*
-#         FROM delta_table_deal_details AS target
-#         INNER JOIN staged_update as source
-#         ON target.id = source.id
-#         WHERE target.checksum != source.checksum
-#         AND target.iscurrent = 1
-#     UNION
-#         SELECT id AS mergeKey, *
-#         FROM staged_update
-#     """
-#     # Upsert
-#     spark.sql(
-#         f"""
-#         MERGE INTO delta_table_deal_details tgt
-#         USING ({update_qry}) src
-#         ON tgt.id = src.mergeKey
-#         WHEN MATCHED AND src.checksum != tgt.checksum AND tgt.iscurrent = 1
-#         THEN UPDATE SET valid_to = src.valid_from, iscurrent = 0
-#         WHEN NOT MATCHED THEN INSERT *
-#     """
-#     )
-
-
 def generate_deal_details_bronze(
-    spark, bucket_name, source_prefix, target_prefix, file_key, data_type
+    spark, bucket_name, source_prefix, target_prefix, file_key
 ):
     """
     Run main steps of the module.
@@ -219,9 +144,11 @@ def generate_deal_details_bronze(
     :param source_prefix: specific bucket prefix from where to collect XML files.
     :param target_prefix: specific bucket prefix from where to save Delta Lake files.
     :param file_key: label for file name that helps with the cherry picking with Deal_Details.
-    :param data_type: type of data to handle, ex: deal_details.
     :return status: 0 is successful.
     """
+    # deal Details behaves differently and it has function on its own.
+    # This is just a hack to use bronze_funcs.get_old_df and bronze_funcs.perform_scd2
+    data_type = "deal_details"
     logger.info("Start DEAL DETAILS BRONZE job.")
     all_xml_files = get_raw_files(bucket_name, source_prefix, file_key)
     logger.info("Create NEW dataframe")
