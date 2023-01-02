@@ -1,34 +1,31 @@
-import logging
-import sys
-from pyspark.sql import DataFrame
+from google.cloud import storage
 import pyspark.sql.functions as F
+from pyspark.sql import DataFrame
 from pyspark.sql.types import (
     TimestampType,
 )
 import csv
 from functools import reduce
-from google.cloud import storage
-from delta import *
 
-# Setup logger
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler(sys.stdout)
-handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+PRIMARY_COLS = {
+    "assets": ["AS1", "AS3"],
+    "collaterals": ["CS1"],
+    "amortisation": ["AS3"],
+    "bond_info": ["BS1", "BS2"],
+    "deal_details": [],
+}
 
 
-def get_old_df(spark, bucket_name, prefix, pcds):
+def get_old_df(spark, bucket_name, prefix, pcds, data_type):
     """
-    Return BRONZE ASSET table, but only the partitions from the specified pcds.
+    Return BRONZE table, but only the partitions from the specified pcds.
 
     :param spark: SparkSession object.
     :param bucket_name: GS bucket where files are stored.
     :param prefix: specific bucket prefix from where to collect files.
-    :params pcds: list of PCD from source files (valid only when generating TARGET dataframe).
-    :return df: Spark dataframe with the Asset information.
+    :param pcds: list of PCD from source files (valid only when generating TARGET dataframe).
+    :param data_type: type of data to handle, ex: amortisation, assets, collaterals.
+    :return df: Spark dataframe.
     """
     storage_client = storage.Client(project="dataops-369610")
     check_list = []
@@ -50,24 +47,25 @@ def get_old_df(spark, bucket_name, prefix, pcds):
         truncated_pcds = ["-".join(pcd.split("-")[:2]) for pcd in pcds]
         df = (
             spark.read.format("delta")
-            .load(f"gs://{bucket_name}/{prefix}/assets")
+            .load(f"gs://{bucket_name}/{prefix}/{data_type}")
             .withColumn("lookup", F.concat_ws("-", F.col("year"), F.col("month")))
             .filter(F.col("lookup").isin(truncated_pcds))
             .drop("lookup")
         )
         return df
     else:
-        logger.info("No old files for legacy dataframe.")
+        # logger.info("No old files for legacy dataframe.")
         return None
 
 
-def create_dataframe(spark, bucket_name, all_files):
+def create_dataframe(spark, bucket_name, all_files, data_type):
     """
     Read files and generate one PySpark DataFrame from them.
 
     :param spark: SparkSession object.
     :param bucket_name: GS bucket where files are stored.
-    :param all_files: list of files to be read to generate the dtaframe.
+    :param all_files: list of files to be read to generate the dataframe.
+    :param data_type: type of data to handle, ex: amortisation, assets, collaterals.
     :return df: PySpark datafram for loan asset data.
     """
     list_dfs = []
@@ -82,23 +80,29 @@ def create_dataframe(spark, bucket_name, all_files):
         content = []
         with open(dest_csv_f, "r") as f:
             csv_id = dest_csv_f.split("/")[-1].split("_")[0]
-            pcds.append("-".join(dest_csv_f.split("/")[-1].split("_")[1:4]))
+            csv_date = "-".join(dest_csv_f.split("/")[-1].split("_")[1:4])
+            pcds.append(csv_date)
             for i, line in enumerate(csv.reader(f)):
                 if i == 0:
                     col_names = line
-                    col_names[0] = "AS1"
+                    col_names[0] = PRIMARY_COLS[data_type][0]
                 elif i == 1:
                     continue
                 else:
                     if len(line) == 0:
                         continue
                     content.append(line)
+            # Prep array of primary cols to use in checksum column
+            checksum_cols = [F.col("ed_code")] + [
+                F.col(col_name) for col_name in PRIMARY_COLS[data_type]
+            ]
             df = (
                 spark.createDataFrame(content, col_names)
                 .withColumn("ed_code", F.lit(csv_id))
                 .replace("", None)
-                .withColumn("year", F.year(F.col("AS1")))
-                .withColumn("month", F.month(F.col("AS1")))
+                .withColumn("ImportDate", F.lit(csv_date))
+                .withColumn("year", F.year(F.col("ImportDate")))
+                .withColumn("month", F.month(F.col("ImportDate")))
                 .withColumn(
                     "valid_from", F.lit(F.current_timestamp()).cast(TimestampType())
                 )
@@ -106,34 +110,30 @@ def create_dataframe(spark, bucket_name, all_files):
                 .withColumn("iscurrent", F.lit(1).cast("int"))
                 .withColumn(
                     "checksum",
-                    F.md5(
-                        F.concat(
-                            F.col("ed_code"),
-                            F.col("AS3"),
-                        )
-                    ),
+                    F.md5(F.concat(*checksum_cols)),
                 )
+                .drop("ImportDate")
             )
             list_dfs.append(df)
     if list_dfs == []:
-        logger.error("No dataframes were extracted from files. Exit process!")
-        sys.exit(1)
+        return None
     return (pcds, reduce(DataFrame.union, list_dfs))
 
 
-def perform_scd2(spark, source_df, target_df):
+def perform_scd2(spark, source_df, target_df, data_type):
     """
     Perform SCD-2 to update legacy data at the bronze level tables.
 
+    :param spark: SparkSession object.
     :param source_df: Pyspark dataframe with data from most recent filset.
     :param target_df: Pyspark dataframe with data from legacy filset.
-    :param spark: SparkSession object.
+    :param data_type: type of data to handle, ex: amortisation, assets, collaterals.
     """
-    source_df.createOrReplaceTempView("delta_table_asset")
+    source_df.createOrReplaceTempView(f"delta_table_{data_type}")
     target_df.createOrReplaceTempView("staged_update")
-    update_qry = """
+    update_qry = f"""
         SELECT NULL AS mergeKey, source.*
-        FROM delta_table_asset AS target
+        FROM delta_table_{data_type} AS target
         INNER JOIN staged_update as source
         ON target.id = source.id
         WHERE target.checksum != source.checksum
@@ -145,7 +145,7 @@ def perform_scd2(spark, source_df, target_df):
     # Upsert
     spark.sql(
         f"""
-        MERGE INTO delta_table_asset tgt
+        MERGE INTO delta_table_amortisation tgt
         USING ({update_qry}) src
         ON tgt.id = src.mergeKey
         WHEN MATCHED AND src.checksum != tgt.checksum AND tgt.iscurrent = 1 
@@ -154,46 +154,3 @@ def perform_scd2(spark, source_df, target_df):
     """
     )
     return
-
-
-def generate_asset_bronze(spark, bucket_name, bronze_prefix, all_files):
-    """
-    Run main steps of the module.
-
-    :param spark: SparkSession object.
-    :param bucket_name: GS bucket where files are stored.
-    :param bronze_prefix: specific bucket prefix from where to collect bronze old data.
-    :param all_files: list of clean CSV files from EDW.
-    :return pcds: list of PCDs that have been manipulated.
-    """
-    logger.info("Start ASSETS BRONZE job.")
-
-    logger.info("Create NEW dataframe")
-    if len(all_files) == 0:
-        logger.warning("No new CSV files to retrieve. Workflow stopped!")
-        sys.exit(1)
-    else:
-        logger.info(f"Retrieved {len(all_files)} asset data CSV files.")
-        pcds, new_asset_df = create_dataframe(spark, bucket_name, all_files)
-
-        logger.info(f"Retrieve OLD dataframe. Use following PCDs: {pcds}")
-        old_asset_df = get_old_df(
-            spark,
-            bucket_name,
-            bronze_prefix,
-            pcds,
-        )
-        if old_asset_df is None:
-            logger.info("Initial load into ASSET BRONZE")
-            (
-                new_asset_df.write.partitionBy("year", "month")
-                .format("delta")
-                .mode("append")
-                .save(f"gs://{bucket_name}/{bronze_prefix}")
-            )
-        else:
-            logger.info("Upsert data into ASSET BRONZE")
-            perform_scd2(spark, old_asset_df, new_asset_df)
-
-    logger.info("End ASSETS BRONZE job.")
-    return pcds
