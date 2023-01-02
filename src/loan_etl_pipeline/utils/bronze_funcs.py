@@ -12,7 +12,6 @@ PRIMARY_COLS = {
     "collaterals": ["CS1"],
     "amortisation": ["AS3"],
     "bond_info": ["BS1", "BS2"],
-    "deal_details": [],
 }
 
 
