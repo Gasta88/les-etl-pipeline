@@ -2,12 +2,7 @@ import argparse
 from src.utils.spark_setup import start_spark
 
 # Bronze profile packages
-from src.loan_etl_pipeline.profile_asset_bronze import profile_asset_bronze
-from src.loan_etl_pipeline.profile_collateral_bronze import profile_collateral_bronze
-from src.loan_etl_pipeline.profile_bond_info_bronze import profile_bond_info_bronze
-from src.loan_etl_pipeline.profile_amortisation_bronze import (
-    profile_amortisation_bronze,
-)
+from src.loan_etl_pipeline.profile_bronze_data import profile_bronze_data
 
 # Bronze layer packages
 from src.loan_etl_pipeline.generate_bronze_tables import generate_bronze_tables
@@ -42,30 +37,32 @@ def run(bucket_name, source_prefix, target_prefix, file_key, stage_name, pcds):
     """
     spark = start_spark()
     if stage_name == "bronze_asset":
-        clean_files = profile_asset_bronze(spark, bucket_name, source_prefix, file_key)
+        clean_files = profile_bronze_data(
+            spark, bucket_name, source_prefix, file_key, "assets"
+        )
         status = generate_bronze_tables(
             spark, bucket_name, target_prefix, clean_files, "assets"
         )
 
     if stage_name == "bronze_collateral":
-        clean_files = profile_collateral_bronze(
-            spark, bucket_name, source_prefix, file_key
+        clean_files = profile_bronze_data(
+            spark, bucket_name, source_prefix, file_key, "collaterals"
         )
         status = generate_bronze_tables(
             spark, bucket_name, target_prefix, clean_files, "collaterals"
         )
 
     if stage_name == "bronze_bond_info":
-        clean_files = profile_bond_info_bronze(
-            spark, bucket_name, source_prefix, file_key
+        clean_files = profile_bronze_data(
+            spark, bucket_name, source_prefix, file_key, "bond_info"
         )
         status = generate_bronze_tables(
             spark, bucket_name, target_prefix, clean_files, "bond_info"
         )
 
     if stage_name == "bronze_amortisation":
-        clean_files = profile_amortisation_bronze(
-            spark, bucket_name, source_prefix, file_key
+        clean_files = profile_bronze_data(
+            spark, bucket_name, source_prefix, file_key, "amortisation"
         )
         status = generate_bronze_tables(
             spark, bucket_name, target_prefix, clean_files, "amortisation"

@@ -42,6 +42,7 @@ build: clean ## Build Python Package with Dependencies
 	@mv ./dist/${SRC_WITH_DEPS}.zip ./dist/${APP_NAME}_${VERSION_NO}.zip
 	@gsutil cp -r ./dist gs://${CODE_BUCKET}
 	@gsutil cp -r dependencies/*.jar gs://${CODE_BUCKET}/dependencies/
+	@gsutil cp -r dependencies/*.json gs://${CODE_BUCKET}/dependencies/
 
 
 run_asset_bronze: ## Run the dataproc serverless job

@@ -1,0 +1,218 @@
+{
+    "amortisation": {
+        "AS3": [
+            "IsComplete",
+            "IsUnique"
+        ]
+    },
+    "assets": {
+        "AS1": [
+            "IsComplete"
+        ],
+        "AS2": [
+            "IsComplete"
+        ],
+        "AS3": [
+            "IsComplete"
+        ],
+        "AS4": [
+            "IsComplete"
+        ],
+        "AS5": [
+            "IsComplete"
+        ],
+        "AS6": [
+            "IsComplete"
+        ],
+        "AS7": [
+            "IsComplete"
+        ],
+        "AS15": [
+            "IsComplete"
+        ],
+        "AS16": [
+            "IsComplete"
+        ],
+        "AS18": [
+            "IsComplete"
+        ],
+        "AS22": [
+            "IsComplete"
+        ],
+        "AS23": [
+            "IsComplete"
+        ],
+        "AS25": [
+            "IsComplete"
+        ],
+        "AS26": [
+            "IsComplete"
+        ],
+        "AS37": [
+            "IsComplete"
+        ],
+        "AS42": [
+            "IsComplete"
+        ],
+        "AS50": [
+            "IsComplete"
+        ],
+        "AS51": [
+            "IsComplete"
+        ],
+        "AS52": [
+            "IsComplete"
+        ],
+        "AS53": [
+            "IsComplete"
+        ],
+        "AS54": [
+            "IsComplete"
+        ],
+        "AS55": [
+            "IsComplete"
+        ],
+        "AS56": [
+            "IsComplete"
+        ],
+        "AS58": [
+            "IsComplete"
+        ],
+        "AS59": [
+            "IsComplete"
+        ],
+        "AS62": [
+            "IsComplete"
+        ],
+        "AS65": [
+            "IsComplete"
+        ],
+        "AS66": [
+            "IsComplete"
+        ],
+        "AS68": [
+            "IsComplete"
+        ],
+        "AS80": [
+            "IsComplete"
+        ],
+        "AS81": [
+            "IsComplete"
+        ],
+        "AS82": [
+            "IsComplete"
+        ],
+        "AS83": [
+            "IsComplete"
+        ],
+        "AS84": [
+            "IsComplete"
+        ],
+        "AS85": [
+            "IsComplete"
+        ],
+        "AS94": [
+            "IsComplete"
+        ],
+        "AS115": [
+            "IsComplete"
+        ],
+        "AS116": [
+            "IsComplete"
+        ],
+        "AS117": [
+            "IsComplete"
+        ],
+        "AS118": [
+            "IsComplete"
+        ],
+        "AS121": [
+            "IsComplete"
+        ],
+        "AS122": [
+            "IsComplete"
+        ],
+        "AS123": [
+            "IsComplete"
+        ],
+        "AS124": [
+            "IsComplete"
+        ],
+        "AS125": [
+            "IsComplete"
+        ],
+        "AS128": [
+            "IsComplete"
+        ],
+        "AS132": [
+            "IsComplete"
+        ],
+        "AS134": [
+            "IsComplete"
+        ]
+    },
+    "collaterals": {
+        "CS1": [
+            "IsComplete"
+        ],
+        "CS2": [
+            "IsComplete"
+        ],
+        "CS3": [
+            "IsComplete"
+        ],
+        "CS6": [
+            "IsComplete"
+        ],
+        "CS10": [
+            "IsComplete"
+        ],
+        "CS11": [
+            "IsComplete"
+        ],
+        "CS12": [
+            "IsComplete"
+        ],
+        "CS13": [
+            "IsComplete"
+        ],
+        "CS14": [
+            "IsComplete"
+        ],
+        "CS16": [
+            "IsComplete"
+        ],
+        "CS23": [
+            "IsComplete"
+        ],
+        "CS24": [
+            "IsComplete"
+        ],
+        "CS28": [
+            "IsComplete"
+        ]
+    },
+    "bond_info": {
+        "BS1": [
+            "IsComplete"
+        ],
+        "BS2": [
+            "IsComplete"
+        ],
+        "BS5": [
+            "IsComplete"
+        ],
+        "BS12": [
+            "IsComplete"
+        ],
+        "BS13": [
+            "IsComplete"
+        ],
+        "BS19": [
+            "IsComplete"
+        ],
+        "BS20": [
+            "IsComplete"
+        ]
+    }
+}
