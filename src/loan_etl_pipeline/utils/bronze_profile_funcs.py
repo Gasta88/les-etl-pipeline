@@ -12,26 +12,24 @@ INITIAL_COL = {
 }
 
 
-def get_profiling_rules(bucket_name, data_type):
+def get_profiling_rules(data_type):
     """
     Return QA rules for data_type.
 
-    :param bucket_name: GS bucket where JSON is stored.
     :param data_type: type of data to handle, ex: amortisation, assets, collaterals.
     :return rules: collection of profiling rules for data_type.
     """
     rules = None
+    bucket_name = "data-lake-code-847515094398"
     storage_client = storage.Client(project="dataops-369610")
     bucket = storage_client.get_bucket(bucket_name)
     profile_file = [
         b.name
-        for b in storage_client.list_blobs(bucket_name, prefix="dependencies")
+        for b in storage_client.list_blobs(bucket_name)
         if (b.name.endswith(".json")) and ("bronze" in b.name)
     ][0]
-    dest_json_f = f'/tmp/{profile_file.split("/")[-1]}'
     blob = bucket.blob(profile_file)
-    blob.download_to_filename(dest_json_f)
-    rules = json.loads(dest_json_f)
+    rules = json.loads(blob.download_as_string())
     return rules[data_type]
 
 

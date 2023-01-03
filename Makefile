@@ -2,7 +2,8 @@ PROJECT_ID ?= dataops-369610
 REGION ?= europe-west3
 PROJECT_NUMBER ?= $$(gcloud projects list --filter=${PROJECT_ID} --format="value(PROJECT_NUMBER)")
 CODE_BUCKET ?= data-lake-code-${PROJECT_NUMBER}
-DATA_BUCKET ?= fgasta_test
+# DATA_BUCKET ?= fgasta_test
+DATA_BUCKET ?= fgasta_test2
 APP_NAME ?= $$(cat pyproject.toml| grep name | cut -d" " -f3 | sed  's/"//g')
 VERSION_NO ?= $$(poetry version --short)
 SRC_WITH_DEPS ?= src_with_deps
@@ -56,7 +57,6 @@ run_asset_bronze: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--version=2.0 \
 	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=mini_source --target-prefix=SME/bronze/assets --file-key=Loan_Data --stage-name=bronze_asset \
-	> run_asset_bronze
 
 run_collateral_bronze: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -69,7 +69,6 @@ run_collateral_bronze: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--version=2.0 \
 	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=mini_source --target-prefix=SME/bronze/collaterals --file-key=Collateral --stage-name=bronze_collateral\
-	> run_collateral_bronze
 
 run_bond_info_bronze: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -82,7 +81,6 @@ run_bond_info_bronze: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--version=2.0 \
 	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=mini_source --target-prefix=SME/bronze/bond_info --file-key=Bond_Info --stage-name=bronze_bond_info \
-	> run_bond_info_bronze
 
 run_amortisation_bronze: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -95,7 +93,6 @@ run_amortisation_bronze: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--version=2.0 \
 	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=mini_source --target-prefix=SME/bronze/amortisation --file-key=Amortization --stage-name=bronze_amortisation \
-	> run_amortisation_bronze
 
 run_deal_details_bronze: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -108,7 +105,6 @@ run_deal_details_bronze: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--version=2.0 \
 	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=mini_source --target-prefix=SME/bronze/deal_details --file-key=Deal_Details --stage-name=bronze_deal_details \
-	> run_deal_details_bronze
 
 run_asset_silver: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -121,7 +117,6 @@ run_asset_silver: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--version=2.0 \
 	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=SME/bronze/assets --target-prefix=SME/silver/assets --pcds="" --stage-name=silver_asset \
-	> run_asset_silver
 
 run_collateral_silver: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -134,7 +129,6 @@ run_collateral_silver: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--version=2.0 \
 	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=SME/bronze/collaterals --target-prefix=SME/silver/collaterals --pcds="" --stage-name=silver_collateral \
-	> run_collateral_silver
 
 run_bond_info_silver: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -147,7 +141,6 @@ run_bond_info_silver: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--version=2.0 \
 	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=SME/bronze/bond_info --target-prefix=SME/silver/bond_info --pcds="" --stage-name=silver_bond_info \
-	> run_bond_info_silver
 
 run_amortisation_silver: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -160,7 +153,6 @@ run_amortisation_silver: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--version=2.0 \
 	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=SME/bronze/amortisation --target-prefix=SME/silver/amortisation --pcds="" --stage-name=silver_amortisation \
-	> run_amortisation_silver
 
 run_deal_details_silver: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -173,7 +165,6 @@ run_deal_details_silver: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--version=2.0 \
 	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=SME/bronze/deal_details --target-prefix=SME/silver/deal_details --pcds="" --stage-name=silver_deal_details \
-	> run_deal_details_silver
 
 run_quandl_silver: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -186,4 +177,3 @@ run_quandl_silver: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--version=2.0 \
 	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=mini_source --target-prefix=externals/silver/quandl --pcds="" --stage-name=silver_quandl \
-	> run_quandl_silver

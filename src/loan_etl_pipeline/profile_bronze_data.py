@@ -3,7 +3,11 @@ import sys
 from google.cloud import storage
 import pandas as pd
 import datetime
-from utils.bronze_profile_funcs import get_csv_files, get_profiling_rules, profile_data
+from src.loan_etl_pipeline.utils.bronze_profile_funcs import (
+    get_csv_files,
+    get_profiling_rules,
+    profile_data,
+)
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -27,7 +31,7 @@ def profile_bronze_data(spark, bucket_name, upload_prefix, file_key, data_type):
     :return clean_files: asset CSV files that pass the profile rules.
     """
     logger.info(f"Start {data_type.upper()} BRONZE PROFILING job.")
-    table_rules = get_profiling_rules(bucket_name, data_type)
+    table_rules = get_profiling_rules(data_type)
 
     logger.info("Create NEW dataframe")
     all_new_files = get_csv_files(bucket_name, upload_prefix, file_key, data_type)

@@ -3,7 +3,7 @@ import sys
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, StringType, DoubleType
 from delta import *
-from utils.silver_funcs import return_write_mode
+from src.loan_etl_pipeline.utils.silver_funcs import return_write_mode
 
 # Setup logger
 logger = logging.getLogger(__name__)

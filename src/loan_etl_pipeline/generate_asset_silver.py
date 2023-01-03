@@ -3,7 +3,7 @@ import sys
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, StringType, DoubleType, BooleanType
 from delta import *
-from utils.silver_funcs import (
+from src.loan_etl_pipeline.utils.silver_funcs import (
     replace_no_data,
     replace_bool_data,
     cast_to_datatype,

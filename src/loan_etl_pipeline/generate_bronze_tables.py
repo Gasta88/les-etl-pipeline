@@ -1,6 +1,10 @@
 import logging
 import sys
-from utils.bronze_funcs import get_old_df, create_dataframe, perform_scd2
+from src.loan_etl_pipeline.utils.bronze_funcs import (
+    get_old_df,
+    create_dataframe,
+    perform_scd2,
+)
 from delta import *
 
 # Setup logger

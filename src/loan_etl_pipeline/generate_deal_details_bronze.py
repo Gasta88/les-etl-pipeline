@@ -8,7 +8,7 @@ import pyspark.sql.functions as F
 from pyspark.sql.types import (
     TimestampType,
 )
-from utils.bronze_funcs import get_old_df, perform_scd2
+from src.loan_etl_pipeline.utils.bronze_funcs import get_old_df, perform_scd2
 from delta import *
 
 # Setup logger
