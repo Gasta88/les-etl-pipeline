@@ -130,23 +130,35 @@ def perform_scd2(spark, source_df, target_df, data_type):
     """
     source_df.createOrReplaceTempView(f"delta_table_{data_type}")
     target_df.createOrReplaceTempView("staged_update")
+    update_join_condition = " AND ".join(
+        [f"target.{col} = source.{col}" for col in PRIMARY_COLS[data_type]]
+    )
+    update_col_selection = " ,".join(
+        [f"{col} AS mergeKey_{i}" for i, col in enumerate(PRIMARY_COLS[data_type])]
+    )
     update_qry = f"""
         SELECT NULL AS mergeKey, source.*
         FROM delta_table_{data_type} AS target
         INNER JOIN staged_update as source
-        ON target.id = source.id
+        ON ({update_join_condition})
         WHERE target.checksum != source.checksum
         AND target.iscurrent = 1
     UNION
-        SELECT id AS mergeKey, *
+        SELECT {update_col_selection}, *
         FROM staged_update
     """
     # Upsert
+    upsert_join_condition = " AND ".join(
+        [
+            f"target.{col} = source.mergeKey_{i}"
+            for i, col in enumerate(PRIMARY_COLS[data_type])
+        ]
+    )
     spark.sql(
         f"""
-        MERGE INTO delta_table_amortisation tgt
+        MERGE INTO delta_table_{data_type} tgt
         USING ({update_qry}) src
-        ON tgt.id = src.mergeKey
+        ON (({upsert_join_condition}))
         WHEN MATCHED AND src.checksum != tgt.checksum AND tgt.iscurrent = 1 
         THEN UPDATE SET valid_to = src.valid_from, iscurrent = 0
         WHEN NOT MATCHED THEN INSERT *
