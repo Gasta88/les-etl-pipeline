@@ -26,7 +26,7 @@ class BronzeProfilingTestCase(unittest.TestCase):
 
     def test_get_get_checks_dict(self):
         """Test src.loan_etl_pipeline.utils.bronze_profile_funcs. _get_checks_dict method."""
-        with open("../dependencies/bronze_profiling_rules.json", "r") as f:
+        with open("../../dependencies/bronze_profiling_rules.json", "r") as f:
             table_rules = json.load(f)
         cols = "AS3"
         good_data = [
