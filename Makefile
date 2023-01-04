@@ -2,8 +2,8 @@ PROJECT_ID ?= dataops-369610
 REGION ?= europe-west3
 PROJECT_NUMBER ?= $$(gcloud projects list --filter=${PROJECT_ID} --format="value(PROJECT_NUMBER)")
 CODE_BUCKET ?= data-lake-code-${PROJECT_NUMBER}
-TEMP_BUCKET ?= data-lake-staging-${PROJECT_NUMBER}
-DATA_BUCKET ?= fgasta_test
+# DATA_BUCKET ?= fgasta_test
+DATA_BUCKET ?= fgasta_test2
 APP_NAME ?= $$(cat pyproject.toml| grep name | cut -d" " -f3 | sed  's/"//g')
 VERSION_NO ?= $$(poetry version --short)
 SRC_WITH_DEPS ?= src_with_deps
@@ -17,12 +17,11 @@ help: ## This is help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 setup: ## Setup Buckets and Dataset for Demo
-	@echo "Project=${PROJECT_ID}--${PROJECT_NUMBER}--${CODE_BUCKET}--${TEMP_BUCKET}"
+	@echo "Project=${PROJECT_ID}--${PROJECT_NUMBER}--${CODE_BUCKET}"
 	@gsutil mb -c standard -l ${REGION} -p ${PROJECT_ID} gs://${CODE_BUCKET}
-	@gsutil mb -c standard -l ${REGION} -p ${PROJECT_ID} gs://${TEMP_BUCKET}
-	@echo "The Following Buckets created - ${CODE_BUCKET}, ${TEMP_BUCKET}, ${DATA_BUCKET}"
+	@echo "The Following Buckets created - ${CODE_BUCKET}, ${DATA_BUCKET}"
 	@echo "Create Hive Metastore"
-	# @gcloud metastore services create data-catalog-${PROJECT_ID} --hive-metastore-version=3.1.2 --location=${REGION}
+	@gcloud metastore services create data-catalog-${PROJECT_ID} --hive-metastore-version=3.1.2 --location=${REGION}
 
 clean: ## CleanUp Prior to Build
 	@rm -Rf ./dist
@@ -44,6 +43,7 @@ build: clean ## Build Python Package with Dependencies
 	@mv ./dist/${SRC_WITH_DEPS}.zip ./dist/${APP_NAME}_${VERSION_NO}.zip
 	@gsutil cp -r ./dist gs://${CODE_BUCKET}
 	@gsutil cp -r dependencies/*.jar gs://${CODE_BUCKET}/dependencies/
+	@gsutil cp -r dependencies/*.json gs://${CODE_BUCKET}/dependencies/
 
 
 run_asset_bronze: ## Run the dataproc serverless job
@@ -106,6 +106,9 @@ run_deal_details_bronze: ## Run the dataproc serverless job
 	--version=2.0 \
 	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=mini_source --target-prefix=SME/bronze/deal_details --file-key=Deal_Details --stage-name=bronze_deal_details
 
+all_bronze: run_asset_bronze run_amortisation_bronze run_bond_info_bronze run_collateral_bronze run_deal_details_bronze
+	@echo "All targets for generating bronze layer have been run"
+
 run_asset_silver: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
 	# --region=${REGION} \
@@ -165,6 +168,9 @@ run_deal_details_silver: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--version=2.0 \
 	-- --project=${PROJECT_ID} --bucket-name=${DATA_BUCKET} --source-prefix=SME/bronze/deal_details --target-prefix=SME/silver/deal_details --pcds="" --stage-name=silver_deal_details
+
+all_silver: run_asset_silver run_amortisation_silver run_bond_info_silver run_collateral_silver run_deal_details_silver
+	@echo "All targets for generating silver layer have been run"
 
 run_quandl_silver: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \

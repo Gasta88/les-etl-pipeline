@@ -3,7 +3,12 @@ import sys
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, StringType, DoubleType, BooleanType
 from delta import *
-from google.cloud import storage
+from src.loan_etl_pipeline.utils.silver_funcs import (
+    replace_no_data,
+    replace_bool_data,
+    cast_to_datatype,
+    return_write_mode,
+)
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -56,80 +61,6 @@ def set_job_params():
     return config
 
 
-def replace_no_data(df):
-    """
-    Replace ND values inside the dataframe
-    TODO: ND are associated with labels that explain why the vaue is missing.
-          Should handle this information better in future releases.
-    :param df: Spark dataframe with loan asset data.
-    :return df: Spark dataframe without ND values.
-    """
-    for col_name in df.columns:
-        df = df.withColumn(
-            col_name,
-            F.when(F.col(col_name).startswith("ND"), None).otherwise(F.col(col_name)),
-        )
-    return df
-
-
-def replace_bool_data(df):
-    """
-    Replace Y/N with boolean flags in the dataframe.
-
-    :param df: Spark dataframe with loan asset data.
-    :return df: Spark dataframe without Y/N values.
-    """
-    for col_name in df.columns:
-        df = df.withColumn(
-            col_name,
-            F.when(F.col(col_name) == "Y", "True")
-            .when(F.col(col_name) == "N", "False")
-            .otherwise(F.col(col_name)),
-        )
-    return df
-
-
-def cast_to_datatype(df, columns):
-    """
-    Cast data to the respective datatype.
-
-    :param df: Spark dataframe with loan asset data.
-    :param columns: collection of column names and respective data types.
-    :return df: Spark dataframe with correct values.
-    """
-    for col_name, data_type in columns.items():
-        if data_type == BooleanType():
-            df = df.withColumn(col_name, F.col(col_name).contains("True"))
-        if data_type == DateType():
-            df = df.withColumn(col_name, F.to_date(F.col(col_name)))
-        if data_type == DoubleType():
-            df = df.withColumn(col_name, F.round(F.col(col_name).cast(DoubleType()), 2))
-    return df
-
-
-def process_dates(df, date_cols_list):
-    """
-    Extract dates dimension from bronze Spark dataframe.
-
-    :param df: Spark bronze dataframe.
-    :param date_cols_list: list of date columns.
-    :return new_df: silver type Spark dataframe.
-    """
-    date_cols = [c for c in date_cols_list if c in df.columns]
-
-    new_df = (
-        df.select(F.explode(F.array(date_cols)).alias("date_col"))
-        .dropDuplicates()
-        .withColumn("unix_date", F.unix_timestamp(F.col("date_col")))
-        .withColumn("year", F.year(F.col("date_col")))
-        .withColumn("month", F.month(F.col("date_col")))
-        .withColumn("quarter", F.quarter(F.col("date_col")))
-        .withColumn("WoY", F.weekofyear(F.col("date_col")))
-        .withColumn("day", F.dayofmonth(F.col("date_col")))
-    )
-    return new_df
-
-
 def process_collateral_info(df):
     """
     Extract collateral info dimension from bronze Spark dataframe.
@@ -137,44 +68,8 @@ def process_collateral_info(df):
     :param df: Spark bronze dataframe.
     :return new_df: silver type Spark dataframe.
     """
-    new_df = (
-        df.dropDuplicates()
-        # .withColumn("CS11", F.unix_timestamp(F.to_timestamp(F.col("CS11"), "yyyy-MM")))
-        # .withColumn("CS12", F.unix_timestamp(F.to_timestamp(F.col("CS12"), "yyyy-MM")))
-        # .withColumn("CS22", F.unix_timestamp(F.to_timestamp(F.col("CS22"), "yyyy-MM")))
-    )
+    new_df = df.dropDuplicates()
     return new_df
-
-
-def return_write_mode(bucket_name, prefix, pcds):
-    """
-    If PCDs are already presents as partition return "overwrite", otherwise "append" mode.
-
-    :param bucket_name: GS bucket where files are stored.
-    :param prefix: specific bucket prefix from where to collect files.
-    :param pcds: list of PCDs that have been elaborated in the previous Silver layer.
-    :return write_mode: label that express how data should be written on storage.
-    """
-    storage_client = storage.Client(project="dataops-369610")
-    check_list = []
-    for pcd in pcds:
-        year = pcd.split("-")[0]
-        month = pcd.split("-")[1]
-        partition_prefix = f"{prefix}/year={year}/month={month}"
-        check_list.append(
-            len(
-                [
-                    b.name
-                    for b in storage_client.list_blobs(
-                        bucket_name, prefix=partition_prefix
-                    )
-                ]
-            )
-        )
-    if sum(check_list) > 0:
-        return "overwrite"
-    else:
-        return "append"
 
 
 def generate_collateral_silver(spark, bucket_name, bronze_prefix, silver_prefix, pcds):
@@ -215,18 +110,10 @@ def generate_collateral_silver(spark, bucket_name, bronze_prefix, silver_prefix,
     cleaned_df = cast_to_datatype(tmp_df2, run_props["COLLATERAL_COLUMNS"])
     logger.info("Generate collateral info dataframe")
     info_df = process_collateral_info(cleaned_df)
-    # logger.info("Generate time dataframe")
-    # date_df = process_dates(cleaned_df, run_props["DATE_COLUMNS"])
 
     logger.info("Write dataframe")
     write_mode = return_write_mode(bucket_name, silver_prefix, pcds)
 
-    # (
-    #     date_df.write.format("delta")
-    #     .partitionBy("year", "month")
-    #     .mode(write_mode)
-    #     .save(f"gs://{bucket_name}/{silver_prefix}/date_table")
-    # )
     (
         info_df.write.format("delta")
         .partitionBy("year", "month")

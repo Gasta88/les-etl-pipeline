@@ -1,9 +1,9 @@
 import logging
 import sys
 import pyspark.sql.functions as F
-from pyspark.sql.types import DateType, StringType, DoubleType, BooleanType
+from pyspark.sql.types import DateType, StringType, DoubleType
 from delta import *
-from google.cloud import storage
+from src.loan_etl_pipeline.utils.silver_funcs import return_write_mode
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -97,43 +97,6 @@ def unpivot_dataframe(df, columns):
     return new_df
 
 
-def cast_to_datatype(df, columns):
-    """
-    Cast data to the respective datatype.
-
-    :param df: Spark dataframe with loan asset data.
-    :param columns: collection of column names and respective data types.
-    :return df: Spark dataframe with correct values.
-    """
-    for col_name, data_type in columns.items():
-        if data_type == DateType():
-            df = df.withColumn(col_name, F.to_date(F.col(col_name)))
-        if data_type == DoubleType():
-            df = df.withColumn(col_name, F.round(F.col(col_name).cast(DoubleType()), 2))
-    return df
-
-
-def process_dates(df):
-    """
-    Extract dates dimension from bronze Spark dataframe.
-
-    :param df: Spark bronze dataframe.
-    :return new_df: silver type Spark dataframe.
-    """
-    new_df = (
-        df.select("DATE_VALUE")
-        .withColumnRenamed("DATE_VALUE", "date_col")
-        .dropDuplicates()
-        .withColumn("unix_date", F.unix_timestamp(F.col("date_col")))
-        .withColumn("year", F.year(F.col("date_col")))
-        .withColumn("month", F.month(F.col("date_col")))
-        .withColumn("quarter", F.quarter(F.col("date_col")))
-        .withColumn("WoY", F.weekofyear(F.col("date_col")))
-        .withColumn("day", F.dayofmonth(F.col("date_col")))
-    )
-    return new_df
-
-
 def process_info(df):
     """
     Extract amortisation values dimension from bronze Spark dataframe.
@@ -144,37 +107,6 @@ def process_info(df):
     # new_df = df.withColumn("DATE_VALUE", F.unix_timestamp(F.col("DATE_VALUE")))
     new_df = df
     return new_df
-
-
-def return_write_mode(bucket_name, prefix, pcds):
-    """
-    If PCDs are already presents as partition return "overwrite", otherwise "append" mode.
-
-    :param bucket_name: GS bucket where files are stored.
-    :param prefix: specific bucket prefix from where to collect files.
-    :param pcds: list of PCDs that have been elaborated in the previous Silver layer.
-    :return write_mode: label that express how data should be written on storage.
-    """
-    storage_client = storage.Client(project="dataops-369610")
-    check_list = []
-    for pcd in pcds:
-        year = pcd.split("-")[0]
-        month = pcd.split("-")[1]
-        partition_prefix = f"{prefix}/year={year}/month={month}"
-        check_list.append(
-            len(
-                [
-                    b.name
-                    for b in storage_client.list_blobs(
-                        bucket_name, prefix=partition_prefix
-                    )
-                ]
-            )
-        )
-    if sum(check_list) > 0:
-        return "overwrite"
-    else:
-        return "append"
 
 
 def generate_amortisation_silver(
@@ -214,19 +146,11 @@ def generate_amortisation_silver(
     cleaned_df = tmp_df1.withColumn(
         "DATE_VALUE", F.to_date(F.col("DATE_VALUE"))
     ).withColumn("DOUBLE_VALUE", F.round(F.col("DOUBLE_VALUE").cast(DoubleType()), 2))
-    # logger.info("Generate time dataframe")
-    # date_df = process_dates(cleaned_df)
     logger.info("Generate info dataframe")
     info_df = process_info(cleaned_df)
 
     logger.info("Write dataframe")
     write_mode = return_write_mode(bucket_name, silver_prefix, pcds)
-    # (
-    #     date_df.write.format("delta")
-    #     .partitionBy("year", "month")
-    #     .mode(write_mode)
-    #     .save(f"gs://{bucket_name}/{silver_prefix}/date_table")
-    # )
     (
         info_df.write.format("delta")
         .partitionBy("year", "month")

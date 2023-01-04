@@ -56,13 +56,13 @@ Run the following command to prepare the code and uploa it onto GCP:
 To build the bronze tables run the following command:
 
 ```bash
-> make run_asset_bronze && make run_collateral_bronze && make run_amortisation_bronze && make run_bond_info_bronze && make run_deal_details_bronze
+> make -j5 all_bronze
 ```
 
 To build the silver tables run the following command:
 
 ```bash
-> make run_asset_silver && make run_collateral_silver && make run_amortisation_silver && make run_bond_info_silver && make run_deal_details_silver
+> make -j5 all_silver
 ```
 
 To build the Quandl dataset run the following command:
@@ -70,3 +70,5 @@ To build the Quandl dataset run the following command:
 ```bash
 > make run_quandl_silver
 ```
+
+User the `GNU screen` utility to detach a session and continue to work on the terminal.
