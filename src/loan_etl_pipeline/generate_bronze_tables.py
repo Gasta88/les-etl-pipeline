@@ -17,12 +17,15 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 
-def generate_bronze_tables(spark, bucket_name, bronze_prefix, all_files, data_type):
+def generate_bronze_tables(
+    spark, raw_bucketname, data_bucketname, bronze_prefix, all_files, data_type
+):
     """
     Run main steps of the module.
 
     :param spark: SparkSession object.
-    :param bucket_name: GS bucket where files are stored.
+    :param raw_bucketname: GS bucket where raw files are stored.
+    :param data_bucketname: GS bucket where transformed files are stored.
     :param bronze_prefix: specific bucket prefix from where to collect bronze old data.
     :param all_files: list of clean CSV files from EDW.
     :param data_type: type of data to handle, ex: amortisation, assets, collaterals.
@@ -36,28 +39,24 @@ def generate_bronze_tables(spark, bucket_name, bronze_prefix, all_files, data_ty
         sys.exit(1)
     else:
         logger.info(f"Retrieved {len(all_files)} {data_type} data files.")
-        pcds, new_amortisation_df = create_dataframe(
-            spark, bucket_name, all_files, data_type
-        )
-        if new_amortisation_df is None:
+        pcds, new_df = create_dataframe(spark, raw_bucketname, all_files, data_type)
+        if new_df is None:
             logger.error("No dataframes were extracted from files. Exit process!")
             sys.exit(1)
         else:
             logger.info(f"Retrieve OLD dataframe. Use following PCDs: {pcds}")
-            old_amortisation_df = get_old_df(
-                spark, bucket_name, bronze_prefix, pcds, data_type
-            )
-            if old_amortisation_df is None:
+            old_df = get_old_df(spark, data_bucketname, bronze_prefix, pcds, data_type)
+            if old_df is None:
                 logger.info(f"Initial load into {data_type.upper()} BRONZE")
                 (
-                    new_amortisation_df.write.partitionBy("year", "month")
+                    new_df.write.partitionBy("year", "month")
                     .format("delta")
                     .mode("append")
-                    .save(f"gs://{bucket_name}/{bronze_prefix}")
+                    .save(f"gs://{data_bucketname}/{bronze_prefix}")
                 )
             else:
                 logger.info(f"Upsert data into {data_type.upper()} BRONZE")
-                perform_scd2(spark, old_amortisation_df, new_amortisation_df, data_type)
+                perform_scd2(spark, old_df, new_df, data_type)
 
     logger.info(f"End {data_type.upper()} BRONZE job.")
     return 0

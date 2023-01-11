@@ -134,13 +134,14 @@ def create_dataframe(spark, bucket_name, all_files):
 
 
 def generate_deal_details_bronze(
-    spark, bucket_name, source_prefix, target_prefix, file_key
+    spark, raw_bucketname, data_bucketname, source_prefix, target_prefix, file_key
 ):
     """
     Run main steps of the module.
 
     :param spark: SparkSession object.
-    :param bucket_name: GS bucket where files are stored.
+    :param raw_bucketname: GS bucket where raw files are stored.
+    :param data_bucketname: GS bucket where transformed files are stored.
     :param source_prefix: specific bucket prefix from where to collect XML files.
     :param target_prefix: specific bucket prefix from where to save Delta Lake files.
     :param file_key: label for file name that helps with the cherry picking with Deal_Details.
@@ -150,30 +151,28 @@ def generate_deal_details_bronze(
     # This is just a hack to use bronze_funcs.get_old_df and bronze_funcs.perform_scd2
     data_type = "deal_details"
     logger.info("Start DEAL DETAILS BRONZE job.")
-    all_xml_files = get_raw_files(bucket_name, source_prefix, file_key)
+    all_xml_files = get_raw_files(raw_bucketname, source_prefix, file_key)
     logger.info("Create NEW dataframe")
     if len(all_xml_files) == 0:
         logger.warning("No new XML files to retrieve. Workflow stopped!")
         sys.exit(1)
     else:
         logger.info(f"Retrieved {len(all_xml_files)} deal details data XML files.")
-        pcds, new_deal_details_df = create_dataframe(spark, bucket_name, all_xml_files)
+        pcds, new_df = create_dataframe(spark, raw_bucketname, all_xml_files)
 
         logger.info(f"Retrieve OLD dataframe. Use following PCDs: {pcds}")
-        old_deal_details_df = get_old_df(
-            spark, bucket_name, target_prefix, pcds, data_type
-        )
-        if old_deal_details_df is None:
+        old_df = get_old_df(spark, data_bucketname, target_prefix, pcds, data_type)
+        if old_df is None:
             logger.info("Initial load into DEAL DETAILS BRONZE")
             (
-                new_deal_details_df.write.partitionBy("year", "month")
+                new_df.write.partitionBy("year", "month")
                 .format("delta")
                 .mode("append")
-                .save(f"gs://{bucket_name}/{target_prefix}")
+                .save(f"gs://{data_bucketname}/{target_prefix}")
             )
         else:
             logger.info("Upsert data into DEAL DETAILS BRONZE")
-            perform_scd2(spark, old_deal_details_df, new_deal_details_df, data_type)
+            perform_scd2(spark, old_df, new_df, data_type)
 
     logger.info("End DEAL DETAILS BRONZE job.")
     return 0
