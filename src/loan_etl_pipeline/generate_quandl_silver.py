@@ -32,11 +32,14 @@ def prepare_dataset(ds_code, data):
     return pd.DataFrame(new_data)
 
 
-def generate_quandl_silver(bucket_name, bronze_prefix, silver_prefix):
+def generate_quandl_silver(
+    raw_bucketname, data_bucketname, bronze_prefix, silver_prefix
+):
     """
     Run main steps of the module.
 
-    :param bucket_name: GS bucket where files are stored.
+    :param raw_bucketname: GS bucket where raw files are stored.
+    :param data_bucketname: GS bucket where transformed files are stored.
     :param bronze_prefix: specific bucket prefix from where to collect bronze old data.
     :param silver_prefix: specific bucket prefix from where to store silver new data.
     :return status: 0 when succesful.
@@ -46,8 +49,9 @@ def generate_quandl_silver(bucket_name, bronze_prefix, silver_prefix):
     logger.info("Create NEW dataframe")
     quandl_file = f"{bronze_prefix}/quandl_datasets.pkl"
     storage_client = storage.Client(project="dataops-369610")
-    bucket = storage_client.get_bucket(bucket_name)
-    blob = bucket.blob(quandl_file)
+    raw_bucket = storage_client.get_bucket(raw_bucketname)
+    data_bucket = storage_client.get_bucket(data_bucketname)
+    blob = raw_bucket.blob(quandl_file)
     dest_pkl_f = f'/tmp/{quandl_file.split("/")[-1]}'
     blob.download_to_filename(dest_pkl_f)
     macro_econo_df = pd.read_pickle(dest_pkl_f)
@@ -56,7 +60,7 @@ def generate_quandl_silver(bucket_name, bronze_prefix, silver_prefix):
         # TODO: The SGE label could not be always applicable. Need to re-engineer this part when/if new data from QUANDL is retrieved.
         code = k.replace("SGE/", "").replace(" - Value", "")
         df = prepare_dataset(code, d)
-        bucket.blob(f"{silver_prefix}/{code}.csv").upload_from_string(
+        data_bucket.blob(f"{silver_prefix}/{code}.csv").upload_from_string(
             df.to_csv(), "text/csv"
         )
 

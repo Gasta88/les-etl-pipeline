@@ -25,9 +25,18 @@ from src.loan_etl_pipeline.generate_deal_details_silver import (
 from src.loan_etl_pipeline.generate_quandl_silver import generate_quandl_silver
 
 
-def run(bucket_name, source_prefix, target_prefix, file_key, stage_name, pcds):
+def run(
+    raw_bucketname,
+    data_bucketname,
+    source_prefix,
+    target_prefix,
+    file_key,
+    stage_name,
+    pcds,
+):
     """
-    :param bucket_name: GS bucket where files are stored.
+    :param raw_bucketname: GS bucket where original files are stored.
+    :param data_bucketname: GS bucket where transformed files are stored.
     :param source_prefix: specific bucket prefix from where to collect CSV files.
     :param target_prefix: specific bucket prefix from where to collect bronze old data.
     :param file_key: label for file name that helps with the cherry picking with file type.
@@ -38,69 +47,101 @@ def run(bucket_name, source_prefix, target_prefix, file_key, stage_name, pcds):
     spark = start_spark()
     if stage_name == "bronze_asset":
         clean_files = profile_bronze_data(
-            spark, bucket_name, source_prefix, file_key, "assets"
+            spark, raw_bucketname, data_bucketname, source_prefix, file_key, "assets"
         )
         status = generate_bronze_tables(
-            spark, bucket_name, target_prefix, clean_files, "assets"
+            spark, raw_bucketname, data_bucketname, target_prefix, clean_files, "assets"
         )
 
     if stage_name == "bronze_collateral":
         clean_files = profile_bronze_data(
-            spark, bucket_name, source_prefix, file_key, "collaterals"
+            spark,
+            raw_bucketname,
+            data_bucketname,
+            source_prefix,
+            file_key,
+            "collaterals",
         )
         status = generate_bronze_tables(
-            spark, bucket_name, target_prefix, clean_files, "collaterals"
+            spark,
+            raw_bucketname,
+            data_bucketname,
+            target_prefix,
+            clean_files,
+            "collaterals",
         )
 
     if stage_name == "bronze_bond_info":
         clean_files = profile_bronze_data(
-            spark, bucket_name, source_prefix, file_key, "bond_info"
+            spark, raw_bucketname, data_bucketname, source_prefix, file_key, "bond_info"
         )
         status = generate_bronze_tables(
-            spark, bucket_name, target_prefix, clean_files, "bond_info"
+            spark,
+            raw_bucketname,
+            data_bucketname,
+            target_prefix,
+            clean_files,
+            "bond_info",
         )
 
     if stage_name == "bronze_amortisation":
         clean_files = profile_bronze_data(
-            spark, bucket_name, source_prefix, file_key, "amortisation"
+            spark,
+            raw_bucketname,
+            data_bucketname,
+            source_prefix,
+            file_key,
+            "amortisation",
         )
         status = generate_bronze_tables(
-            spark, bucket_name, target_prefix, clean_files, "amortisation"
+            spark,
+            raw_bucketname,
+            data_bucketname,
+            target_prefix,
+            clean_files,
+            "amortisation",
         )
     if stage_name == "bronze_deal_details":
         status = generate_deal_details_bronze(
-            spark, bucket_name, source_prefix, target_prefix, file_key
+            spark,
+            raw_bucketname,
+            data_bucketname,
+            source_prefix,
+            target_prefix,
+            file_key,
         )
 
     # ----------------Silver layer ETL
     if stage_name == "silver_asset":
         status = generate_asset_silver(
-            spark, bucket_name, source_prefix, target_prefix, pcds
+            spark, data_bucketname, source_prefix, target_prefix, pcds
         )
 
     if stage_name == "silver_collateral":
         status = generate_collateral_silver(
-            spark, bucket_name, source_prefix, target_prefix, pcds
+            spark, data_bucketname, source_prefix, target_prefix, pcds
         )
 
     if stage_name == "silver_bond_info":
         status = generate_bond_info_silver(
-            spark, bucket_name, source_prefix, target_prefix, pcds
+            spark, data_bucketname, source_prefix, target_prefix, pcds
         )
 
     if stage_name == "silver_amortisation":
         status = generate_amortisation_silver(
-            spark, bucket_name, source_prefix, target_prefix, pcds
+            spark, data_bucketname, source_prefix, target_prefix, pcds
         )
 
     if stage_name == "silver_deal_details":
         status = generate_deal_details_silver(
-            spark, bucket_name, source_prefix, target_prefix, pcds
+            spark, data_bucketname, source_prefix, target_prefix, pcds
         )
 
     # ----------------External sources ETL
     if stage_name == "silver_quandl":
-        status = generate_quandl_silver(bucket_name, source_prefix, target_prefix)
+        status = generate_quandl_silver(
+            raw_bucketname, data_bucketname, source_prefix, target_prefix
+        )
 
 
 if __name__ == "__main__":
@@ -131,11 +172,19 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--bucket-name",
+        "--data-bucketname",
         type=str,
-        dest="bucket_name",
+        dest="data_bucketname",
         required=True,
-        help="Name of the GCS Bucket -- DO NOT add the gs:// Prefix",
+        help="Name of the GCS Bucket where transformed data can be found -- DO NOT add the gs:// Prefix",
+    )
+
+    parser.add_argument(
+        "--raw-bucketname",
+        type=str,
+        dest="raw_bucketname",
+        required=True,
+        help="Name of the GCS Bucket where original data can be found -- DO NOT add the gs:// Prefix",
     )
 
     parser.add_argument(
@@ -157,7 +206,8 @@ if __name__ == "__main__":
     known_args, pipeline_args = parser.parse_known_args()
 
     run(
-        bucket_name=known_args.bucket_name,
+        raw_bucketname=known_args.raw_bucketname,
+        data_bucketname=known_args.data_bucketname,
         source_prefix=known_args.source_prefix,
         target_prefix=known_args.target_prefix,
         file_key=known_args.file_key,
