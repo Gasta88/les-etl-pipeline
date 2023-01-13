@@ -46,7 +46,8 @@ def get_old_df(spark, bucket_name, prefix, pcds, data_type):
         truncated_pcds = ["-".join(pcd.split("-")[:2]) for pcd in pcds]
         df = (
             spark.read.format("delta")
-            .load(f"gs://{bucket_name}/{prefix}/{data_type}")
+            # .load(f"gs://{bucket_name}/{prefix}/{data_type}")
+            .load(f"gs://{bucket_name}/{prefix}")
             .withColumn("lookup", F.concat_ws("-", F.col("year"), F.col("month")))
             .filter(F.col("lookup").isin(truncated_pcds))
             .drop("lookup")
@@ -165,3 +166,18 @@ def perform_scd2(spark, source_df, target_df, data_type):
     """
     )
     return
+
+
+def get_file_sets(all_files):
+    """
+    Return collection of files indexed by ed_code to process.
+
+    :param all_files: all suitable files to process from the profiled raw layer.
+    :return file_sets: collection indexed by ed_code of suitable raw files.
+    """
+    file_sets = {}
+    for ed_code in list(set([file_name.split("/")[-2] for file_name in all_files])):
+        file_sets[ed_code] = [
+            file_name for file_name in all_files if ed_code in file_name
+        ]
+    return file_sets

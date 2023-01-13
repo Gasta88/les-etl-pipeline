@@ -33,6 +33,27 @@ def get_profiling_rules(data_type):
     return rules[data_type]
 
 
+def get_portfolio_codes(bucket_name, prefix):
+    """
+    Return list of ed_codes from EDW.
+
+    :param bucket_name: GS bucket where files are stored.
+    :param prefix: specific bucket prefix from where to collect files.
+    :return ed_codes: list of portfolio ids.
+    """
+    storage_client = storage.Client(project="dataops-369610")
+    ed_codes = list(
+        set(
+            [
+                b.name.split("/")[-2]
+                for b in storage_client.list_blobs(bucket_name, prefix=prefix)
+                if b.name.endswith(".csv")
+            ]
+        )
+    )
+    return ed_codes
+
+
 def get_csv_files(bucket_name, prefix, file_key, data_type):
     """
     Return list of source files that satisfy the file_key parameter from EDW.
@@ -133,28 +154,29 @@ def profile_data(spark, bucket_name, all_files, data_type, table_rules):
         blob.download_to_filename(dest_csv_f)
         col_names = []
         content = []
-        with open(dest_csv_f, "r") as f:
-            for i, line in enumerate(csv.reader(f)):
-                if i == 0:
-                    col_names = line
-                    col_names[0] = INITIAL_COL[data_type]
-                elif i == 1:
-                    continue
-                else:
-                    if len(line) == 0:
+        try:
+            with open(dest_csv_f, "r") as f:
+                for i, line in enumerate(csv.reader(f)):
+                    if i == 0:
+                        col_names = line
+                        col_names[0] = INITIAL_COL[data_type]
+                    elif i == 1:
                         continue
-                    content.append(line)
-            df = spark.createDataFrame(content, col_names)
-            checks = _get_checks_dict(df, table_rules)
-            if False in checks.values():
-                error_list = []
-                for k, v in checks.items():
-                    if not v:
-                        error_list.append(k)
-                        # logger.error(f"Failed CSV: {csv_f}")
-                        # logger.error(f"Caused by: {k}")
-                error_text = ";".join(error_list)
-                dirty_files.append((csv_f, error_text))
-            else:
-                clean_files.append(csv_f)
+                    else:
+                        if len(line) == 0:
+                            continue
+                        content.append(line)
+                df = spark.createDataFrame(content, col_names)
+                checks = _get_checks_dict(df, table_rules)
+                if False in checks.values():
+                    error_list = []
+                    for k, v in checks.items():
+                        if not v:
+                            error_list.append(k)
+                    error_text = ";".join(error_list)
+                    dirty_files.append((csv_f, error_text))
+                else:
+                    clean_files.append(csv_f)
+        except Exception as e:
+            dirty_files.append((csv_f, e))
     return (clean_files, dirty_files)
