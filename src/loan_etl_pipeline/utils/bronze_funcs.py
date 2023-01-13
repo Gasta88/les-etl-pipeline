@@ -93,7 +93,7 @@ def create_dataframe(spark, bucket_name, all_files, data_type):
                         continue
                     content.append(line)
             # Prep array of primary cols to use in checksum column
-            checksum_cols = [F.col("ed_code")] + [
+            checksum_cols = [F.col("ed_code"), F.col("ImportDate")] + [
                 F.col(col_name) for col_name in PRIMARY_COLS[data_type]
             ]
             df = (
