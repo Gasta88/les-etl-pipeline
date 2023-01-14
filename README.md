@@ -53,6 +53,12 @@ Run the following command to prepare the code and uploa it onto GCP:
 > make setup && make build
 ```
 
+To profile the bronze tables run the following command:
+
+```bash
+> make -j5 all_profile_bronze
+```
+
 To build the bronze tables run the following command:
 
 ```bash

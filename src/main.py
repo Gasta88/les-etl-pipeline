@@ -45,16 +45,13 @@ def run(
     :return: None
     """
     spark = start_spark()
-    if stage_name == "bronze_asset":
-        clean_files = profile_bronze_data(
+    # ----------------Bronze Quality layer ETL
+    if stage_name == "profile_bronze_asset":
+        status = profile_bronze_data(
             spark, raw_bucketname, data_bucketname, source_prefix, file_key, "assets"
         )
-        status = generate_bronze_tables(
-            spark, raw_bucketname, data_bucketname, target_prefix, clean_files, "assets"
-        )
-
-    if stage_name == "bronze_collateral":
-        clean_files = profile_bronze_data(
+    if stage_name == "profile_bronze_collateral":
+        status = profile_bronze_data(
             spark,
             raw_bucketname,
             data_bucketname,
@@ -62,6 +59,27 @@ def run(
             file_key,
             "collaterals",
         )
+    if stage_name == "profile_bronze_bond_info":
+        status = profile_bronze_data(
+            spark, raw_bucketname, data_bucketname, source_prefix, file_key, "bond_info"
+        )
+    if stage_name == "profile_bronze_amortisation":
+        status = profile_bronze_data(
+            spark,
+            raw_bucketname,
+            data_bucketname,
+            source_prefix,
+            file_key,
+            "amortisation",
+        )
+
+    # ----------------Bronze layer ETL
+    if stage_name == "bronze_asset":
+        status = generate_bronze_tables(
+            spark, raw_bucketname, data_bucketname, target_prefix, clean_files, "assets"
+        )
+
+    if stage_name == "bronze_collateral":
         status = generate_bronze_tables(
             spark,
             raw_bucketname,
@@ -72,9 +90,6 @@ def run(
         )
 
     if stage_name == "bronze_bond_info":
-        clean_files = profile_bronze_data(
-            spark, raw_bucketname, data_bucketname, source_prefix, file_key, "bond_info"
-        )
         status = generate_bronze_tables(
             spark,
             raw_bucketname,
@@ -85,14 +100,6 @@ def run(
         )
 
     if stage_name == "bronze_amortisation":
-        clean_files = profile_bronze_data(
-            spark,
-            raw_bucketname,
-            data_bucketname,
-            source_prefix,
-            file_key,
-            "amortisation",
-        )
         status = generate_bronze_tables(
             spark,
             raw_bucketname,
@@ -159,7 +166,7 @@ if __name__ == "__main__":
         "--target-prefix",
         type=str,
         dest="target_prefix",
-        required=True,
+        required=False,
         help="Prefix on GCS where layer tables are stored",
     )
 
