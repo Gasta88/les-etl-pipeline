@@ -33,7 +33,7 @@ def prepare_dataset(ds_code, data):
 
 
 def generate_quandl_silver(
-    raw_bucketname, data_bucketname, bronze_prefix, silver_prefix
+    raw_bucketname, data_bucketname, bronze_prefix, target_prefix
 ):
     """
     Run main steps of the module.
@@ -41,7 +41,7 @@ def generate_quandl_silver(
     :param raw_bucketname: GS bucket where raw files are stored.
     :param data_bucketname: GS bucket where transformed files are stored.
     :param bronze_prefix: specific bucket prefix from where to collect bronze old data.
-    :param silver_prefix: specific bucket prefix from where to store silver new data.
+    :param target_prefix: specific bucket prefix from where to store silver new data.
     :return status: 0 when succesful.
     """
     logger.info("Start QUANDL UPLOAD job.")
@@ -60,7 +60,7 @@ def generate_quandl_silver(
         # TODO: The SGE label could not be always applicable. Need to re-engineer this part when/if new data from QUANDL is retrieved.
         code = k.replace("SGE/", "").replace(" - Value", "")
         df = prepare_dataset(code, d)
-        data_bucket.blob(f"{silver_prefix}/{code}.csv").upload_from_string(
+        data_bucket.blob(f"{target_prefix}/{code}.csv").upload_from_string(
             df.to_csv(), "text/csv"
         )
 

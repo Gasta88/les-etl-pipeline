@@ -56,7 +56,7 @@ Run the following command to prepare the code and uploa it onto GCP:
 To profile the bronze tables run the following command:
 
 ```bash
-> make -j5 all_profile_bronze
+> make -j4 all_bronze_profile
 ```
 
 To build the bronze tables run the following command:

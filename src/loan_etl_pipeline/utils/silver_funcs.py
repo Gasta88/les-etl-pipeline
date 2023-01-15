@@ -1,6 +1,8 @@
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, DoubleType, BooleanType, IntegerType
 from google.cloud import storage
+import datetime
+import csv
 
 
 def replace_no_data(df):
@@ -67,10 +69,11 @@ def return_write_mode(bucket_name, prefix, pcds):
     """
     storage_client = storage.Client(project="dataops-369610")
     check_list = []
+    ed_code = prefix.split("/")[-1]
     for pcd in pcds:
         year = pcd.split("-")[0]
         month = pcd.split("-")[1]
-        partition_prefix = f"{prefix}/year={year}/month={month}"
+        partition_prefix = f"{prefix}/ed_code={ed_code}/year={year}/month={month}"
         check_list.append(
             len(
                 [
@@ -85,3 +88,32 @@ def return_write_mode(bucket_name, prefix, pcds):
         return "overwrite"
     else:
         return "append"
+
+
+def get_all_pcds(bucket_name, data_type):
+    """
+    Return list of PCDs inside CSV profiling output file.
+
+    :param bucket_name: GS bucket where files are stored.
+    :param data_type: type of data to handle, ex: amortisation, assets, collaterals.
+    :return pcds: list of PCDs to be elaborated.
+    """
+    pcds = []
+    storage_client = storage.Client(project="dataops-369610")
+    bucket = storage_client.get_bucket(bucket_name)
+    csv_f = (
+        f'clean_dump/{datetime.date.today().strftime("%Y-%m-%d")}_clean_{data_type}.csv'
+    )
+    blob = bucket.blob(csv_f)
+    dest_csv_f = f'/tmp/{csv_f.split("/")[-1]}'
+    blob.download_to_filename(dest_csv_f)
+    with open(dest_csv_f, "r") as f:
+        for i, line in enumerate(csv.reader(f)):
+            if i == 0:
+                continue
+            else:
+                if len(line) == 0:
+                    continue
+                pcd = "-".join(line[1].split("/")[-1].split("_")[1:3])
+                pcds.append(pcd)
+    return pcds

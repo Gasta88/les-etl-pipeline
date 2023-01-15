@@ -3,7 +3,9 @@ import sys
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, StringType, DoubleType
 from delta import *
-from src.loan_etl_pipeline.utils.silver_funcs import return_write_mode
+from google.cloud import storage
+import datetime
+from src.loan_etl_pipeline.utils.silver_funcs import return_write_mode, get_all_pcds
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -97,65 +99,61 @@ def unpivot_dataframe(df, columns):
     return new_df
 
 
-def process_info(df):
-    """
-    Extract amortisation values dimension from bronze Spark dataframe.
-
-    :param df: Spark bronze dataframe.
-    :return new_df: silver type Spark dataframe.
-    """
-    # new_df = df.withColumn("DATE_VALUE", F.unix_timestamp(F.col("DATE_VALUE")))
-    new_df = df
-    return new_df
-
-
-def generate_amortisation_silver(
-    spark, bucket_name, bronze_prefix, silver_prefix, pcds
-):
+def generate_amortisation_silver(spark, bucket_name, source_prefix, target_prefix):
     """
     Run main steps of the module.
 
     :param spark: SparkSession object.
     :param bucket_name: GS bucket where files are stored.
-    :param bronze_prefix: specific bucket prefix from where to collect bronze data.
-    :param silver_prefix: specific bucket prefix from where to deposit silver data.
-    :param pcds: list of PCDs that have been elaborated in the previous Bronze layer.
+    :param source_prefix: specific bucket prefix from where to collect bronze data.
+    :param target_prefix: specific bucket prefix from where to deposit silver data.
     :return status: 0 if successful.
     """
     logger.info("Start AMORTISATION SILVER job.")
     run_props = set_job_params()
-    if pcds == "":
-        bronze_df = (
-            spark.read.format("delta")
-            .load(f"gs://{bucket_name}/{bronze_prefix}")
-            .filter("iscurrent == 1")
-            .drop("valid_from", "valid_to", "checksum", "iscurrent")
-        )
-    else:
-        truncated_pcds = ["-".join(pcd.split("-")[:2]) for pcd in pcds.split(",")]
-        bronze_df = (
-            spark.read.format("delta")
-            .load(f"gs://{bucket_name}/{bronze_prefix}")
-            .filter("iscurrent == 1")
-            .withColumn("lookup", F.concat_ws("-", F.col("year"), F.col("month")))
-            .filter(F.col("lookup").isin(truncated_pcds))
-            .drop("valid_from", "valid_to", "checksum", "iscurrent", "lookup")
-        )
-    logger.info("Cast data to correct types.")
-    tmp_df1 = unpivot_dataframe(bronze_df, run_props["AMORTISATION_COLUMNS"])
-    cleaned_df = tmp_df1.withColumn(
-        "DATE_VALUE", F.to_date(F.col("DATE_VALUE"))
-    ).withColumn("DOUBLE_VALUE", F.round(F.col("DOUBLE_VALUE").cast(DoubleType()), 2))
-    logger.info("Generate info dataframe")
-    info_df = process_info(cleaned_df)
-
-    logger.info("Write dataframe")
-    write_mode = return_write_mode(bucket_name, silver_prefix, pcds)
-    (
-        info_df.write.format("delta")
-        .partitionBy("year", "month")
-        .mode(write_mode)
-        .save(f"gs://{bucket_name}/{silver_prefix}/info_table")
+    storage_client = storage.Client()
+    bucket = storage_client.get_bucket(bucket_name)
+    clean_dump_csv = bucket.blob(
+        f'clean_dump/{datetime.date.today().strftime("%Y-%m-%d")}_clean_amortisation.csv'
     )
+    if not (clean_dump_csv.exists()):
+        logger.info(
+            f"Could not find clean CSV dump file from AMORTISATION BRONZE PROFILING job. Workflow stopped!"
+        )
+        sys.exit(1)
+    else:
+        pcds = get_all_pcds(bucket_name, "amortisation")
+        ed_code = source_prefix.split("/")[-1]
+        logger.info(f"Processing data for deal {ed_code}")
+        for pcd in pcds:
+            logger.info(f"Processing {pcd} data from bronze to silver. ")
+            year_pcd = pcd.split("-")[0]
+            month_pcd = pcd.split("-")[1]
+            bronze_df = (
+                spark.read.format("delta")
+                .load(f"gs://{bucket_name}/{source_prefix}")
+                .filter(
+                    (F.col("iscurrent") == 1)
+                    & (F.col("year") == year_pcd)
+                    & (F.col("month") == month_pcd)
+                )
+                .drop("valid_from", "valid_to", "checksum", "iscurrent")
+            )
+            logger.info("Cast data to correct types.")
+            tmp_df1 = unpivot_dataframe(bronze_df, run_props["AMORTISATION_COLUMNS"])
+            info_df = tmp_df1.withColumn(
+                "DATE_VALUE", F.to_date(F.col("DATE_VALUE"))
+            ).withColumn(
+                "DOUBLE_VALUE", F.round(F.col("DOUBLE_VALUE").cast(DoubleType()), 2)
+            )
+
+            logger.info("Write dataframe")
+            write_mode = return_write_mode(bucket_name, target_prefix, pcds)
+            (
+                info_df.write.format("delta")
+                .partitionBy("ed_code", "year", "month")
+                .mode(write_mode)
+                .save(f"gs://{bucket_name}/{target_prefix}/info_table")
+            )
     logger.info("End AMORTISATION SILVER job.")
     return 0

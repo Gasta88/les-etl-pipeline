@@ -33,27 +33,6 @@ def get_profiling_rules(data_type):
     return rules[data_type]
 
 
-def get_deal_codes(bucket_name, prefix):
-    """
-    Return list of ed_codes from EDW.
-
-    :param bucket_name: GS bucket where files are stored.
-    :param prefix: specific bucket prefix from where to collect files.
-    :return ed_codes: list of portfolio ids.
-    """
-    storage_client = storage.Client(project="dataops-369610")
-    ed_codes = list(
-        set(
-            [
-                b.name.split("/")[-2]
-                for b in storage_client.list_blobs(bucket_name, prefix=prefix)
-                if b.name.endswith(".csv")
-            ]
-        )
-    )
-    return ed_codes
-
-
 def get_csv_files(bucket_name, prefix, file_key, data_type):
     """
     Return list of source files that satisfy the file_key parameter from EDW.
