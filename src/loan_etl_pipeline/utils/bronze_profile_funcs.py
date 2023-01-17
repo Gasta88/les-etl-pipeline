@@ -195,7 +195,8 @@ def profile_data(spark, bucket_name, csv_f, data_type, table_rules):
                     if len(curr_line) == 0:
                         continue
                     content.append(curr_line)
-            df = spark.createDataFrame(content, col_names).repartition(200)
+                    # repartition = 4 instances * 8 cores each * 3 for replication factor
+            df = spark.createDataFrame(content, col_names).repartition(96)
             checks = _get_checks_dict(df, table_rules)
             if False in checks.values():
                 error_list = []

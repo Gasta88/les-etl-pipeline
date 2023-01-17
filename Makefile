@@ -101,7 +101,7 @@ run_amortisation_profile_bronze: ## Run the dataproc serverless job
 	# --enable-private-ip-google-access
 	@gcloud dataproc batches submit --project ${PROJECT_ID} --region ${REGION} pyspark \
 	gs://${CODE_BUCKET}/dist/main.py --py-files=gs://${CODE_BUCKET}/dist/${APP_NAME}_${VERSION_NO}.zip \
-	--subnet default --properties spark.executor.instances=4,spark.driver.cores=8,spark.executor.cores=8,spark.executor.memory=32g,spark.app.name=loan_etl_pipeline \
+	--subnet default --properties spark.executor.instances=4,spark.driver.cores=8,spark.executor.cores=16,spark.executor.memory=64g,spark.app.name=loan_etl_pipeline \
 	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar \
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
@@ -158,7 +158,7 @@ run_amortisation_bronze: ## Run the dataproc serverless job
 	# --enable-private-ip-google-access
 	@gcloud dataproc batches submit --project ${PROJECT_ID} --region ${REGION} pyspark \
 	gs://${CODE_BUCKET}/dist/main.py --py-files=gs://${CODE_BUCKET}/dist/${APP_NAME}_${VERSION_NO}.zip \
-	--subnet default --properties spark.executor.instances=4,spark.driver.cores=8,spark.executor.cores=8,spark.executor.memory=32g,spark.app.name=loan_etl_pipeline \
+	--subnet default --properties spark.executor.instances=4,spark.driver.cores=8,spark.executor.cores=16,spark.executor.memory=64g,spark.app.name=loan_etl_pipeline \
 	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar \
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
@@ -228,7 +228,7 @@ run_amortisation_silver: ## Run the dataproc serverless job
 	# --enable-private-ip-google-access
 	@gcloud dataproc batches submit --project ${PROJECT_ID} --region ${REGION} pyspark \
 	gs://${CODE_BUCKET}/dist/main.py --py-files=gs://${CODE_BUCKET}/dist/${APP_NAME}_${VERSION_NO}.zip \
-	--subnet default --properties spark.executor.instances=4,spark.driver.cores=8,spark.executor.cores=8,spark.executor.memory=32g,spark.app.name=loan_etl_pipeline \
+	--subnet default --properties spark.executor.instances=4,spark.driver.cores=8,spark.executor.cores=16,spark.executor.memory=64g,spark.app.name=loan_etl_pipeline \
 	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar \
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \

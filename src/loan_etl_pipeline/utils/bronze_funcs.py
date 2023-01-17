@@ -30,9 +30,8 @@ def get_old_df(spark, bucket_name, prefix, pcds, ed_code):
     storage_client = storage.Client(project="dataops-369610")
     check_list = []
     for pcd in pcds:
-        year = pcd.split("-")[0]
-        month = pcd.split("-")[1]
-        partition_prefix = f"{prefix}/ed_code={ed_code}/year={year}/month={month}"
+        part_pcd = pcd.replace("-", "")
+        partition_prefix = f"{prefix}/part={ed_code}_{part_pcd}"
         files_in_partition = [
             b.name
             for b in storage_client.list_blobs(bucket_name, prefix=partition_prefix)
@@ -42,16 +41,10 @@ def get_old_df(spark, bucket_name, prefix, pcds, ed_code):
     if check_list == []:
         return None
     else:
-        years_pcds = [pcd.split("-")[0] for pcd in pcds]
-        months_pcds = [pcd.split("-")[1] for pcd in pcds]
         df = (
             spark.read.format("delta")
             .load(f"gs://{bucket_name}/{prefix}")
-            .filter(
-                (F.col("ed_code") == ed_code)
-                & F.col("year").isin(years_pcds)
-                & F.col("month").isin(months_pcds)
-            )
+            .where(f"part={ed_code}_{part_pcd}")
         )
         return df
 
@@ -108,8 +101,14 @@ def create_dataframe(spark, bucket_name, csv_f, data_type):
                 "checksum",
                 F.md5(F.concat(*checksum_cols)),
             )
+            .withColumn(
+                "part",
+                F.concat(F.col("ed_code"), F.lit("_"), F.col("year"), F.col("month")),
+            )
             .drop("ImportDate")
         )
+        # repartition = 4 instances * 8 cores each * 3 for replication factor
+        df = df.repartition(96)
     if len(df.head(1)) == 0:
         return None
     return (pcds, df)

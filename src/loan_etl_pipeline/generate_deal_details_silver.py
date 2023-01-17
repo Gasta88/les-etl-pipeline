@@ -100,7 +100,7 @@ def generate_deal_details_silver(spark, bucket_name, source_prefix, target_prefi
     bronze_df = (
         spark.read.format("delta")
         .load(f"gs://{bucket_name}/{source_prefix}")
-        .where(F.col("iscurrent") == 1)
+        .filter(F.col("iscurrent") == 1)
         .drop("valid_from", "valid_to", "checksum", "iscurrent")
     )
     logger.info("Cast data to correct types.")
@@ -113,7 +113,6 @@ def generate_deal_details_silver(spark, bucket_name, source_prefix, target_prefi
 
     (
         deal_info_df.write.format("delta")
-        .partitionBy("ed_code", "year", "month")
         .mode(write_mode)
         .save(f"gs://{bucket_name}/{target_prefix}/deal_info_table")
     )

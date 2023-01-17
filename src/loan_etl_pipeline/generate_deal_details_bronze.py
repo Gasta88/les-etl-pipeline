@@ -8,7 +8,7 @@ import pyspark.sql.functions as F
 from pyspark.sql.types import (
     TimestampType,
 )
-from src.loan_etl_pipeline.utils.bronze_funcs import get_old_df, perform_scd2
+from src.loan_etl_pipeline.utils.bronze_funcs import perform_scd2
 from delta import *
 
 # Setup logger
@@ -49,6 +49,27 @@ def get_raw_file(bucket_name, prefix, file_key):
         return all_files[0]
 
 
+def get_old_df(spark, bucket_name, prefix):
+    """
+    Return BRONZE table.
+
+    :param spark: SparkSession object.
+    :param bucket_name: GS bucket where files are stored.
+    :param prefix: specific bucket prefix from where to collect files.
+    :return df: Spark dataframe.
+    """
+    storage_client = storage.Client(project="dataops-369610")
+    check_list = []
+    files_in_prefix = [
+        b.name for b in storage_client.list_blobs(bucket_name, prefix=prefix)
+    ]
+    if files_in_prefix == []:
+        return None
+    else:
+        df = spark.read.format("delta").load(f"gs://{bucket_name}/{prefix}")
+        return df
+
+
 def create_dataframe(spark, bucket_name, xml_file):
     """
     Read files and generate one PySpark DataFrame from them.
@@ -58,8 +79,7 @@ def create_dataframe(spark, bucket_name, xml_file):
     :param xml_file: file to be read to generate the dataframe.
     :return df: PySpark dataframe.
     """
-    list_dfs = []
-    pcds = []
+    # pcds = []
     storage_client = storage.Client(project="dataops-369610")
     bucket = storage_client.get_bucket(bucket_name)
     blob = bucket.blob(xml_file)
@@ -111,7 +131,7 @@ def create_dataframe(spark, bucket_name, xml_file):
     data = ["" if v is None else v for v in data]
     df = pd.DataFrame(data).T  # Create DataFrame and transpose it
     df.columns = cols  # Update column names
-    pcds.append(df["PoolCutOffDate"].values[0].split("T")[0])
+    # pcds.append(df["PoolCutOffDate"].values[0].split("T")[0])
     # Conver from Pandas to Spark dataframe and add SCD-2 columns
     spark_df = (
         spark.createDataFrame(df)
@@ -131,8 +151,13 @@ def create_dataframe(spark, bucket_name, xml_file):
                 )
             ),
         )
+        .withColum(
+            "part",
+            F.concat(F.col("ed_code"), F.lit("_"), F.col("year"), F.col("month")),
+        )
     )
-    return (pcds, spark_df)
+    # return (pcds, spark_df)
+    return spark_df
 
 
 def generate_deal_details_bronze(
@@ -161,14 +186,14 @@ def generate_deal_details_bronze(
         sys.exit(1)
     else:
         logger.info(f"Retrieved deal details data XML files.")
-        pcds, new_df = create_dataframe(spark, raw_bucketname, xml_file)
+        new_df = create_dataframe(spark, raw_bucketname, xml_file)
 
-        logger.info(f"Retrieve OLD dataframe. Use following PCDs: {pcds}")
-        old_df = get_old_df(spark, data_bucketname, target_prefix, pcds, ed_code)
+        logger.info("Retrieve OLD dataframe.")
+        old_df = get_old_df(spark, data_bucketname, target_prefix)
         if old_df is None:
             logger.info("Initial load into DEAL DETAILS BRONZE")
             (
-                new_df.write.partitionBy("ed_code", "year", "month")
+                new_df.write.partitionBy("part")
                 .format("delta")
                 .mode("append")
                 .save(f"gs://{data_bucketname}/{target_prefix}")

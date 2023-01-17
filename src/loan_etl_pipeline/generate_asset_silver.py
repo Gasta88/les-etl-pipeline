@@ -284,17 +284,13 @@ def generate_asset_silver(spark, bucket_name, source_prefix, target_prefix):
         ed_code = source_prefix.split("/")[-1]
         logger.info(f"Processing data for deal {ed_code}")
         for pcd in pcds:
+            part_pcd = pcd.replace("-", "")
             logger.info(f"Processing {pcd} data from bronze to silver. ")
-            year_pcd = pcd.split("-")[0]
-            month_pcd = pcd.split("-")[1]
             bronze_df = (
                 spark.read.format("delta")
                 .load(f"gs://{bucket_name}/{source_prefix}")
-                .where(
-                    (F.col("iscurrent") == 1)
-                    & (F.col("year") == year_pcd)
-                    & (F.col("month") == month_pcd)
-                )
+                .where(f"part={ed_code}_{part_pcd}")
+                .filter(F.col("iscurrent") == 1)
                 .drop("valid_from", "valid_to", "checksum", "iscurrent")
             )
             assets_columns = get_columns_collection(bronze_df)

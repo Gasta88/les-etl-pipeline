@@ -24,18 +24,22 @@ def set_job_params():
     :return config: dictionary with properties used in this job.
     """
     config = {}
-    config["AMORTISATION_COLUMNS"] = {
+    config["AMORTISATION_MANDATORY_COLUMNS"] = {
         "AS3": StringType(),
-        "AS150": DoubleType(),
-        "AS151": DateType(),
-        "AS1348": DoubleType(),
-        "AS1349": DateType(),
     }
-    for i in range(152, 1348):
+    config["AMORTISATION_OPTIONAL_COLUMNS"] = {
+        "AS3": StringType(),
+    }
+    for i in range(150, 390):
         if i % 2 == 0:
-            config["AMORTISATION_COLUMNS"][f"AS{i}"] = DoubleType()
+            config["AMORTISATION_MANDATORY_COLUMNS"][f"AS{i}"] = DoubleType()
         else:
-            config["AMORTISATION_COLUMNS"][f"AS{i}"] = DateType()
+            config["AMORTISATION_MANDATORY_COLUMNS"][f"AS{i}"] = DateType()
+    for i in range(390, 1350):
+        if i % 2 == 0:
+            config["AMORTISATION_OPTIONAL_COLUMNS"][f"AS{i}"] = DoubleType()
+        else:
+            config["AMORTISATION_OPTIONAL_COLUMNS"][f"AS{i}"] = DateType()
     return config
 
 
@@ -90,7 +94,7 @@ def unpivot_dataframe(df, columns):
         var_name="DOUBLE_COLUMNS",
         value_name="DOUBLE_VALUE",
     )
-    scd2_df = df.select("AS3", "ed_code", "year", "month")
+    scd2_df = df.select("AS3", "part")
     new_df = (
         date_df.join(double_df, on="AS3", how="inner")
         .join(scd2_df, on="AS3", how="inner")
@@ -126,34 +130,50 @@ def generate_amortisation_silver(spark, bucket_name, source_prefix, target_prefi
         ed_code = source_prefix.split("/")[-1]
         logger.info(f"Processing data for deal {ed_code}")
         for pcd in pcds:
+            part_pcd = pcd.replace("-", "")
             logger.info(f"Processing {pcd} data from bronze to silver. ")
-            year_pcd = pcd.split("-")[0]
-            month_pcd = pcd.split("-")[1]
             bronze_df = (
                 spark.read.format("delta")
                 .load(f"gs://{bucket_name}/{source_prefix}")
-                .filter(
-                    (F.col("iscurrent") == 1)
-                    & (F.col("year") == year_pcd)
-                    & (F.col("month") == month_pcd)
-                )
+                .where(f"part={ed_code}_{part_pcd}")
+                .filter(F.col("iscurrent") == 1)
                 .drop("valid_from", "valid_to", "checksum", "iscurrent")
+                .repartition(96)
             )
             logger.info("Cast data to correct types.")
-            tmp_df1 = unpivot_dataframe(bronze_df, run_props["AMORTISATION_COLUMNS"])
-            info_df = tmp_df1.withColumn(
+            tmp_df1 = unpivot_dataframe(
+                bronze_df, run_props["AMORTISATION_MANDATORY_COLUMNS"]
+            )
+            tmp_df2 = unpivot_dataframe(
+                bronze_df, run_props["AMORTISATION_OPTIONAL_COLUMNS"]
+            )
+            mandatory_info_df = tmp_df1.withColumn(
+                "DATE_VALUE", F.to_date(F.col("DATE_VALUE"))
+            ).withColumn(
+                "DOUBLE_VALUE", F.round(F.col("DOUBLE_VALUE").cast(DoubleType()), 2)
+            )
+            optional_info_df = tmp_df2.withColumn(
                 "DATE_VALUE", F.to_date(F.col("DATE_VALUE"))
             ).withColumn(
                 "DOUBLE_VALUE", F.round(F.col("DOUBLE_VALUE").cast(DoubleType()), 2)
             )
 
-            logger.info("Write dataframe")
+            logger.info("Write mandatory dataframe")
             write_mode = return_write_mode(bucket_name, target_prefix, pcds)
             (
-                info_df.write.format("delta")
-                .partitionBy("ed_code", "year", "month")
+                mandatory_info_df.write.format("delta")
+                .partitionBy("part")
                 .mode(write_mode)
-                .save(f"gs://{bucket_name}/{target_prefix}/info_table")
+                .save(f"gs://{bucket_name}/{target_prefix}/mandatory_info_table")
+            )
+
+            logger.info("Write optional dataframe")
+            write_mode = return_write_mode(bucket_name, target_prefix, pcds)
+            (
+                optional_info_df.write.format("delta")
+                .partitionBy("part")
+                .mode(write_mode)
+                .save(f"gs://{bucket_name}/{target_prefix}/optional_info_table")
             )
     logger.info("End AMORTISATION SILVER job.")
     return 0

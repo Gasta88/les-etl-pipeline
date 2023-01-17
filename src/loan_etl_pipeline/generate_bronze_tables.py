@@ -72,7 +72,7 @@ def generate_bronze_tables(
                 if old_df is None:
                     logger.info(f"Initial load into {data_type.upper()} BRONZE")
                     (
-                        new_df.write.partitionBy("ed_code", "year", "month")
+                        new_df.write.partitionBy("part")
                         .format("delta")
                         .mode("append")
                         .save(f"gs://{data_bucketname}/{target_prefix}")
