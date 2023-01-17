@@ -108,7 +108,7 @@ def generate_collateral_silver(spark, bucket_name, source_prefix, target_prefix)
             bronze_df = (
                 spark.read.format("delta")
                 .load(f"gs://{bucket_name}/{source_prefix}")
-                .filter(
+                .where(
                     (F.col("iscurrent") == 1)
                     & (F.col("year") == year_pcd)
                     & (F.col("month") == month_pcd)

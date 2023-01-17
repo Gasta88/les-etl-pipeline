@@ -100,7 +100,7 @@ def generate_deal_details_silver(spark, bucket_name, source_prefix, target_prefi
     bronze_df = (
         spark.read.format("delta")
         .load(f"gs://{bucket_name}/{source_prefix}")
-        .filter(F.col("iscurrent") == 1)
+        .where(F.col("iscurrent") == 1)
         .drop("valid_from", "valid_to", "checksum", "iscurrent")
     )
     logger.info("Cast data to correct types.")

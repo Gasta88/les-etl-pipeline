@@ -181,15 +181,20 @@ def profile_data(spark, bucket_name, csv_f, data_type, table_rules):
     try:
         with open(dest_csv_f, "r") as f:
             for i, line in enumerate(csv.reader(f)):
+                if data_type == "amortisation":
+                    # Just check that AS3 is present instead of the hundreds of columns that the file has.
+                    curr_line = line[:1]
+                else:
+                    curr_line = line
                 if i == 0:
-                    col_names = line
+                    col_names = curr_line
                     col_names[0] = INITIAL_COL[data_type]
                 elif i == 1:
                     continue
                 else:
-                    if len(line) == 0:
+                    if len(curr_line) == 0:
                         continue
-                    content.append(line)
+                    content.append(curr_line)
             df = spark.createDataFrame(content, col_names).repartition(200)
             checks = _get_checks_dict(df, table_rules)
             if False in checks.values():

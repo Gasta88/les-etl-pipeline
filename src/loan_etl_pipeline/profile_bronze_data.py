@@ -59,6 +59,7 @@ def profile_bronze_data(
             dirty_files = []
             clean_files = []
             for new_file_name in all_new_files:
+                logger.info(f"Checking {new_file_name}..")
                 profile_flag, error_text = profile_data(
                     spark, raw_bucketname, new_file_name, data_type, table_rules
                 )
