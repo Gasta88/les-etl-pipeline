@@ -103,7 +103,9 @@ def unpivot_dataframe(df, columns):
     return new_df
 
 
-def generate_amortisation_silver(spark, bucket_name, source_prefix, target_prefix):
+def generate_amortisation_silver(
+    spark, bucket_name, source_prefix, target_prefix, ed_code
+):
     """
     Run main steps of the module.
 
@@ -111,6 +113,7 @@ def generate_amortisation_silver(spark, bucket_name, source_prefix, target_prefi
     :param bucket_name: GS bucket where files are stored.
     :param source_prefix: specific bucket prefix from where to collect bronze data.
     :param target_prefix: specific bucket prefix from where to deposit silver data.
+    :param ed_code: deal code to process.
     :return status: 0 if successful.
     """
     logger.info("Start AMORTISATION SILVER job.")
@@ -127,7 +130,6 @@ def generate_amortisation_silver(spark, bucket_name, source_prefix, target_prefi
         sys.exit(1)
     else:
         pcds = get_all_pcds(bucket_name, "amortisation")
-        ed_code = source_prefix.split("/")[-1]
         logger.info(f"Processing data for deal {ed_code}")
         for pcd in pcds:
             part_pcd = pcd.replace("-", "")
@@ -135,7 +137,7 @@ def generate_amortisation_silver(spark, bucket_name, source_prefix, target_prefi
             bronze_df = (
                 spark.read.format("delta")
                 .load(f"gs://{bucket_name}/{source_prefix}")
-                .where(f"part={ed_code}_{part_pcd}")
+                .where(F.col("part") == f"{ed_code}_{part_pcd}")
                 .filter(F.col("iscurrent") == 1)
                 .drop("valid_from", "valid_to", "checksum", "iscurrent")
                 .repartition(96)

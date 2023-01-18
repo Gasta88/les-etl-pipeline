@@ -176,7 +176,7 @@ def get_columns_collection(df):
     :return cols_dict: collection of columns labelled by topic.
     """
     cols_dict = {
-        "general": ["ed_code", "year", "month"]
+        "general": ["ed_code", "part"]
         + [f"AS{i}" for i in range(1, 15) if f"AS{i}" in df.columns],
         "obligor_info": [f"AS{i}" for i in range(15, 50) if f"AS{i}" in df.columns],
         "loan_info": [f"AS{i}" for i in range(50, 80) if f"AS{i}" in df.columns],
@@ -257,7 +257,7 @@ def process_performance_info(df, cols_dict):
     return new_df
 
 
-def generate_asset_silver(spark, bucket_name, source_prefix, target_prefix):
+def generate_asset_silver(spark, bucket_name, source_prefix, target_prefix, ed_code):
     """
     Run main steps of the module.
 
@@ -265,6 +265,7 @@ def generate_asset_silver(spark, bucket_name, source_prefix, target_prefix):
     :param bucket_name: GS bucket where files are stored.
     :param source_prefix: specific bucket prefix from where to collect bronze data.
     :param target_prefix: specific bucket prefix from where to deposit silver data.
+    :param ed_code: deal code to process.
     :return status: 0 if successful.
     """
     logger.info("Start ASSET SILVER job.")
@@ -281,7 +282,6 @@ def generate_asset_silver(spark, bucket_name, source_prefix, target_prefix):
         sys.exit(1)
     else:
         pcds = get_all_pcds(bucket_name, "assets")
-        ed_code = source_prefix.split("/")[-1]
         logger.info(f"Processing data for deal {ed_code}")
         for pcd in pcds:
             part_pcd = pcd.replace("-", "")
@@ -289,7 +289,7 @@ def generate_asset_silver(spark, bucket_name, source_prefix, target_prefix):
             bronze_df = (
                 spark.read.format("delta")
                 .load(f"gs://{bucket_name}/{source_prefix}")
-                .where(f"part={ed_code}_{part_pcd}")
+                .where(F.col("part") == f"{ed_code}_{part_pcd}")
                 .filter(F.col("iscurrent") == 1)
                 .drop("valid_from", "valid_to", "checksum", "iscurrent")
             )
@@ -316,31 +316,31 @@ def generate_asset_silver(spark, bucket_name, source_prefix, target_prefix):
 
             (
                 loan_info_df.write.format("delta")
-                .partitionBy("ed_code", "year", "month")
+                .partitionBy("part")
                 .mode(write_mode)
                 .save(f"gs://{bucket_name}/{target_prefix}/loan_info_table")
             )
             (
                 obligor_info_df.write.format("delta")
-                .partitionBy("ed_code", "year", "month")
+                .partitionBy("part")
                 .mode(write_mode)
                 .save(f"gs://{bucket_name}/{target_prefix}/obligor_info_table")
             )
             (
                 financial_info_df.write.format("delta")
-                .partitionBy("ed_code", "year", "month")
+                .partitionBy("part")
                 .mode(write_mode)
                 .save(f"gs://{bucket_name}/{target_prefix}/financial_info_table")
             )
             (
                 interest_rate_df.write.format("delta")
-                .partitionBy("ed_code", "year", "month")
+                .partitionBy("part")
                 .mode(write_mode)
                 .save(f"gs://{bucket_name}/{target_prefix}/interest_rate_table")
             )
             (
                 performance_info_df.write.format("delta")
-                .partitionBy("ed_code", "year", "month")
+                .partitionBy("part")
                 .mode(write_mode)
                 .save(f"gs://{bucket_name}/{target_prefix}/performance_info_table")
             )

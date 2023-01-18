@@ -75,7 +75,9 @@ def process_collateral_info(df):
     return new_df
 
 
-def generate_collateral_silver(spark, bucket_name, source_prefix, target_prefix):
+def generate_collateral_silver(
+    spark, bucket_name, source_prefix, target_prefix, ed_code
+):
     """
     Run main steps of the module.
 
@@ -83,6 +85,7 @@ def generate_collateral_silver(spark, bucket_name, source_prefix, target_prefix)
     :param bucket_name: GS bucket where files are stored.
     :param source_prefix: specific bucket prefix from where to collect bronze data.
     :param target_prefix: specific bucket prefix from where to deposit silver data.
+    :param ed_code: deal code to process.
     :return status: 0 if successful.
     """
     logger.info("Start COLLATERAL SILVER job.")
@@ -99,7 +102,6 @@ def generate_collateral_silver(spark, bucket_name, source_prefix, target_prefix)
         sys.exit(1)
     else:
         pcds = get_all_pcds(bucket_name, "collaterals")
-        ed_code = source_prefix.split("/")[-1]
         logger.info(f"Processing data for deal {ed_code}")
         for pcd in pcds:
             part_pcd = pcd.replace("-", "")
@@ -107,7 +109,7 @@ def generate_collateral_silver(spark, bucket_name, source_prefix, target_prefix)
             bronze_df = (
                 spark.read.format("delta")
                 .load(f"gs://{bucket_name}/{source_prefix}")
-                .where(f"part={ed_code}_{part_pcd}")
+                .where(F.col("part") == f"{ed_code}_{part_pcd}")
                 .filter(F.col("iscurrent") == 1)
                 .drop("valid_from", "valid_to", "checksum", "iscurrent")
             )
@@ -125,7 +127,7 @@ def generate_collateral_silver(spark, bucket_name, source_prefix, target_prefix)
 
             (
                 info_df.write.format("delta")
-                .partitionBy("ed_code", "year", "month")
+                .partitionBy("part")
                 .mode(write_mode)
                 .save(f"gs://{bucket_name}/{target_prefix}/info_table")
             )

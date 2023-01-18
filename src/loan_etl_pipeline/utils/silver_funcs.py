@@ -71,9 +71,8 @@ def return_write_mode(bucket_name, prefix, pcds):
     check_list = []
     ed_code = prefix.split("/")[-1]
     for pcd in pcds:
-        year = pcd.split("-")[0]
-        month = pcd.split("-")[1]
-        partition_prefix = f"{prefix}/ed_code={ed_code}/year={year}/month={month}"
+        part_pcd = pcd.replace("-", "")
+        partition_prefix = f"{prefix}/part={ed_code}_{part_pcd}"
         check_list.append(
             len(
                 [

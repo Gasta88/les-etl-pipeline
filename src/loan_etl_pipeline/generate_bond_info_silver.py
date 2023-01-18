@@ -70,7 +70,7 @@ def get_columns_collection(df):
     :return cols_dict: collection of columns labelled by topic.
     """
     cols_dict = {
-        "bond_info": ["ed_code", "year", "month"]
+        "bond_info": ["ed_code", "part"]
         + [f"BS{i}" for i in range(1, 11) if f"BS{i}" in df.columns],
         "collateral_info": ["ed_code", "year", "month"]
         + [f"BS{i}" for i in range(11, 19) if f"BS{i}" in df.columns],
@@ -130,7 +130,9 @@ def process_tranche_info(df, cols_dict):
     return new_df
 
 
-def generate_bond_info_silver(spark, bucket_name, source_prefix, target_prefix):
+def generate_bond_info_silver(
+    spark, bucket_name, source_prefix, target_prefix, ed_code
+):
     """
     Run main steps of the module.
 
@@ -138,6 +140,7 @@ def generate_bond_info_silver(spark, bucket_name, source_prefix, target_prefix):
     :param bucket_name: GS bucket where files are stored.
     :param source_prefix: specific bucket prefix from where to collect bronze data.
     :param target_prefix: specific bucket prefix from where to deposit silver data.
+    :param ed_code: deal code to process.
     :return status: 0 if successful.
     """
     logger.info("Start BOND_INFO SILVER job.")
@@ -154,7 +157,6 @@ def generate_bond_info_silver(spark, bucket_name, source_prefix, target_prefix):
         sys.exit(1)
     else:
         pcds = get_all_pcds(bucket_name, "bond_info")
-        ed_code = source_prefix.split("/")[-1]
         logger.info(f"Processing data for deal {ed_code}")
         for pcd in pcds:
             part_pcd = pcd.replace("-", "")
@@ -162,7 +164,7 @@ def generate_bond_info_silver(spark, bucket_name, source_prefix, target_prefix):
             bronze_df = (
                 spark.read.format("delta")
                 .load(f"gs://{bucket_name}/{source_prefix}")
-                .where(f"part={ed_code}_{part_pcd}")
+                .where(F.col("part") == f"{ed_code}_{part_pcd}")
                 .filter(F.col("iscurrent") == 1)
                 .drop("valid_from", "valid_to", "checksum", "iscurrent")
             )
@@ -187,25 +189,25 @@ def generate_bond_info_silver(spark, bucket_name, source_prefix, target_prefix):
 
             (
                 info_df.write.format("delta")
-                .partitionBy("ed_code", "year", "month")
+                .partitionBy("part")
                 .mode(write_mode)
                 .save(f"gs://{bucket_name}/{target_prefix}/info_table")
             )
             (
                 collateral_df.write.format("delta")
-                .partitionBy("ed_code", "year", "month")
+                .partitionBy("part")
                 .mode(write_mode)
                 .save(f"gs://{bucket_name}/{target_prefix}/collaterals_table")
             )
             (
                 contact_df.write.format("delta")
-                .partitionBy("ed_code", "year", "month")
+                .partitionBy("part")
                 .mode(write_mode)
                 .save(f"gs://{bucket_name}/{target_prefix}/contact_table")
             )
             (
                 tranche_df.write.format("delta")
-                .partitionBy("ed_code", "year", "month")
+                .partitionBy("part")
                 .mode(write_mode)
                 .save(f"gs://{bucket_name}/{target_prefix}/tranche_info_table")
             )

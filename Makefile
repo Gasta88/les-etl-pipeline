@@ -194,7 +194,7 @@ run_asset_silver: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
 	--version=2.0 \
-	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=SME/bronze/assets/ed_code=SMEMBE000095100220092 --target-prefix=SME/silver/assets --stage-name=silver_asset &
+	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=SME/bronze/assets --target-prefix=SME/silver/assets --ed-code=SMEMBE000095100220092 --stage-name=silver_asset &
 
 run_collateral_silver: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -207,7 +207,7 @@ run_collateral_silver: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
 	--version=2.0 \
-	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=SME/bronze/collaterals/ed_code=SMEMBE000095100220092 --target-prefix=SME/silver/collaterals --stage-name=silver_collateral &
+	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=SME/bronze/collaterals --target-prefix=SME/silver/collaterals --ed-code=SMEMBE000095100220092 --stage-name=silver_collateral &
 
 run_bond_info_silver: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -220,7 +220,7 @@ run_bond_info_silver: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
 	--version=2.0 \
-	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=SME/bronze/bond_info/ed_code=SMEMBE000095100220092 --target-prefix=SME/silver/bond_info --stage-name=silver_bond_info &
+	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=SME/bronze/bond_info --target-prefix=SME/silver/bond_info --ed-code=SMEMBE000095100220092 --stage-name=silver_bond_info &
 
 run_amortisation_silver: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -233,7 +233,7 @@ run_amortisation_silver: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
 	--version=2.0 \
-	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=SME/bronze/amortisation/ed_code=SMEMBE000095100220092 --target-prefix=SME/silver/amortisation --stage-name=silver_amortisation &
+	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=SME/bronze/amortisation --target-prefix=SME/silver/amortisation --ed-code=SMEMBE000095100220092 --stage-name=silver_amortisation &
 
 run_deal_details_silver: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -246,7 +246,7 @@ run_deal_details_silver: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
 	--version=2.0 \
-	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=SME/bronze/deal_details/ed_code=SMEMBE000095100220092 --target-prefix=SME/silver/deal_details --stage-name=silver_deal_details &
+	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=SME/bronze/deal_details --target-prefix=SME/silver/deal_details --stage-name=silver_deal_details &
 
 all_silver: run_asset_silver run_amortisation_silver run_bond_info_silver run_collateral_silver run_deal_details_silver
 	@echo "All targets for generating silver layer have been run"

@@ -151,7 +151,7 @@ def create_dataframe(spark, bucket_name, xml_file):
                 )
             ),
         )
-        .withColum(
+        .withColumn(
             "part",
             F.concat(F.col("ed_code"), F.lit("_"), F.col("year"), F.col("month")),
         )

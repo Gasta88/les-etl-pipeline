@@ -30,6 +30,7 @@ def run(
     data_bucketname,
     source_prefix,
     target_prefix,
+    ed_code,
     file_key,
     stage_name,
 ):
@@ -38,6 +39,7 @@ def run(
     :param data_bucketname: GS bucket where transformed files are stored.
     :param source_prefix: specific bucket prefix from where to collect CSV files.
     :param target_prefix: specific bucket prefix from where to collect bronze old data.
+    :param ed_code: deal code used for Silver layer ETL.
     :param file_key: label for file name that helps with the cherry picking with file type.
     :param stage_name: name of the ETL stage.
     :return: None
@@ -124,22 +126,22 @@ def run(
     # ----------------Silver layer ETL
     if stage_name == "silver_asset":
         status = generate_asset_silver(
-            spark, data_bucketname, source_prefix, target_prefix
+            spark, data_bucketname, source_prefix, target_prefix, ed_code
         )
 
     if stage_name == "silver_collateral":
         status = generate_collateral_silver(
-            spark, data_bucketname, source_prefix, target_prefix
+            spark, data_bucketname, source_prefix, target_prefix, ed_code
         )
 
     if stage_name == "silver_bond_info":
         status = generate_bond_info_silver(
-            spark, data_bucketname, source_prefix, target_prefix
+            spark, data_bucketname, source_prefix, target_prefix, ed_code
         )
 
     if stage_name == "silver_amortisation":
         status = generate_amortisation_silver(
-            spark, data_bucketname, source_prefix, target_prefix
+            spark, data_bucketname, source_prefix, target_prefix, ed_code
         )
 
     if stage_name == "silver_deal_details":
@@ -198,6 +200,14 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--ed-code",
+        type=str,
+        dest="ed_code",
+        required=False,
+        help="Deal code used in Silver layer ETL",
+    )
+
+    parser.add_argument(
         "--stage-name",
         type=str,
         dest="stage_name",
@@ -212,6 +222,7 @@ if __name__ == "__main__":
         data_bucketname=known_args.data_bucketname,
         source_prefix=known_args.source_prefix,
         target_prefix=known_args.target_prefix,
+        ed_code=known_args.ed_code,
         file_key=known_args.file_key,
         stage_name=known_args.stage_name,
     )
