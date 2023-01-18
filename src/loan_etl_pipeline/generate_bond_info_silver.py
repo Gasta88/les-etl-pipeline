@@ -72,11 +72,11 @@ def get_columns_collection(df):
     cols_dict = {
         "bond_info": ["ed_code", "part"]
         + [f"BS{i}" for i in range(1, 11) if f"BS{i}" in df.columns],
-        "collateral_info": ["ed_code", "year", "month"]
+        "collateral_info": ["ed_code", "part"]
         + [f"BS{i}" for i in range(11, 19) if f"BS{i}" in df.columns],
-        "contact_info": ["ed_code", "year", "month"]
+        "contact_info": ["ed_code", "part"]
         + [f"BS{i}" for i in range(19, 25) if f"BS{i}" in df.columns],
-        "tranche_info": ["ed_code", "year", "month"]
+        "tranche_info": ["ed_code", "part"]
         + [f"BS{i}" for i in range(25, 40) if f"BS{i}" in df.columns],
     }
     return cols_dict

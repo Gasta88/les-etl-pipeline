@@ -109,7 +109,7 @@ def generate_deal_details_silver(spark, bucket_name, source_prefix, target_prefi
     deal_info_df = process_deal_info(cleaned_df)
 
     logger.info("Write dataframe")
-    write_mode = return_write_mode(bucket_name, target_prefix)
+    write_mode = return_write_mode(bucket_name, target_prefix, None)
 
     (
         deal_info_df.write.format("delta")

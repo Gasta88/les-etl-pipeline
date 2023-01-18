@@ -70,19 +70,23 @@ def return_write_mode(bucket_name, prefix, pcds):
     storage_client = storage.Client(project="dataops-369610")
     check_list = []
     ed_code = prefix.split("/")[-1]
-    for pcd in pcds:
-        part_pcd = pcd.replace("-", "")
-        partition_prefix = f"{prefix}/part={ed_code}_{part_pcd}"
-        check_list.append(
-            len(
-                [
-                    b.name
-                    for b in storage_client.list_blobs(
-                        bucket_name, prefix=partition_prefix
-                    )
-                ]
+    if pcds is not None:
+        for pcd in pcds:
+            part_pcd = pcd.replace("-", "")
+            partition_prefix = f"{prefix}/part={ed_code}_{part_pcd}"
+            check_list.append(
+                len(
+                    [
+                        b.name
+                        for b in storage_client.list_blobs(
+                            bucket_name, prefix=partition_prefix
+                        )
+                    ]
+                )
             )
-        )
+    else:
+        # In case of deal_details
+        return "append"
     if sum(check_list) > 0:
         return "overwrite"
     else:
