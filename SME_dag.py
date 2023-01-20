@@ -30,6 +30,7 @@ RAW_BUCKET = "{{ var.value.raw_bucketname }}"
 DATA_BUCKET = "{{ var.value.data_bucketname }}"
 PHS_CLUSTER = "{{ var.value.phs_cluster }}"
 METASTORE_CLUSTER = "{{var.value.metastore_cluster}}"
+SUBNETWORK_URI = "projects/{{ var.value.project_id }}/regions/{{ var.value.region_name}}/subnetworks/default"
 
 PYTHON_FILE_LOCATION = "gs://{{var.value.bucket_name }}/dist/main.py"
 PHS_CLUSTER_PATH = "projects/{{ var.value.project_id }}/regions/{{ var.value.region_name}}/clusters/{{ var.value.phs_cluster }}"
@@ -78,14 +79,30 @@ with models.DAG(
     raw_prefixes = get_raw_prefixes()
     for rp in raw_prefixes:
         ed_code = rp.split("/")[-1]
-        bronze_profile_task = DataprocCreateBatchOperator(
+        assets_bronze_profile_task = DataprocCreateBatchOperator(
             task_id=f"bronze_profile_{ed_code}",
             batch={
                 "pyspark_batch": {
                     "main_python_file_uri": PYTHON_FILE_LOCATION,
                     "jar_file_uris": [SPARK_DELTA_JAR_FILE, SPARK_DELTA_STORE_JAR_FILE],
+                    "python_file_uris": [PY_FILES],
+                    "properties": {
+                        "spark.executor.instances": 4,
+                        "spark.driver.cores": 8,
+                        "spark.executor.cores": 8,
+                        "spark.executor.memory": "16g",
+                    },
+                    "args": [
+                        f"--project={PROJECT_ID}",
+                        f"--raw-bucketname=${RAW_BUCKET}",
+                        f"--data-bucketname=${DATA_BUCKET}",
+                        f"--source-prefix=mini_source/${ed_code}",
+                        "--file-key=Loan_Data",
+                        "--stage-name=profile_bronze_asset",
+                    ],
                 },
                 "environment_config": {
+                    "execution_config": {"subnetwork_uri": "default"},
                     "peripherals_config": {
                         "metastore_service": METASTORE_SERVICE_LOCATION,
                         "spark_history_server_config": {
@@ -93,10 +110,13 @@ with models.DAG(
                         },
                     },
                 },
+                "runtime_config": {
+                    "properties": {"spark.app.name": "loan_etl_pipeline"}
+                },
             },
-            batch_id="dataproc-metastore",
+            batch_id=f"batch-bronze-profile-{ed_code}",
         )
-        bronze_task = DataprocCreateBatchOperator(
+        assets_bronze_task = DataprocCreateBatchOperator(
             task_id=f"bronze_{ed_code}",
             batch={
                 "pyspark_batch": {
@@ -104,6 +124,7 @@ with models.DAG(
                     "jar_file_uris": [SPARK_DELTA_JAR_FILE, SPARK_DELTA_STORE_JAR_FILE],
                 },
                 "environment_config": {
+                    "execution_config": {"subnetwork_uri": "default"},
                     "peripherals_config": {
                         "metastore_service": METASTORE_SERVICE_LOCATION,
                         "spark_history_server_config": {
@@ -112,9 +133,9 @@ with models.DAG(
                     },
                 },
             },
-            batch_id="dataproc-metastore",
+            batch_id=f"create-bronze-tables-{ed_code}",
         )
-        silver_task = DataprocCreateBatchOperator(
+        assets_silver_task = DataprocCreateBatchOperator(
             task_id=f"silver_{ed_code}",
             batch={
                 "pyspark_batch": {
@@ -122,6 +143,7 @@ with models.DAG(
                     "jar_file_uris": [SPARK_DELTA_JAR_FILE, SPARK_DELTA_STORE_JAR_FILE],
                 },
                 "environment_config": {
+                    "execution_config": {"subnetwork_uri": "default"},
                     "peripherals_config": {
                         "metastore_service": METASTORE_SERVICE_LOCATION,
                         "spark_history_server_config": {
@@ -130,15 +152,7 @@ with models.DAG(
                     },
                 },
             },
-            batch_id="dataproc-metastore",
+            batch_id=f"create-silver-tables-{ed_code}",
         )
-        # get_batch_metastore = DataprocGetBatchOperator(
-        #     task_id="get_batch_metatstore",
-        #     batch_id="dataproc-metastore",
-        # )
-        # delete_batch_metastore = DataprocDeleteBatchOperator(
-        #     task_id="delete_batch_metastore",
-        #     batch_id="dataproc-metastore",
-        # )
 
-        bronze_profile_task >> bronze_task >> silver_task
+        assbronze_profile_task >> bronze_task >> silver_task
