@@ -120,7 +120,7 @@ testing = ["pytest"]
 
 [[package]]
 name = "google-resumable-media"
-version = "2.4.0"
+version = "2.4.1"
 description = "Utilities for Google Media Downloads and Resumable Uploads"
 category = "main"
 optional = false
@@ -480,8 +480,8 @@ google-crc32c = [
     {file = "google_crc32c-1.5.0-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:c672d99a345849301784604bfeaeba4db0c7aae50b95be04dd651fd2a7310b93"},
 ]
 google-resumable-media = [
-    {file = "google-resumable-media-2.4.0.tar.gz", hash = "sha256:8d5518502f92b9ecc84ac46779bd4f09694ecb3ba38a3e7ca737a86d15cbca1f"},
-    {file = "google_resumable_media-2.4.0-py2.py3-none-any.whl", hash = "sha256:2aa004c16d295c8f6c33b2b4788ba59d366677c0a25ae7382436cb30f776deaa"},
+    {file = "google-resumable-media-2.4.1.tar.gz", hash = "sha256:15b8a2e75df42dc6502d1306db0bce2647ba6013f9cd03b6e17368c0886ee90a"},
+    {file = "google_resumable_media-2.4.1-py2.py3-none-any.whl", hash = "sha256:831e86fd78d302c1a034730a0c6e5369dd11d37bad73fa69ca8998460d5bae8d"},
 ]
 googleapis-common-protos = [
     {file = "googleapis-common-protos-1.58.0.tar.gz", hash = "sha256:c727251ec025947d545184ba17e3578840fc3a24a0516a020479edab660457df"},

@@ -121,7 +121,7 @@ def generate_amortisation_silver(
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(bucket_name)
     clean_dump_csv = bucket.blob(
-        f'clean_dump/{datetime.date.today().strftime("%Y-%m-%d")}_clean_amortisation.csv'
+        f'clean_dump/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_clean_amortisation.csv'
     )
     if not (clean_dump_csv.exists()):
         logger.info(
@@ -129,7 +129,7 @@ def generate_amortisation_silver(
         )
         sys.exit(1)
     else:
-        pcds = get_all_pcds(bucket_name, "amortisation")
+        pcds = get_all_pcds(bucket_name, "amortisation", ed_code)
         logger.info(f"Processing data for deal {ed_code}")
         for pcd in pcds:
             part_pcd = pcd.replace("-", "")

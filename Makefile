@@ -10,6 +10,8 @@ APP_NAME ?= $$(cat pyproject.toml| grep name | cut -d" " -f3 | sed  's/"//g')
 VERSION_NO ?= $$(poetry version --short)
 SRC_WITH_DEPS ?= src_with_deps
 DELTA_JAR_FILE ?= delta-core_2.13-2.1.0.jar
+# ED_CODE ?= SMEMBE000095100220092
+ED_CODE ?= SMESES000176100320040
 
 .PHONY: $(shell sed -n -e '/^$$/ { n ; /^[^ .\#][^ ]*:/ { s/:.*$$// ; p ; } ; }' $(MAKEFILE_LIST))
 
@@ -68,7 +70,7 @@ run_asset_profile_bronze: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
 	--version=2.0 \
-	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source/SMEMBE000095100220092 --file-key=Loan_Data --stage-name=profile_bronze_asset &
+	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source/${ED_CODE} --file-key=Loan_Data --stage-name=profile_bronze_asset &
 run_collateral_profile_bronze: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
 	# --region=${REGION} \
@@ -80,7 +82,7 @@ run_collateral_profile_bronze: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
 	--version=2.0 \
-	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source/SMEMBE000095100220092 --file-key=Collateral --stage-name=profile_bronze_collateral &
+	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source/${ED_CODE} --file-key=Collateral --stage-name=profile_bronze_collateral &
 
 run_bond_info_profile_bronze: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -93,7 +95,7 @@ run_bond_info_profile_bronze: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
 	--version=2.0 \
-	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source/SMEMBE000095100220092 --file-key=Bond_Info --stage-name=profile_bronze_bond_info &
+	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source/${ED_CODE} --file-key=Bond_Info --stage-name=profile_bronze_bond_info &
 
 # run_amortisation_profile_bronze: ## Run the dataproc serverless job
 # 	# @gcloud compute networks subnets update default \
@@ -106,7 +108,7 @@ run_bond_info_profile_bronze: ## Run the dataproc serverless job
 # 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 # 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
 # 	--version=2.0 \
-# 	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source/SMEMBE000095100220092 --file-key=Amortization --stage-name=profile_bronze_amortisation &
+# 	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source/${ED_CODE} --file-key=Amortization --stage-name=profile_bronze_amortisation &
 
 
 # all_bronze_profile: run_asset_profile_bronze run_amortisation_profile_bronze run_bond_info_profile_bronze run_collateral_profile_bronze
@@ -126,7 +128,7 @@ run_asset_bronze: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
 	--version=2.0 \
-	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source/SMEMBE000095100220092 --target-prefix=SME/bronze/assets --file-key=Loan_Data --stage-name=bronze_asset &
+	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source/${ED_CODE} --target-prefix=SME/bronze/assets --file-key=Loan_Data --stage-name=bronze_asset &
 
 run_collateral_bronze: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -139,7 +141,7 @@ run_collateral_bronze: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
 	--version=2.0 \
-	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source/SMEMBE000095100220092 --target-prefix=SME/bronze/collaterals --file-key=Collateral --stage-name=bronze_collateral &
+	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source/${ED_CODE} --target-prefix=SME/bronze/collaterals --file-key=Collateral --stage-name=bronze_collateral &
 
 run_bond_info_bronze: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -152,7 +154,7 @@ run_bond_info_bronze: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
 	--version=2.0 \
-	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source/SMEMBE000095100220092 --target-prefix=SME/bronze/bond_info --file-key=Bond_Info --stage-name=bronze_bond_info &
+	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source/${ED_CODE} --target-prefix=SME/bronze/bond_info --file-key=Bond_Info --stage-name=bronze_bond_info &
 
 # run_amortisation_bronze: ## Run the dataproc serverless job
 # 	# @gcloud compute networks subnets update default \
@@ -165,7 +167,7 @@ run_bond_info_bronze: ## Run the dataproc serverless job
 # 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 # 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
 # 	--version=2.0 \
-# 	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source/SMEMBE000095100220092 --target-prefix=SME/bronze/amortisation --file-key=Amortization --stage-name=bronze_amortisation &
+# 	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source/${ED_CODE} --target-prefix=SME/bronze/amortisation --file-key=Amortization --stage-name=bronze_amortisation &
 
 run_deal_details_bronze: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -178,7 +180,7 @@ run_deal_details_bronze: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
 	--version=2.0 \
-	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source/SMEMBE000095100220092 --target-prefix=SME/bronze/deal_details --file-key=Deal_Details --stage-name=bronze_deal_details &
+	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source/${ED_CODE} --target-prefix=SME/bronze/deal_details --file-key=Deal_Details --stage-name=bronze_deal_details &
 
 # all_bronze: run_asset_bronze run_amortisation_bronze run_bond_info_bronze run_collateral_bronze run_deal_details_bronze
 # 	@echo "All targets for generating bronze layer have been run"
@@ -198,7 +200,7 @@ run_asset_silver: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
 	--version=2.0 \
-	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=SME/bronze/assets --target-prefix=SME/silver/assets --ed-code=SMEMBE000095100220092 --stage-name=silver_asset &
+	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=SME/bronze/assets --target-prefix=SME/silver/assets --ed-code=${ED_CODE} --stage-name=silver_asset &
 
 run_collateral_silver: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -211,7 +213,7 @@ run_collateral_silver: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
 	--version=2.0 \
-	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=SME/bronze/collaterals --target-prefix=SME/silver/collaterals --ed-code=SMEMBE000095100220092 --stage-name=silver_collateral &
+	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=SME/bronze/collaterals --target-prefix=SME/silver/collaterals --ed-code=${ED_CODE} --stage-name=silver_collateral &
 
 run_bond_info_silver: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \
@@ -224,7 +226,7 @@ run_bond_info_silver: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
 	--version=2.0 \
-	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=SME/bronze/bond_info --target-prefix=SME/silver/bond_info --ed-code=SMEMBE000095100220092 --stage-name=silver_bond_info &
+	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=SME/bronze/bond_info --target-prefix=SME/silver/bond_info --ed-code=${ED_CODE} --stage-name=silver_bond_info &
 
 # run_amortisation_silver: ## Run the dataproc serverless job
 # 	# @gcloud compute networks subnets update default \
@@ -237,7 +239,7 @@ run_bond_info_silver: ## Run the dataproc serverless job
 # 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 # 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
 # 	--version=2.0 \
-# 	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=SME/bronze/amortisation --target-prefix=SME/silver/amortisation --ed-code=SMEMBE000095100220092 --stage-name=silver_amortisation &
+# 	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=SME/bronze/amortisation --target-prefix=SME/silver/amortisation --ed-code=${ED_CODE} --stage-name=silver_amortisation &
 
 run_deal_details_silver: ## Run the dataproc serverless job
 	# @gcloud compute networks subnets update default \

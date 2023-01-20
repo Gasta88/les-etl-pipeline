@@ -110,54 +110,6 @@ def _get_checks_dict(df, table_rules):
     return constrains_dict
 
 
-# def profile_data(spark, bucket_name, all_files, data_type, table_rules):
-#     """
-#     Check whether the file is ok to be stored in the bronze layer or not.
-
-#     :param spark: SparkSession object.
-#     :param bucket_name: GS bucket where files are stored.
-#     :param all_files: list of files to be read to generate the dataframe.
-#     :param data_type: type of data to handle, ex: amortisation, assets, collaterals.
-#     :param table_rules: collection of profiling rules for the table.
-#     :return clean_files: CSV files that passes the bronze profiling rules.
-#     :return dirty_files: list of tuples with CSV file and relative error text that fails the bronze profiling rules.
-#     """
-#     storage_client = storage.Client(project="dataops-369610")
-#     clean_files = []
-#     dirty_files = []
-#     bucket = storage_client.get_bucket(bucket_name)
-#     for csv_f in all_files:
-#         blob = bucket.blob(csv_f)
-#         dest_csv_f = f'/tmp/{csv_f.split("/")[-1]}'
-#         blob.download_to_filename(dest_csv_f)
-#         col_names = []
-#         content = []
-#         try:
-#             with open(dest_csv_f, "r") as f:
-#                 for i, line in enumerate(csv.reader(f)):
-#                     if i == 0:
-#                         col_names = line
-#                         col_names[0] = INITIAL_COL[data_type]
-#                     elif i == 1:
-#                         continue
-#                     else:
-#                         if len(line) == 0:
-#                             continue
-#                         content.append(line)
-#                 df = spark.createDataFrame(content, col_names)
-#                 checks = _get_checks_dict(df, table_rules)
-#                 if False in checks.values():
-#                     error_list = []
-#                     for k, v in checks.items():
-#                         if not v:
-#                             error_list.append(k)
-#                     error_text = ";".join(error_list)
-#                     dirty_files.append((csv_f, error_text))
-#                 else:
-#                     clean_files.append(csv_f)
-#         except Exception as e:
-#             dirty_files.append((csv_f, e))
-#     return (clean_files, dirty_files)
 def profile_data(spark, bucket_name, csv_f, data_type, table_rules):
     """
     Check whether the file is ok to be stored in the bronze layer or not.

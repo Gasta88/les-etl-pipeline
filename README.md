@@ -56,19 +56,19 @@ Run the following command to prepare the code and uploa it onto GCP:
 To profile the bronze tables run the following command:
 
 ```bash
-> make -j4 all_bronze_profile
+> make -j3 all_bronze_profile
 ```
 
 To build the bronze tables run the following command:
 
 ```bash
-> make -j5 all_bronze
+> make -j4 all_bronze
 ```
 
 To build the silver tables run the following command:
 
 ```bash
-> make -j5 all_silver
+> make -j4 all_silver
 ```
 
 To build the Quandl dataset run the following command:

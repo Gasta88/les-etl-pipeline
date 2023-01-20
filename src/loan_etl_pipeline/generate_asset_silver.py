@@ -273,7 +273,7 @@ def generate_asset_silver(spark, bucket_name, source_prefix, target_prefix, ed_c
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(bucket_name)
     clean_dump_csv = bucket.blob(
-        f'clean_dump/{datetime.date.today().strftime("%Y-%m-%d")}_clean_assets.csv'
+        f'clean_dump/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_clean_assets.csv'
     )
     if not (clean_dump_csv.exists()):
         logger.info(
@@ -281,7 +281,7 @@ def generate_asset_silver(spark, bucket_name, source_prefix, target_prefix, ed_c
         )
         sys.exit(1)
     else:
-        pcds = get_all_pcds(bucket_name, "assets")
+        pcds = get_all_pcds(bucket_name, "assets", ed_code)
         logger.info(f"Processing data for deal {ed_code}")
         for pcd in pcds:
             part_pcd = pcd.replace("-", "")

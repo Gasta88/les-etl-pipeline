@@ -49,24 +49,31 @@ def get_raw_file(bucket_name, prefix, file_key):
         return all_files[0]
 
 
-def get_old_df(spark, bucket_name, prefix):
+def get_old_df(spark, bucket_name, prefix, pcd, ed_code):
     """
     Return BRONZE table.
 
     :param spark: SparkSession object.
     :param bucket_name: GS bucket where files are stored.
     :param prefix: specific bucket prefix from where to collect files.
+    :param pcd: pool cutoff date from source files (valid only when generating TARGET dataframe).
+    :param ed_code: deal code to look up for legacy data.
     :return df: Spark dataframe.
     """
     storage_client = storage.Client(project="dataops-369610")
-    check_list = []
-    files_in_prefix = [
-        b.name for b in storage_client.list_blobs(bucket_name, prefix=prefix)
+    part_pcd = pcd.replace("-", "")
+    partition_prefix = f"{prefix}/part={ed_code}_{part_pcd}"
+    files_in_partition = [
+        b.name for b in storage_client.list_blobs(bucket_name, prefix=partition_prefix)
     ]
-    if files_in_prefix == []:
+    if files_in_partition == []:
         return None
     else:
-        df = spark.read.format("delta").load(f"gs://{bucket_name}/{prefix}")
+        df = (
+            spark.read.format("delta")
+            .load(f"gs://{bucket_name}/{prefix}")
+            .where(f"part={ed_code}_{part_pcd}")
+        )
         return df
 
 
@@ -78,6 +85,7 @@ def create_dataframe(spark, bucket_name, xml_file):
     :param bucket_name: GS bucket where files are stored.
     :param xml_file: file to be read to generate the dataframe.
     :return df: PySpark dataframe.
+    :return pcd: pool cutoff date.
     """
     # pcds = []
     storage_client = storage.Client(project="dataops-369610")
@@ -131,7 +139,7 @@ def create_dataframe(spark, bucket_name, xml_file):
     data = ["" if v is None else v for v in data]
     df = pd.DataFrame(data).T  # Create DataFrame and transpose it
     df.columns = cols  # Update column names
-    # pcds.append(df["PoolCutOffDate"].values[0].split("T")[0])
+    pcd = df["PoolCutOffDate"].values[0].split("T")[0]
     # Conver from Pandas to Spark dataframe and add SCD-2 columns
     spark_df = (
         spark.createDataFrame(df)
@@ -156,8 +164,7 @@ def create_dataframe(spark, bucket_name, xml_file):
             F.concat(F.col("ed_code"), F.lit("_"), F.col("year"), F.col("month")),
         )
     )
-    # return (pcds, spark_df)
-    return spark_df
+    return (pcd, spark_df)
 
 
 def generate_deal_details_bronze(
@@ -186,10 +193,10 @@ def generate_deal_details_bronze(
         sys.exit(1)
     else:
         logger.info(f"Retrieved deal details data XML files.")
-        new_df = create_dataframe(spark, raw_bucketname, xml_file)
+        pcd, new_df = create_dataframe(spark, raw_bucketname, xml_file)
 
         logger.info("Retrieve OLD dataframe.")
-        old_df = get_old_df(spark, data_bucketname, target_prefix)
+        old_df = get_old_df(spark, data_bucketname, target_prefix, pcd, ed_code)
         if old_df is None:
             logger.info("Initial load into DEAL DETAILS BRONZE")
             (

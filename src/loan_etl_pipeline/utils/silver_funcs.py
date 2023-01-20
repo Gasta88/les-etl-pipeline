@@ -93,20 +93,19 @@ def return_write_mode(bucket_name, prefix, pcds):
         return "append"
 
 
-def get_all_pcds(bucket_name, data_type):
+def get_all_pcds(bucket_name, data_type, ed_code):
     """
     Return list of PCDs inside CSV profiling output file.
 
     :param bucket_name: GS bucket where files are stored.
     :param data_type: type of data to handle, ex: amortisation, assets, collaterals.
+    :param ed_code: deal code that rfers to the data to transform.
     :return pcds: list of PCDs to be elaborated.
     """
     pcds = []
     storage_client = storage.Client(project="dataops-369610")
     bucket = storage_client.get_bucket(bucket_name)
-    csv_f = (
-        f'clean_dump/{datetime.date.today().strftime("%Y-%m-%d")}_clean_{data_type}.csv'
-    )
+    csv_f = f'clean_dump/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_clean_{data_type}.csv'
     blob = bucket.blob(csv_f)
     dest_csv_f = f'/tmp/{csv_f.split("/")[-1]}'
     blob.download_to_filename(dest_csv_f)

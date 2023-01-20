@@ -40,10 +40,11 @@ def generate_bronze_tables(
     :return status: 0 if successful.
     """
     logger.info(f"Start {data_type.upper()} BRONZE job.")
+    ed_code = source_prefix.split("/")[-1]
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(data_bucketname)
     clean_dump_csv = bucket.blob(
-        f'clean_dump/{datetime.date.today().strftime("%Y-%m-%d")}_clean_{data_type}.csv'
+        f'clean_dump/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_clean_{data_type}.csv'
     )
     if not (clean_dump_csv.exists()):
         logger.info(
@@ -51,8 +52,7 @@ def generate_bronze_tables(
         )
         sys.exit(1)
     else:
-        ed_code = source_prefix.split("/")[-1]
-        all_files = get_all_files(data_bucketname, data_type)
+        all_files = get_all_files(data_bucketname, data_type, ed_code)
         logger.info(f"Retrieved {len(all_files)} {data_type} data files.")
         for new_file_name in all_files:
             logger.info(f"Create NEW {ed_code} dataframe")
