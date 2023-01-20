@@ -85,51 +85,36 @@ def process_deal_info(df):
     return new_df
 
 
-def generate_deal_details_silver(
-    spark, bucket_name, bronze_prefix, silver_prefix, pcds
-):
+def generate_deal_details_silver(spark, bucket_name, source_prefix, target_prefix):
     """
     Run main steps of the module.
 
     :param spark: SparkSession object.
     :param bucket_name: GS bucket where files are stored.
-    :param bronze_prefix: specific bucket prefix from where to collect bronze data.
-    :param silver_prefix: specific bucket prefix from where to deposit silver data.
-    :param pcds: list of PCDs that have been elaborated in the previous Bronze layer.
+    :param source_prefix: specific bucket prefix from where to collect bronze data.
+    :param target_prefix: specific bucket prefix from where to deposit silver data.
     :return status: 0 if successful.
     """
     logger.info("Start DEAL DETAILS SILVER job.")
     run_props = set_job_params()
-    if pcds == "":
-        bronze_df = (
-            spark.read.format("delta")
-            .load(f"gs://{bucket_name}/{bronze_prefix}")
-            .filter("iscurrent == 1")
-            .drop("valid_from", "valid_to", "checksum", "iscurrent")
-        )
-    else:
-        truncated_pcds = ["-".join(pcd.split("-")[:2]) for pcd in pcds.split(",")]
-        bronze_df = (
-            spark.read.format("delta")
-            .load(f"gs://{bucket_name}/{bronze_prefix}")
-            .filter("iscurrent == 1")
-            .withColumn("lookup", F.concat_ws("-", F.col("year"), F.col("month")))
-            .filter(F.col("lookup").isin(truncated_pcds))
-            .drop("valid_from", "valid_to", "checksum", "iscurrent", "lookup")
-        )
+    bronze_df = (
+        spark.read.format("delta")
+        .load(f"gs://{bucket_name}/{source_prefix}")
+        .filter(F.col("iscurrent") == 1)
+        .drop("valid_from", "valid_to", "checksum", "iscurrent")
+    )
     logger.info("Cast data to correct types.")
     cleaned_df = cast_to_datatype(bronze_df, run_props["DEAL_DETAILS_COLUMNS"])
     logger.info("Generate deal info dataframe")
     deal_info_df = process_deal_info(cleaned_df)
 
     logger.info("Write dataframe")
-    write_mode = return_write_mode(bucket_name, silver_prefix, pcds)
+    write_mode = return_write_mode(bucket_name, target_prefix, None)
 
     (
         deal_info_df.write.format("delta")
-        .partitionBy("year", "month")
         .mode(write_mode)
-        .save(f"gs://{bucket_name}/{silver_prefix}/deal_info_table")
+        .save(f"gs://{bucket_name}/{target_prefix}/deal_info_table")
     )
     logger.info("End DEAL DETAILS SILVER job.")
     return 0

@@ -3,7 +3,9 @@ import sys
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, StringType, DoubleType
 from delta import *
-from src.loan_etl_pipeline.utils.silver_funcs import return_write_mode
+from google.cloud import storage
+import datetime
+from src.loan_etl_pipeline.utils.silver_funcs import return_write_mode, get_all_pcds
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -22,18 +24,22 @@ def set_job_params():
     :return config: dictionary with properties used in this job.
     """
     config = {}
-    config["AMORTISATION_COLUMNS"] = {
+    config["AMORTISATION_MANDATORY_COLUMNS"] = {
         "AS3": StringType(),
-        "AS150": DoubleType(),
-        "AS151": DateType(),
-        "AS1348": DoubleType(),
-        "AS1349": DateType(),
     }
-    for i in range(152, 1348):
+    config["AMORTISATION_OPTIONAL_COLUMNS"] = {
+        "AS3": StringType(),
+    }
+    for i in range(150, 390):
         if i % 2 == 0:
-            config["AMORTISATION_COLUMNS"][f"AS{i}"] = DoubleType()
+            config["AMORTISATION_MANDATORY_COLUMNS"][f"AS{i}"] = DoubleType()
         else:
-            config["AMORTISATION_COLUMNS"][f"AS{i}"] = DateType()
+            config["AMORTISATION_MANDATORY_COLUMNS"][f"AS{i}"] = DateType()
+    for i in range(390, 1350):
+        if i % 2 == 0:
+            config["AMORTISATION_OPTIONAL_COLUMNS"][f"AS{i}"] = DoubleType()
+        else:
+            config["AMORTISATION_OPTIONAL_COLUMNS"][f"AS{i}"] = DateType()
     return config
 
 
@@ -88,7 +94,7 @@ def unpivot_dataframe(df, columns):
         var_name="DOUBLE_COLUMNS",
         value_name="DOUBLE_VALUE",
     )
-    scd2_df = df.select("AS3", "ed_code", "year", "month")
+    scd2_df = df.select("AS3", "part")
     new_df = (
         date_df.join(double_df, on="AS3", how="inner")
         .join(scd2_df, on="AS3", how="inner")
@@ -97,65 +103,79 @@ def unpivot_dataframe(df, columns):
     return new_df
 
 
-def process_info(df):
-    """
-    Extract amortisation values dimension from bronze Spark dataframe.
-
-    :param df: Spark bronze dataframe.
-    :return new_df: silver type Spark dataframe.
-    """
-    # new_df = df.withColumn("DATE_VALUE", F.unix_timestamp(F.col("DATE_VALUE")))
-    new_df = df
-    return new_df
-
-
 def generate_amortisation_silver(
-    spark, bucket_name, bronze_prefix, silver_prefix, pcds
+    spark, bucket_name, source_prefix, target_prefix, ed_code
 ):
     """
     Run main steps of the module.
 
     :param spark: SparkSession object.
     :param bucket_name: GS bucket where files are stored.
-    :param bronze_prefix: specific bucket prefix from where to collect bronze data.
-    :param silver_prefix: specific bucket prefix from where to deposit silver data.
-    :param pcds: list of PCDs that have been elaborated in the previous Bronze layer.
+    :param source_prefix: specific bucket prefix from where to collect bronze data.
+    :param target_prefix: specific bucket prefix from where to deposit silver data.
+    :param ed_code: deal code to process.
     :return status: 0 if successful.
     """
     logger.info("Start AMORTISATION SILVER job.")
     run_props = set_job_params()
-    if pcds == "":
-        bronze_df = (
-            spark.read.format("delta")
-            .load(f"gs://{bucket_name}/{bronze_prefix}")
-            .filter("iscurrent == 1")
-            .drop("valid_from", "valid_to", "checksum", "iscurrent")
-        )
-    else:
-        truncated_pcds = ["-".join(pcd.split("-")[:2]) for pcd in pcds.split(",")]
-        bronze_df = (
-            spark.read.format("delta")
-            .load(f"gs://{bucket_name}/{bronze_prefix}")
-            .filter("iscurrent == 1")
-            .withColumn("lookup", F.concat_ws("-", F.col("year"), F.col("month")))
-            .filter(F.col("lookup").isin(truncated_pcds))
-            .drop("valid_from", "valid_to", "checksum", "iscurrent", "lookup")
-        )
-    logger.info("Cast data to correct types.")
-    tmp_df1 = unpivot_dataframe(bronze_df, run_props["AMORTISATION_COLUMNS"])
-    cleaned_df = tmp_df1.withColumn(
-        "DATE_VALUE", F.to_date(F.col("DATE_VALUE"))
-    ).withColumn("DOUBLE_VALUE", F.round(F.col("DOUBLE_VALUE").cast(DoubleType()), 2))
-    logger.info("Generate info dataframe")
-    info_df = process_info(cleaned_df)
-
-    logger.info("Write dataframe")
-    write_mode = return_write_mode(bucket_name, silver_prefix, pcds)
-    (
-        info_df.write.format("delta")
-        .partitionBy("year", "month")
-        .mode(write_mode)
-        .save(f"gs://{bucket_name}/{silver_prefix}/info_table")
+    storage_client = storage.Client()
+    bucket = storage_client.get_bucket(bucket_name)
+    clean_dump_csv = bucket.blob(
+        f'clean_dump/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_clean_amortisation.csv'
     )
+    if not (clean_dump_csv.exists()):
+        logger.info(
+            f"Could not find clean CSV dump file from AMORTISATION BRONZE PROFILING job. Workflow stopped!"
+        )
+        sys.exit(1)
+    else:
+        pcds = get_all_pcds(bucket_name, "amortisation", ed_code)
+        logger.info(f"Processing data for deal {ed_code}")
+        for pcd in pcds:
+            part_pcd = pcd.replace("-", "")
+            logger.info(f"Processing {pcd} data from bronze to silver. ")
+            bronze_df = (
+                spark.read.format("delta")
+                .load(f"gs://{bucket_name}/{source_prefix}")
+                .where(F.col("part") == f"{ed_code}_{part_pcd}")
+                .filter(F.col("iscurrent") == 1)
+                .drop("valid_from", "valid_to", "checksum", "iscurrent")
+                .repartition(96)
+            )
+            logger.info("Cast data to correct types.")
+            tmp_df1 = unpivot_dataframe(
+                bronze_df, run_props["AMORTISATION_MANDATORY_COLUMNS"]
+            )
+            tmp_df2 = unpivot_dataframe(
+                bronze_df, run_props["AMORTISATION_OPTIONAL_COLUMNS"]
+            )
+            mandatory_info_df = tmp_df1.withColumn(
+                "DATE_VALUE", F.to_date(F.col("DATE_VALUE"))
+            ).withColumn(
+                "DOUBLE_VALUE", F.round(F.col("DOUBLE_VALUE").cast(DoubleType()), 2)
+            )
+            optional_info_df = tmp_df2.withColumn(
+                "DATE_VALUE", F.to_date(F.col("DATE_VALUE"))
+            ).withColumn(
+                "DOUBLE_VALUE", F.round(F.col("DOUBLE_VALUE").cast(DoubleType()), 2)
+            )
+
+            logger.info("Write mandatory dataframe")
+            write_mode = return_write_mode(bucket_name, target_prefix, pcds)
+            (
+                mandatory_info_df.write.format("delta")
+                .partitionBy("part")
+                .mode(write_mode)
+                .save(f"gs://{bucket_name}/{target_prefix}/mandatory_info_table")
+            )
+
+            logger.info("Write optional dataframe")
+            write_mode = return_write_mode(bucket_name, target_prefix, pcds)
+            (
+                optional_info_df.write.format("delta")
+                .partitionBy("part")
+                .mode(write_mode)
+                .save(f"gs://{bucket_name}/{target_prefix}/optional_info_table")
+            )
     logger.info("End AMORTISATION SILVER job.")
     return 0

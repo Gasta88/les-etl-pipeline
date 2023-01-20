@@ -30,31 +30,28 @@ def run(
     data_bucketname,
     source_prefix,
     target_prefix,
+    ed_code,
     file_key,
     stage_name,
-    pcds,
 ):
     """
     :param raw_bucketname: GS bucket where original files are stored.
     :param data_bucketname: GS bucket where transformed files are stored.
     :param source_prefix: specific bucket prefix from where to collect CSV files.
     :param target_prefix: specific bucket prefix from where to collect bronze old data.
+    :param ed_code: deal code used for Silver layer ETL.
     :param file_key: label for file name that helps with the cherry picking with file type.
     :param stage_name: name of the ETL stage.
-    :param pcds: list of PCDs to be elaborated in Silver layer.
     :return: None
     """
     spark = start_spark()
-    if stage_name == "bronze_asset":
-        clean_files = profile_bronze_data(
+    # ----------------Bronze Quality layer ETL
+    if stage_name == "profile_bronze_asset":
+        status = profile_bronze_data(
             spark, raw_bucketname, data_bucketname, source_prefix, file_key, "assets"
         )
-        status = generate_bronze_tables(
-            spark, raw_bucketname, data_bucketname, target_prefix, clean_files, "assets"
-        )
-
-    if stage_name == "bronze_collateral":
-        clean_files = profile_bronze_data(
+    if stage_name == "profile_bronze_collateral":
+        status = profile_bronze_data(
             spark,
             raw_bucketname,
             data_bucketname,
@@ -62,30 +59,12 @@ def run(
             file_key,
             "collaterals",
         )
-        status = generate_bronze_tables(
-            spark,
-            raw_bucketname,
-            data_bucketname,
-            target_prefix,
-            clean_files,
-            "collaterals",
-        )
-
-    if stage_name == "bronze_bond_info":
-        clean_files = profile_bronze_data(
+    if stage_name == "profile_bronze_bond_info":
+        status = profile_bronze_data(
             spark, raw_bucketname, data_bucketname, source_prefix, file_key, "bond_info"
         )
-        status = generate_bronze_tables(
-            spark,
-            raw_bucketname,
-            data_bucketname,
-            target_prefix,
-            clean_files,
-            "bond_info",
-        )
-
-    if stage_name == "bronze_amortisation":
-        clean_files = profile_bronze_data(
+    if stage_name == "profile_bronze_amortisation":
+        status = profile_bronze_data(
             spark,
             raw_bucketname,
             data_bucketname,
@@ -93,12 +72,45 @@ def run(
             file_key,
             "amortisation",
         )
+
+    # ----------------Bronze layer ETL
+    if stage_name == "bronze_asset":
         status = generate_bronze_tables(
             spark,
             raw_bucketname,
             data_bucketname,
+            source_prefix,
             target_prefix,
-            clean_files,
+            "assets",
+        )
+
+    if stage_name == "bronze_collateral":
+        status = generate_bronze_tables(
+            spark,
+            raw_bucketname,
+            data_bucketname,
+            source_prefix,
+            target_prefix,
+            "collaterals",
+        )
+
+    if stage_name == "bronze_bond_info":
+        status = generate_bronze_tables(
+            spark,
+            raw_bucketname,
+            data_bucketname,
+            source_prefix,
+            target_prefix,
+            "bond_info",
+        )
+
+    if stage_name == "bronze_amortisation":
+        status = generate_bronze_tables(
+            spark,
+            raw_bucketname,
+            data_bucketname,
+            source_prefix,
+            target_prefix,
             "amortisation",
         )
     if stage_name == "bronze_deal_details":
@@ -114,27 +126,27 @@ def run(
     # ----------------Silver layer ETL
     if stage_name == "silver_asset":
         status = generate_asset_silver(
-            spark, data_bucketname, source_prefix, target_prefix, pcds
+            spark, data_bucketname, source_prefix, target_prefix, ed_code
         )
 
     if stage_name == "silver_collateral":
         status = generate_collateral_silver(
-            spark, data_bucketname, source_prefix, target_prefix, pcds
+            spark, data_bucketname, source_prefix, target_prefix, ed_code
         )
 
     if stage_name == "silver_bond_info":
         status = generate_bond_info_silver(
-            spark, data_bucketname, source_prefix, target_prefix, pcds
+            spark, data_bucketname, source_prefix, target_prefix, ed_code
         )
 
     if stage_name == "silver_amortisation":
         status = generate_amortisation_silver(
-            spark, data_bucketname, source_prefix, target_prefix, pcds
+            spark, data_bucketname, source_prefix, target_prefix, ed_code
         )
 
     if stage_name == "silver_deal_details":
         status = generate_deal_details_silver(
-            spark, data_bucketname, source_prefix, target_prefix, pcds
+            spark, data_bucketname, source_prefix, target_prefix
         )
 
     # ----------------External sources ETL
@@ -159,7 +171,7 @@ if __name__ == "__main__":
         "--target-prefix",
         type=str,
         dest="target_prefix",
-        required=True,
+        required=False,
         help="Prefix on GCS where layer tables are stored",
     )
 
@@ -188,11 +200,11 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--pcds",
+        "--ed-code",
         type=str,
-        dest="pcds",
+        dest="ed_code",
         required=False,
-        help="List of PCDs ingested in the Bronze layer",
+        help="Deal code used in Silver layer ETL",
     )
 
     parser.add_argument(
@@ -210,7 +222,7 @@ if __name__ == "__main__":
         data_bucketname=known_args.data_bucketname,
         source_prefix=known_args.source_prefix,
         target_prefix=known_args.target_prefix,
+        ed_code=known_args.ed_code,
         file_key=known_args.file_key,
-        pcds=known_args.pcds,
         stage_name=known_args.stage_name,
     )

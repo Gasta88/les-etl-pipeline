@@ -3,11 +3,14 @@ import sys
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, StringType, DoubleType, BooleanType
 from delta import *
+from google.cloud import storage
+import datetime
 from src.loan_etl_pipeline.utils.silver_funcs import (
     replace_no_data,
     replace_bool_data,
     cast_to_datatype,
     return_write_mode,
+    get_all_pcds,
 )
 
 # Setup logger
@@ -173,7 +176,7 @@ def get_columns_collection(df):
     :return cols_dict: collection of columns labelled by topic.
     """
     cols_dict = {
-        "general": ["ed_code", "year", "month"]
+        "general": ["ed_code", "part"]
         + [f"AS{i}" for i in range(1, 15) if f"AS{i}" in df.columns],
         "obligor_info": [f"AS{i}" for i in range(15, 50) if f"AS{i}" in df.columns],
         "loan_info": [f"AS{i}" for i in range(50, 80) if f"AS{i}" in df.columns],
@@ -254,86 +257,92 @@ def process_performance_info(df, cols_dict):
     return new_df
 
 
-def generate_asset_silver(spark, bucket_name, bronze_prefix, silver_prefix, pcds):
+def generate_asset_silver(spark, bucket_name, source_prefix, target_prefix, ed_code):
     """
     Run main steps of the module.
 
     :param spark: SparkSession object.
     :param bucket_name: GS bucket where files are stored.
-    :param bronze_prefix: specific bucket prefix from where to collect bronze data.
-    :param silver_prefix: specific bucket prefix from where to deposit silver data.
-    :param pcds: list of PCDs that have been elaborated in the previous Bronze layer.
+    :param source_prefix: specific bucket prefix from where to collect bronze data.
+    :param target_prefix: specific bucket prefix from where to deposit silver data.
+    :param ed_code: deal code to process.
     :return status: 0 if successful.
     """
     logger.info("Start ASSET SILVER job.")
     run_props = set_job_params()
-    if pcds == "":
-        bronze_df = (
-            spark.read.format("delta")
-            .load(f"gs://{bucket_name}/{bronze_prefix}")
-            .filter("iscurrent == 1")
-            .drop("valid_from", "valid_to", "checksum", "iscurrent")
+    storage_client = storage.Client()
+    bucket = storage_client.get_bucket(bucket_name)
+    clean_dump_csv = bucket.blob(
+        f'clean_dump/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_clean_assets.csv'
+    )
+    if not (clean_dump_csv.exists()):
+        logger.info(
+            f"Could not find clean CSV dump file from ASSETS BRONZE PROFILING job. Workflow stopped!"
         )
+        sys.exit(1)
     else:
-        truncated_pcds = ["-".join(pcd.split("-")[:2]) for pcd in pcds.split(",")]
-        bronze_df = (
-            spark.read.format("delta")
-            .load(f"gs://{bucket_name}/{bronze_prefix}")
-            .filter("iscurrent == 1")
-            .withColumn("lookup", F.concat_ws("-", F.col("year"), F.col("month")))
-            .filter(F.col("lookup").isin(truncated_pcds))
-            .drop("valid_from", "valid_to", "checksum", "iscurrent", "lookup")
-        )
-    assets_columns = get_columns_collection(bronze_df)
-    logger.info("Remove ND values.")
-    tmp_df1 = replace_no_data(bronze_df)
-    logger.info("Replace Y/N with boolean flags.")
-    tmp_df2 = replace_bool_data(tmp_df1)
-    logger.info("Cast data to correct types.")
-    cleaned_df = cast_to_datatype(tmp_df2, run_props["ASSET_COLUMNS"])
-    logger.info("Generate obligor info dataframe")
-    obligor_info_df = process_obligor_info(cleaned_df, assets_columns)
-    logger.info("Generate loan info dataframe")
-    loan_info_df = process_loan_info(cleaned_df, assets_columns)
-    logger.info("Generate interest rate dataframe")
-    interest_rate_df = process_interest_rate(cleaned_df, assets_columns)
-    logger.info("Generate financial info dataframe")
-    financial_info_df = process_financial_info(cleaned_df, assets_columns)
-    logger.info("Generate performace info dataframe")
-    performance_info_df = process_performance_info(cleaned_df, assets_columns)
+        pcds = get_all_pcds(bucket_name, "assets", ed_code)
+        logger.info(f"Processing data for deal {ed_code}")
+        for pcd in pcds:
+            part_pcd = pcd.replace("-", "")
+            logger.info(f"Processing {pcd} data from bronze to silver. ")
+            bronze_df = (
+                spark.read.format("delta")
+                .load(f"gs://{bucket_name}/{source_prefix}")
+                .where(F.col("part") == f"{ed_code}_{part_pcd}")
+                .filter(F.col("iscurrent") == 1)
+                .drop("valid_from", "valid_to", "checksum", "iscurrent")
+            )
+            assets_columns = get_columns_collection(bronze_df)
+            logger.info("Remove ND values.")
+            tmp_df1 = replace_no_data(bronze_df)
+            logger.info("Replace Y/N with boolean flags.")
+            tmp_df2 = replace_bool_data(tmp_df1)
+            logger.info("Cast data to correct types.")
+            cleaned_df = cast_to_datatype(tmp_df2, run_props["ASSET_COLUMNS"])
+            logger.info("Generate obligor info dataframe")
+            obligor_info_df = process_obligor_info(cleaned_df, assets_columns)
+            logger.info("Generate loan info dataframe")
+            loan_info_df = process_loan_info(cleaned_df, assets_columns)
+            logger.info("Generate interest rate dataframe")
+            interest_rate_df = process_interest_rate(cleaned_df, assets_columns)
+            logger.info("Generate financial info dataframe")
+            financial_info_df = process_financial_info(cleaned_df, assets_columns)
+            logger.info("Generate performace info dataframe")
+            performance_info_df = process_performance_info(cleaned_df, assets_columns)
 
-    logger.info("Write dataframe")
-    write_mode = return_write_mode(bucket_name, silver_prefix, pcds)
+            logger.info("Write dataframe")
+            write_mode = return_write_mode(bucket_name, target_prefix, pcds)
 
-    (
-        loan_info_df.write.format("delta")
-        .partitionBy("year", "month")
-        .mode(write_mode)
-        .save(f"gs://{bucket_name}/{silver_prefix}/loan_info_table")
-    )
-    (
-        obligor_info_df.write.format("delta")
-        .partitionBy("year", "month")
-        .mode(write_mode)
-        .save(f"gs://{bucket_name}/{silver_prefix}/obligor_info_table")
-    )
-    (
-        financial_info_df.write.format("delta")
-        .partitionBy("year", "month")
-        .mode(write_mode)
-        .save(f"gs://{bucket_name}/{silver_prefix}/financial_info_table")
-    )
-    (
-        interest_rate_df.write.format("delta")
-        .partitionBy("year", "month")
-        .mode(write_mode)
-        .save(f"gs://{bucket_name}/{silver_prefix}/interest_rate_table")
-    )
-    (
-        performance_info_df.write.format("delta")
-        .partitionBy("year", "month")
-        .mode(write_mode)
-        .save(f"gs://{bucket_name}/{silver_prefix}/performance_info_table")
-    )
+            (
+                loan_info_df.write.format("delta")
+                .partitionBy("part")
+                .mode(write_mode)
+                .save(f"gs://{bucket_name}/{target_prefix}/loan_info_table")
+            )
+            (
+                obligor_info_df.write.format("delta")
+                .partitionBy("part")
+                .mode(write_mode)
+                .save(f"gs://{bucket_name}/{target_prefix}/obligor_info_table")
+            )
+            (
+                financial_info_df.write.format("delta")
+                .partitionBy("part")
+                .mode(write_mode)
+                .save(f"gs://{bucket_name}/{target_prefix}/financial_info_table")
+            )
+            (
+                interest_rate_df.write.format("delta")
+                .partitionBy("part")
+                .mode(write_mode)
+                .save(f"gs://{bucket_name}/{target_prefix}/interest_rate_table")
+            )
+            (
+                performance_info_df.write.format("delta")
+                .partitionBy("part")
+                .mode(write_mode)
+                .save(f"gs://{bucket_name}/{target_prefix}/performance_info_table")
+            )
     logger.info("End ASSET SILVER job.")
     return 0
