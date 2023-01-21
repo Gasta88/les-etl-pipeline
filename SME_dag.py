@@ -16,11 +16,10 @@ from google.cloud import storage
 from airflow import models
 from airflow.providers.google.cloud.operators.dataproc import (
     DataprocCreateBatchOperator,
-    DataprocDeleteBatchOperator,
-    DataprocGetBatchOperator,
-    DataprocListBatchesOperator,
 )
+from airflow.operators.empty import EmptyOperator
 from airflow.utils.dates import days_ago
+from airflow.utils.task_group import TaskGroup
 
 # Var definitions
 PROJECT_ID = "{{ var.value.project_id }}"
@@ -42,6 +41,27 @@ SPARK_DELTA_STORE_JAR_FILE = (
 )
 PY_FILES = "gs://{{ var.value.code_bucketname }}/dist/loan_etl_pipeline_0.1.0.zip"
 METASTORE_SERVICE_LOCATION = "projects/{{var.value.project_id}}/locations/{{var.value.region_name}}/services/{{var.value.metastore_cluster }}"
+
+ENVIRONMENT_CONFIG = {
+    "execution_config": {"subnetwork_uri": "default"},
+    "peripherals_config": {
+        "metastore_service": METASTORE_SERVICE_LOCATION,
+        "spark_history_server_config": {
+            "dataproc_cluster": PHS_CLUSTER_PATH,
+        },
+    },
+}
+
+RUNTIME_CONFIG = {
+    "properties": {
+        "spark.app.name": "loan_etl_pipeline",
+        "spark.executor.instances": 4,
+        "spark.driver.cores": 8,
+        "spark.executor.cores": 8,
+        "spark.executor.memory": "16g",
+    },
+    "version": "2.0",
+}
 
 
 def get_raw_prefixes():
@@ -79,80 +99,242 @@ with models.DAG(
     raw_prefixes = get_raw_prefixes()
     for rp in raw_prefixes:
         ed_code = rp.split("/")[-1]
-        assets_bronze_profile_task = DataprocCreateBatchOperator(
-            task_id=f"bronze_profile_{ed_code}",
-            batch={
-                "pyspark_batch": {
-                    "main_python_file_uri": PYTHON_FILE_LOCATION,
-                    "jar_file_uris": [SPARK_DELTA_JAR_FILE, SPARK_DELTA_STORE_JAR_FILE],
-                    "python_file_uris": [PY_FILES],
-                    "properties": {
-                        "spark.executor.instances": 4,
-                        "spark.driver.cores": 8,
-                        "spark.executor.cores": 8,
-                        "spark.executor.memory": "16g",
+        start = EmptyOperator(task_id=f"{ed_code}_start")
+        with TaskGroup(group_id=f"{ed_code}_assets") as assets_tg:
+            assets_bronze_profile_task = DataprocCreateBatchOperator(
+                task_id=f"assets_bronze_profile_{ed_code}",
+                batch={
+                    "pyspark_batch": {
+                        "main_python_file_uri": PYTHON_FILE_LOCATION,
+                        "jar_file_uris": [
+                            SPARK_DELTA_JAR_FILE,
+                            SPARK_DELTA_STORE_JAR_FILE,
+                        ],
+                        "python_file_uris": [PY_FILES],
+                        "args": [
+                            f"--project={PROJECT_ID}",
+                            f"--raw-bucketname=${RAW_BUCKET}",
+                            f"--data-bucketname=${DATA_BUCKET}",
+                            f"--source-prefix=mini_source/${ed_code}",
+                            "--file-key=Loan_Data",
+                            "--stage-name=profile_bronze_asset",
+                        ],
                     },
-                    "args": [
-                        f"--project={PROJECT_ID}",
-                        f"--raw-bucketname=${RAW_BUCKET}",
-                        f"--data-bucketname=${DATA_BUCKET}",
-                        f"--source-prefix=mini_source/${ed_code}",
-                        "--file-key=Loan_Data",
-                        "--stage-name=profile_bronze_asset",
-                    ],
+                    "environment_config": {ENVIRONMENT_CONFIG},
+                    "runtime_config": {RUNTIME_CONFIG},
                 },
-                "environment_config": {
-                    "execution_config": {"subnetwork_uri": "default"},
-                    "peripherals_config": {
-                        "metastore_service": METASTORE_SERVICE_LOCATION,
-                        "spark_history_server_config": {
-                            "dataproc_cluster": PHS_CLUSTER_PATH,
-                        },
+                batch_id=f"profile-bronze-asset-{ed_code}",
+            )
+            assets_bronze_task = DataprocCreateBatchOperator(
+                task_id=f"assets_bronze_{ed_code}",
+                batch={
+                    "pyspark_batch": {
+                        "main_python_file_uri": PYTHON_FILE_LOCATION,
+                        "jar_file_uris": [
+                            SPARK_DELTA_JAR_FILE,
+                            SPARK_DELTA_STORE_JAR_FILE,
+                        ],
+                        "python_file_uris": [PY_FILES],
+                        "args": [
+                            f"--project={PROJECT_ID}",
+                            f"--raw-bucketname=${RAW_BUCKET}",
+                            f"--data-bucketname=${DATA_BUCKET}",
+                            f"--source-prefix=mini_source/${ed_code}",
+                            "--target-prefix=SME/bronze/assets",
+                            "--file-key=Loan_Data",
+                            "--stage-name=bronze_asset",
+                        ],
                     },
+                    "environment_config": {ENVIRONMENT_CONFIG},
+                    "runtime_config": {RUNTIME_CONFIG},
                 },
-                "runtime_config": {
-                    "properties": {"spark.app.name": "loan_etl_pipeline"}
-                },
-            },
-            batch_id=f"batch-bronze-profile-{ed_code}",
-        )
-        assets_bronze_task = DataprocCreateBatchOperator(
-            task_id=f"bronze_{ed_code}",
-            batch={
-                "pyspark_batch": {
-                    "main_python_file_uri": PYTHON_FILE_LOCATION,
-                    "jar_file_uris": [SPARK_DELTA_JAR_FILE, SPARK_DELTA_STORE_JAR_FILE],
-                },
-                "environment_config": {
-                    "execution_config": {"subnetwork_uri": "default"},
-                    "peripherals_config": {
-                        "metastore_service": METASTORE_SERVICE_LOCATION,
-                        "spark_history_server_config": {
-                            "dataproc_cluster": PHS_CLUSTER_PATH,
-                        },
+                batch_id=f"bronze-assets-{ed_code}",
+            )
+            assets_silver_task = DataprocCreateBatchOperator(
+                task_id=f"assets_silver_{ed_code}",
+                batch={
+                    "pyspark_batch": {
+                        "main_python_file_uri": PYTHON_FILE_LOCATION,
+                        "jar_file_uris": [
+                            SPARK_DELTA_JAR_FILE,
+                            SPARK_DELTA_STORE_JAR_FILE,
+                        ],
+                        "python_file_uris": [PY_FILES],
+                        "args": [
+                            f"--project={PROJECT_ID}",
+                            f"--raw-bucketname=${RAW_BUCKET}",
+                            f"--data-bucketname=${DATA_BUCKET}",
+                            "--source-prefix=SME/bronze/assets",
+                            "--target-prefix=SME/silver/assets",
+                            f"--ed-code={ed_code}",
+                            "--stage-name=silver_asset",
+                        ],
                     },
+                    "environment_config": {ENVIRONMENT_CONFIG},
+                    "runtime_config": {RUNTIME_CONFIG},
                 },
-            },
-            batch_id=f"create-bronze-tables-{ed_code}",
-        )
-        assets_silver_task = DataprocCreateBatchOperator(
-            task_id=f"silver_{ed_code}",
-            batch={
-                "pyspark_batch": {
-                    "main_python_file_uri": PYTHON_FILE_LOCATION,
-                    "jar_file_uris": [SPARK_DELTA_JAR_FILE, SPARK_DELTA_STORE_JAR_FILE],
-                },
-                "environment_config": {
-                    "execution_config": {"subnetwork_uri": "default"},
-                    "peripherals_config": {
-                        "metastore_service": METASTORE_SERVICE_LOCATION,
-                        "spark_history_server_config": {
-                            "dataproc_cluster": PHS_CLUSTER_PATH,
-                        },
+                batch_id=f"silver-assets-{ed_code}",
+            )
+            assets_bronze_profile_task >> assets_bronze_task >> assets_silver_task
+        with TaskGroup(group_id=f"{ed_code}_collaterals") as collaterals_tg:
+            collateral_bronze_profile_task = DataprocCreateBatchOperator(
+                task_id=f"collateral_bronze_profile_{ed_code}",
+                batch={
+                    "pyspark_batch": {
+                        "main_python_file_uri": PYTHON_FILE_LOCATION,
+                        "jar_file_uris": [
+                            SPARK_DELTA_JAR_FILE,
+                            SPARK_DELTA_STORE_JAR_FILE,
+                        ],
+                        "python_file_uris": [PY_FILES],
+                        "args": [
+                            f"--project={PROJECT_ID}",
+                            f"--raw-bucketname=${RAW_BUCKET}",
+                            f"--data-bucketname=${DATA_BUCKET}",
+                            f"--source-prefix=mini_source/${ed_code}",
+                            "--file-key=Collateral",
+                            "--stage-name=profile_bronze_collateral",
+                        ],
                     },
+                    "environment_config": {ENVIRONMENT_CONFIG},
+                    "runtime_config": {RUNTIME_CONFIG},
                 },
-            },
-            batch_id=f"create-silver-tables-{ed_code}",
-        )
-
-        assbronze_profile_task >> bronze_task >> silver_task
+                batch_id=f"profile-bronze-collateral-{ed_code}",
+            )
+            collateral_bronze_task = DataprocCreateBatchOperator(
+                task_id=f"collateral_bronze_{ed_code}",
+                batch={
+                    "pyspark_batch": {
+                        "main_python_file_uri": PYTHON_FILE_LOCATION,
+                        "jar_file_uris": [
+                            SPARK_DELTA_JAR_FILE,
+                            SPARK_DELTA_STORE_JAR_FILE,
+                        ],
+                        "python_file_uris": [PY_FILES],
+                        "args": [
+                            f"--project={PROJECT_ID}",
+                            f"--raw-bucketname=${RAW_BUCKET}",
+                            f"--data-bucketname=${DATA_BUCKET}",
+                            f"--source-prefix=mini_source/${ed_code}",
+                            "--target-prefix=SME/bronze/collaterals",
+                            "--file-key=Collateral",
+                            "--stage-name=bronze_collateral",
+                        ],
+                    },
+                    "environment_config": {ENVIRONMENT_CONFIG},
+                    "runtime_config": {RUNTIME_CONFIG},
+                },
+                batch_id=f"create-bronze-collaterals-{ed_code}",
+            )
+            collateral_silver_task = DataprocCreateBatchOperator(
+                task_id=f"collateral_silver_{ed_code}",
+                batch={
+                    "pyspark_batch": {
+                        "main_python_file_uri": PYTHON_FILE_LOCATION,
+                        "jar_file_uris": [
+                            SPARK_DELTA_JAR_FILE,
+                            SPARK_DELTA_STORE_JAR_FILE,
+                        ],
+                        "python_file_uris": [PY_FILES],
+                        "args": [
+                            f"--project={PROJECT_ID}",
+                            f"--raw-bucketname=${RAW_BUCKET}",
+                            f"--data-bucketname=${DATA_BUCKET}",
+                            "--source-prefix=SME/bronze/collaterals",
+                            "--target-prefix=SME/silver/collaterals",
+                            f"--ed-code={ed_code}",
+                            "--stage-name=silver_collateral",
+                        ],
+                    },
+                    "environment_config": {ENVIRONMENT_CONFIG},
+                    "runtime_config": {RUNTIME_CONFIG},
+                },
+                batch_id=f"create-silver-collaterals-{ed_code}",
+            )
+            (
+                collateral_bronze_profile_task
+                >> collateral_bronze_task
+                >> collateral_silver_task
+            )
+        with TaskGroup(group_id=f"{ed_code}_bond_info") as bond_info_tg:
+            bond_info_bronze_profile_task = DataprocCreateBatchOperator(
+                task_id=f"bond_info_bronze_profile_{ed_code}",
+                batch={
+                    "pyspark_batch": {
+                        "main_python_file_uri": PYTHON_FILE_LOCATION,
+                        "jar_file_uris": [
+                            SPARK_DELTA_JAR_FILE,
+                            SPARK_DELTA_STORE_JAR_FILE,
+                        ],
+                        "python_file_uris": [PY_FILES],
+                        "args": [
+                            f"--project={PROJECT_ID}",
+                            f"--raw-bucketname=${RAW_BUCKET}",
+                            f"--data-bucketname=${DATA_BUCKET}",
+                            f"--source-prefix=mini_source/${ed_code}",
+                            "--file-key=Bond_Info",
+                            "--stage-name=profile_bronze_bond_info",
+                        ],
+                    },
+                    "environment_config": {ENVIRONMENT_CONFIG},
+                    "runtime_config": {RUNTIME_CONFIG},
+                },
+                batch_id=f"profile-bronze-bond-info-{ed_code}",
+            )
+            bond_info_bronze_task = DataprocCreateBatchOperator(
+                task_id=f"bond_info_bronze_{ed_code}",
+                batch={
+                    "pyspark_batch": {
+                        "main_python_file_uri": PYTHON_FILE_LOCATION,
+                        "jar_file_uris": [
+                            SPARK_DELTA_JAR_FILE,
+                            SPARK_DELTA_STORE_JAR_FILE,
+                        ],
+                        "python_file_uris": [PY_FILES],
+                        "args": [
+                            f"--project={PROJECT_ID}",
+                            f"--raw-bucketname=${RAW_BUCKET}",
+                            f"--data-bucketname=${DATA_BUCKET}",
+                            f"--source-prefix=mini_source/${ed_code}",
+                            "--target-prefix=SME/bronze/bond_info",
+                            "--file-key=Bond_Info",
+                            "--stage-name=bronze_bond_info",
+                        ],
+                    },
+                    "environment_config": {ENVIRONMENT_CONFIG},
+                    "runtime_config": {RUNTIME_CONFIG},
+                },
+                batch_id=f"create-bronze-bond-info-{ed_code}",
+            )
+            bond_info_silver_task = DataprocCreateBatchOperator(
+                task_id=f"bond_info_silver_{ed_code}",
+                batch={
+                    "pyspark_batch": {
+                        "main_python_file_uri": PYTHON_FILE_LOCATION,
+                        "jar_file_uris": [
+                            SPARK_DELTA_JAR_FILE,
+                            SPARK_DELTA_STORE_JAR_FILE,
+                        ],
+                        "python_file_uris": [PY_FILES],
+                        "args": [
+                            f"--project={PROJECT_ID}",
+                            f"--raw-bucketname=${RAW_BUCKET}",
+                            f"--data-bucketname=${DATA_BUCKET}",
+                            "--source-prefix=SME/bronze/bond_info",
+                            "--target-prefix=SME/silver/bond_info",
+                            f"--ed-code={ed_code}",
+                            "--stage-name=silver_bond_info",
+                        ],
+                    },
+                    "environment_config": {ENVIRONMENT_CONFIG},
+                    "runtime_config": {RUNTIME_CONFIG},
+                },
+                batch_id=f"create-silver-bond-info-{ed_code}",
+            )
+            (
+                bond_info_bronze_profile_task
+                >> bond_info_bronze_task
+                >> bond_info_silver_task
+            )
+        end = EmptyOperator(task_id=f"{ed_code}_end")
+        start >> [assets_tg, collaterals_tg, bond_info_tg] >> end
