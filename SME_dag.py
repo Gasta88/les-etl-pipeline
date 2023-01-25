@@ -14,6 +14,7 @@ import datetime
 from google.cloud import storage
 
 from airflow import models
+from airflow.models import Variable
 from airflow.providers.google.cloud.operators.dataproc import (
     DataprocCreateBatchOperator,
 )
@@ -22,25 +23,30 @@ from airflow.utils.dates import days_ago
 from airflow.utils.task_group import TaskGroup
 
 # Var definitions
-PROJECT_ID = "{{ var.value.project_id }}"
-REGION = "{{ var.value.region_name}}"
-CODE_BUCKET = "{{ var.value.code_bucketname }}"
-RAW_BUCKET = "{{ var.value.raw_bucketname }}"
-DATA_BUCKET = "{{ var.value.data_bucketname }}"
-PHS_CLUSTER = "{{ var.value.phs_cluster }}"
-METASTORE_CLUSTER = "{{var.value.metastore_cluster}}"
-SUBNETWORK_URI = "projects/{{ var.value.project_id }}/regions/{{ var.value.region_name}}/subnetworks/default"
+# PROJECT_ID = Variable.get("project_id")
+# REGION = Variable.get("region_name")
+# CODE_BUCKET = Variable.get("code_bucketname")
+# RAW_BUCKET = Variable.get("raw_bucketname")
+# DATA_BUCKET = Variable.get("data_bucketname")
+# PHS_CLUSTER = Variable.get("phs_cluster")
+# METASTORE_CLUSTER = Variable.get("metastore_cluster")
+PROJECT_ID = "dataops-369610"
+REGION = "europe-west3"
+CODE_BUCKET = "data-lake-code-847515094398"
+RAW_BUCKET = "fgasta_test_raw"
+DATA_BUCKET = "fgasta_data_lake_test"
+PHS_CLUSTER = "spark-hist-srv-dataops-369610"
+METASTORE_CLUSTER = "data-catalog-dataops-369610"
 
-PYTHON_FILE_LOCATION = "gs://{{var.value.bucket_name }}/dist/main.py"
-PHS_CLUSTER_PATH = "projects/{{ var.value.project_id }}/regions/{{ var.value.region_name}}/clusters/{{ var.value.phs_cluster }}"
-SPARK_DELTA_JAR_FILE = (
-    "gs://{{ var.value.code_bucketname }}/dependencies/delta-core_2.13-2.1.0.jar"
+SUBNETWORK_URI = f"projects/{PROJECT_ID}/regions/{REGION}/subnetworks/default"
+PYTHON_FILE_LOCATION = f"gs://{CODE_BUCKET}/dist/main.py"
+PHS_CLUSTER_PATH = f"projects/{PROJECT_ID}/regions/{REGION}/clusters/{PHS_CLUSTER}"
+SPARK_DELTA_JAR_FILE = f"gs://{CODE_BUCKET}/dependencies/delta-core_2.13-2.1.0.jar"
+SPARK_DELTA_STORE_JAR_FILE = f"gs://{CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar"
+PY_FILES = f"gs://{CODE_BUCKET}/dist/loan_etl_pipeline_0.1.0.zip"
+METASTORE_SERVICE_LOCATION = (
+    f"projects/{PROJECT_ID}/locations/{REGION}/services/{METASTORE_CLUSTER}"
 )
-SPARK_DELTA_STORE_JAR_FILE = (
-    "gs://{{ var.value.code_bucketname }}/dependencies/delta-storage-2.2.0.jar"
-)
-PY_FILES = "gs://{{ var.value.code_bucketname }}/dist/loan_etl_pipeline_0.1.0.zip"
-METASTORE_SERVICE_LOCATION = "projects/{{var.value.project_id}}/locations/{{var.value.region_name}}/services/{{var.value.metastore_cluster }}"
 
 ENVIRONMENT_CONFIG = {
     "execution_config": {"subnetwork_uri": "default"},
@@ -75,7 +81,9 @@ def get_raw_prefixes():
             [
                 "/".join(b.name.split("/")[:-1])
                 for b in storage_client.list_blobs(
-                    bucket.name, prefix="edw_data/downloaded-data/SME"
+                    # bucket.name, prefix="edw_data/downloaded-data/SME"
+                    bucket.name,
+                    prefix="mini_source",
                 )
                 if b.name.endswith(".csv")
             ]
@@ -120,8 +128,8 @@ with models.DAG(
                             "--stage-name=profile_bronze_asset",
                         ],
                     },
-                    "environment_config": {ENVIRONMENT_CONFIG},
-                    "runtime_config": {RUNTIME_CONFIG},
+                    "environment_config": ENVIRONMENT_CONFIG,
+                    "runtime_config": RUNTIME_CONFIG,
                 },
                 batch_id=f"profile-bronze-asset-{ed_code}",
             )
@@ -145,8 +153,8 @@ with models.DAG(
                             "--stage-name=bronze_asset",
                         ],
                     },
-                    "environment_config": {ENVIRONMENT_CONFIG},
-                    "runtime_config": {RUNTIME_CONFIG},
+                    "environment_config": ENVIRONMENT_CONFIG,
+                    "runtime_config": RUNTIME_CONFIG,
                 },
                 batch_id=f"bronze-assets-{ed_code}",
             )
@@ -170,8 +178,8 @@ with models.DAG(
                             "--stage-name=silver_asset",
                         ],
                     },
-                    "environment_config": {ENVIRONMENT_CONFIG},
-                    "runtime_config": {RUNTIME_CONFIG},
+                    "environment_config": ENVIRONMENT_CONFIG,
+                    "runtime_config": RUNTIME_CONFIG,
                 },
                 batch_id=f"silver-assets-{ed_code}",
             )
@@ -196,8 +204,8 @@ with models.DAG(
                             "--stage-name=profile_bronze_collateral",
                         ],
                     },
-                    "environment_config": {ENVIRONMENT_CONFIG},
-                    "runtime_config": {RUNTIME_CONFIG},
+                    "environment_config": ENVIRONMENT_CONFIG,
+                    "runtime_config": RUNTIME_CONFIG,
                 },
                 batch_id=f"profile-bronze-collateral-{ed_code}",
             )
@@ -221,8 +229,8 @@ with models.DAG(
                             "--stage-name=bronze_collateral",
                         ],
                     },
-                    "environment_config": {ENVIRONMENT_CONFIG},
-                    "runtime_config": {RUNTIME_CONFIG},
+                    "environment_config": ENVIRONMENT_CONFIG,
+                    "runtime_config": RUNTIME_CONFIG,
                 },
                 batch_id=f"create-bronze-collaterals-{ed_code}",
             )
@@ -246,8 +254,8 @@ with models.DAG(
                             "--stage-name=silver_collateral",
                         ],
                     },
-                    "environment_config": {ENVIRONMENT_CONFIG},
-                    "runtime_config": {RUNTIME_CONFIG},
+                    "environment_config": ENVIRONMENT_CONFIG,
+                    "runtime_config": RUNTIME_CONFIG,
                 },
                 batch_id=f"create-silver-collaterals-{ed_code}",
             )
@@ -276,8 +284,8 @@ with models.DAG(
                             "--stage-name=profile_bronze_bond_info",
                         ],
                     },
-                    "environment_config": {ENVIRONMENT_CONFIG},
-                    "runtime_config": {RUNTIME_CONFIG},
+                    "environment_config": ENVIRONMENT_CONFIG,
+                    "runtime_config": RUNTIME_CONFIG,
                 },
                 batch_id=f"profile-bronze-bond-info-{ed_code}",
             )
@@ -301,8 +309,8 @@ with models.DAG(
                             "--stage-name=bronze_bond_info",
                         ],
                     },
-                    "environment_config": {ENVIRONMENT_CONFIG},
-                    "runtime_config": {RUNTIME_CONFIG},
+                    "environment_config": ENVIRONMENT_CONFIG,
+                    "runtime_config": RUNTIME_CONFIG,
                 },
                 batch_id=f"create-bronze-bond-info-{ed_code}",
             )
@@ -326,8 +334,8 @@ with models.DAG(
                             "--stage-name=silver_bond_info",
                         ],
                     },
-                    "environment_config": {ENVIRONMENT_CONFIG},
-                    "runtime_config": {RUNTIME_CONFIG},
+                    "environment_config": ENVIRONMENT_CONFIG,
+                    "runtime_config": RUNTIME_CONFIG,
                 },
                 batch_id=f"create-silver-bond-info-{ed_code}",
             )
@@ -338,3 +346,5 @@ with models.DAG(
             )
         end = EmptyOperator(task_id=f"{ed_code}_end")
         start >> [assets_tg, collaterals_tg, bond_info_tg] >> end
+        # Debug
+        break
