@@ -61,9 +61,9 @@ ENVIRONMENT_CONFIG = {
 RUNTIME_CONFIG = {
     "properties": {
         "spark.app.name": "loan_etl_pipeline",
-        "spark.executor.instances": 4,
-        "spark.driver.cores": 8,
-        "spark.executor.cores": 8,
+        "spark.executor.instances": "4",
+        "spark.driver.cores": "8",
+        "spark.executor.cores": "8",
         "spark.executor.memory": "16g",
     },
     "version": "2.0",
@@ -101,12 +101,14 @@ default_args = {
 with models.DAG(
     "delta_lake_etl",  # The id you will see in the DAG airflow page
     default_args=default_args,  # The interval with which to schedule the DAG
-    schedule_interval=datetime.timedelta(days=1),  # Override to match your needs
+    schedule_interval=None,  # Override to match your needs
 ) as dag:
 
     raw_prefixes = get_raw_prefixes()
     for rp in raw_prefixes:
         ed_code = rp.split("/")[-1]
+        # # DEBUG
+        # if ed_code == "SMEMBE000095100220092":
         start = EmptyOperator(task_id=f"{ed_code}_start")
         with TaskGroup(group_id=f"{ed_code}_assets") as assets_tg:
             assets_bronze_profile_task = DataprocCreateBatchOperator(
@@ -121,9 +123,9 @@ with models.DAG(
                         "python_file_uris": [PY_FILES],
                         "args": [
                             f"--project={PROJECT_ID}",
-                            f"--raw-bucketname=${RAW_BUCKET}",
-                            f"--data-bucketname=${DATA_BUCKET}",
-                            f"--source-prefix=mini_source/${ed_code}",
+                            f"--raw-bucketname={RAW_BUCKET}",
+                            f"--data-bucketname={DATA_BUCKET}",
+                            f"--source-prefix=mini_source/{ed_code}",
                             "--file-key=Loan_Data",
                             "--stage-name=profile_bronze_asset",
                         ],
@@ -131,7 +133,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"profile-bronze-asset-{ed_code}",
+                batch_id=f"profile-bronze-asset-{ed_code.lower()}",
             )
             assets_bronze_task = DataprocCreateBatchOperator(
                 task_id=f"assets_bronze_{ed_code}",
@@ -145,9 +147,9 @@ with models.DAG(
                         "python_file_uris": [PY_FILES],
                         "args": [
                             f"--project={PROJECT_ID}",
-                            f"--raw-bucketname=${RAW_BUCKET}",
-                            f"--data-bucketname=${DATA_BUCKET}",
-                            f"--source-prefix=mini_source/${ed_code}",
+                            f"--raw-bucketname={RAW_BUCKET}",
+                            f"--data-bucketname={DATA_BUCKET}",
+                            f"--source-prefix=mini_source/{ed_code}",
                             "--target-prefix=SME/bronze/assets",
                             "--file-key=Loan_Data",
                             "--stage-name=bronze_asset",
@@ -156,7 +158,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"bronze-assets-{ed_code}",
+                batch_id=f"bronze-assets-{ed_code.lower()}",
             )
             assets_silver_task = DataprocCreateBatchOperator(
                 task_id=f"assets_silver_{ed_code}",
@@ -170,8 +172,8 @@ with models.DAG(
                         "python_file_uris": [PY_FILES],
                         "args": [
                             f"--project={PROJECT_ID}",
-                            f"--raw-bucketname=${RAW_BUCKET}",
-                            f"--data-bucketname=${DATA_BUCKET}",
+                            f"--raw-bucketname={RAW_BUCKET}",
+                            f"--data-bucketname={DATA_BUCKET}",
                             "--source-prefix=SME/bronze/assets",
                             "--target-prefix=SME/silver/assets",
                             f"--ed-code={ed_code}",
@@ -181,7 +183,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"silver-assets-{ed_code}",
+                batch_id=f"silver-assets-{ed_code.lower()}",
             )
             assets_bronze_profile_task >> assets_bronze_task >> assets_silver_task
         with TaskGroup(group_id=f"{ed_code}_collaterals") as collaterals_tg:
@@ -197,9 +199,9 @@ with models.DAG(
                         "python_file_uris": [PY_FILES],
                         "args": [
                             f"--project={PROJECT_ID}",
-                            f"--raw-bucketname=${RAW_BUCKET}",
-                            f"--data-bucketname=${DATA_BUCKET}",
-                            f"--source-prefix=mini_source/${ed_code}",
+                            f"--raw-bucketname={RAW_BUCKET}",
+                            f"--data-bucketname={DATA_BUCKET}",
+                            f"--source-prefix=mini_source/{ed_code}",
                             "--file-key=Collateral",
                             "--stage-name=profile_bronze_collateral",
                         ],
@@ -207,7 +209,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"profile-bronze-collateral-{ed_code}",
+                batch_id=f"profile-bronze-collateral-{ed_code.lower()}",
             )
             collateral_bronze_task = DataprocCreateBatchOperator(
                 task_id=f"collateral_bronze_{ed_code}",
@@ -221,9 +223,9 @@ with models.DAG(
                         "python_file_uris": [PY_FILES],
                         "args": [
                             f"--project={PROJECT_ID}",
-                            f"--raw-bucketname=${RAW_BUCKET}",
-                            f"--data-bucketname=${DATA_BUCKET}",
-                            f"--source-prefix=mini_source/${ed_code}",
+                            f"--raw-bucketname={RAW_BUCKET}",
+                            f"--data-bucketname={DATA_BUCKET}",
+                            f"--source-prefix=mini_source/{ed_code}",
                             "--target-prefix=SME/bronze/collaterals",
                             "--file-key=Collateral",
                             "--stage-name=bronze_collateral",
@@ -232,7 +234,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"create-bronze-collaterals-{ed_code}",
+                batch_id=f"create-bronze-collaterals-{ed_code.lower()}",
             )
             collateral_silver_task = DataprocCreateBatchOperator(
                 task_id=f"collateral_silver_{ed_code}",
@@ -246,8 +248,8 @@ with models.DAG(
                         "python_file_uris": [PY_FILES],
                         "args": [
                             f"--project={PROJECT_ID}",
-                            f"--raw-bucketname=${RAW_BUCKET}",
-                            f"--data-bucketname=${DATA_BUCKET}",
+                            f"--raw-bucketname={RAW_BUCKET}",
+                            f"--data-bucketname={DATA_BUCKET}",
                             "--source-prefix=SME/bronze/collaterals",
                             "--target-prefix=SME/silver/collaterals",
                             f"--ed-code={ed_code}",
@@ -257,7 +259,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"create-silver-collaterals-{ed_code}",
+                batch_id=f"create-silver-collaterals-{ed_code.lower()}",
             )
             (
                 collateral_bronze_profile_task
@@ -277,9 +279,9 @@ with models.DAG(
                         "python_file_uris": [PY_FILES],
                         "args": [
                             f"--project={PROJECT_ID}",
-                            f"--raw-bucketname=${RAW_BUCKET}",
-                            f"--data-bucketname=${DATA_BUCKET}",
-                            f"--source-prefix=mini_source/${ed_code}",
+                            f"--raw-bucketname={RAW_BUCKET}",
+                            f"--data-bucketname={DATA_BUCKET}",
+                            f"--source-prefix=mini_source/{ed_code}",
                             "--file-key=Bond_Info",
                             "--stage-name=profile_bronze_bond_info",
                         ],
@@ -287,7 +289,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"profile-bronze-bond-info-{ed_code}",
+                batch_id=f"profile-bronze-bond-info-{ed_code.lower()}",
             )
             bond_info_bronze_task = DataprocCreateBatchOperator(
                 task_id=f"bond_info_bronze_{ed_code}",
@@ -301,9 +303,9 @@ with models.DAG(
                         "python_file_uris": [PY_FILES],
                         "args": [
                             f"--project={PROJECT_ID}",
-                            f"--raw-bucketname=${RAW_BUCKET}",
-                            f"--data-bucketname=${DATA_BUCKET}",
-                            f"--source-prefix=mini_source/${ed_code}",
+                            f"--raw-bucketname={RAW_BUCKET}",
+                            f"--data-bucketname={DATA_BUCKET}",
+                            f"--source-prefix=mini_source/{ed_code}",
                             "--target-prefix=SME/bronze/bond_info",
                             "--file-key=Bond_Info",
                             "--stage-name=bronze_bond_info",
@@ -312,7 +314,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"create-bronze-bond-info-{ed_code}",
+                batch_id=f"create-bronze-bond-info-{ed_code.lower()}",
             )
             bond_info_silver_task = DataprocCreateBatchOperator(
                 task_id=f"bond_info_silver_{ed_code}",
@@ -326,8 +328,8 @@ with models.DAG(
                         "python_file_uris": [PY_FILES],
                         "args": [
                             f"--project={PROJECT_ID}",
-                            f"--raw-bucketname=${RAW_BUCKET}",
-                            f"--data-bucketname=${DATA_BUCKET}",
+                            f"--raw-bucketname={RAW_BUCKET}",
+                            f"--data-bucketname={DATA_BUCKET}",
                             "--source-prefix=SME/bronze/bond_info",
                             "--target-prefix=SME/silver/bond_info",
                             f"--ed-code={ed_code}",
@@ -337,7 +339,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"create-silver-bond-info-{ed_code}",
+                batch_id=f"create-silver-bond-info-{ed_code.lower()}",
             )
             (
                 bond_info_bronze_profile_task
@@ -346,5 +348,3 @@ with models.DAG(
             )
         end = EmptyOperator(task_id=f"{ed_code}_end")
         start >> [assets_tg, collaterals_tg, bond_info_tg] >> end
-        # Debug
-        break

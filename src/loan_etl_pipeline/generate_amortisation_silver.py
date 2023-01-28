@@ -99,6 +99,8 @@ def unpivot_dataframe(df, columns):
         date_df.join(double_df, on="AS3", how="inner")
         .join(scd2_df, on="AS3", how="inner")
         .withColumn("AS3", F.split(F.col("AS3"), "_").getItem(0))
+        .drop("DATE_COLUMNS", "DOUBLE_COLUMNS")
+        .dropDuplicates()
     )
     return new_df
 
