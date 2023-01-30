@@ -1,35 +1,16 @@
-"""
-Examples below show how to use operators for managing Dataproc Serverless batch workloads.
- You use these operators in DAGs that create, delete, list, and get a Dataproc Serverless Spark batch workload.
-https://airflow.apache.org/docs/apache-airflow/stable/concepts/variables.html
-* project_id is the Google Cloud Project ID to use for the Cloud Dataproc Serverless.
-* bucket_name is the URI of a bucket where the main python file of the workload (spark-job.py) is located.
-* phs_cluster is the Persistent History Server cluster name.
-* image_name is the name and tag of the custom container image (image:tag).
-* metastore_cluster is the Dataproc Metastore service name.
-* region_name is the region where the Dataproc Metastore service is located.
-"""
-
-import datetime
 from google.cloud import storage
-
+from uuid import uuid1
 from airflow import models
-from airflow.models import Variable
 from airflow.providers.google.cloud.operators.dataproc import (
     DataprocCreateBatchOperator,
 )
 from airflow.operators.empty import EmptyOperator
 from airflow.utils.dates import days_ago
 from airflow.utils.task_group import TaskGroup
+from airflow.utils.db import provide_session
+from airflow.models import XCom
 
 # Var definitions
-# PROJECT_ID = Variable.get("project_id")
-# REGION = Variable.get("region_name")
-# CODE_BUCKET = Variable.get("code_bucketname")
-# RAW_BUCKET = Variable.get("raw_bucketname")
-# DATA_BUCKET = Variable.get("data_bucketname")
-# PHS_CLUSTER = Variable.get("phs_cluster")
-# METASTORE_CLUSTER = Variable.get("metastore_cluster")
 PROJECT_ID = "dataops-369610"
 REGION = "europe-west3"
 CODE_BUCKET = "data-lake-code-847515094398"
@@ -70,6 +51,14 @@ RUNTIME_CONFIG = {
 }
 
 
+@provide_session
+def cleanup_xcom(session=None, **kwargs):
+    dag = kwargs["dag"]
+    dag_id = dag.dag_id
+    # It will delete all xcom of the dag_id
+    session.query(XCom).filter(XCom.dag_id == dag_id).delete()
+
+
 def get_raw_prefixes():
     """
     Retrive refixes from raw bucket to start a DAG in it.
@@ -102,8 +91,9 @@ with models.DAG(
     "delta_lake_etl",  # The id you will see in the DAG airflow page
     default_args=default_args,  # The interval with which to schedule the DAG
     schedule_interval=None,  # Override to match your needs
+    on_success_callback=cleanup_xcom,
 ) as dag:
-
+    run_id = str(uuid1())
     raw_prefixes = get_raw_prefixes()
     for rp in raw_prefixes:
         ed_code = rp.split("/")[-1]
@@ -133,7 +123,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"profile-bronze-asset-{ed_code.lower()}",
+                batch_id=f"profile-bronze-asset-{ed_code.lower()}-{run_id}",
             )
             assets_bronze_task = DataprocCreateBatchOperator(
                 task_id=f"assets_bronze_{ed_code}",
@@ -158,7 +148,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"bronze-assets-{ed_code.lower()}",
+                batch_id=f"bronze-assets-{ed_code.lower()}-{run_id}",
             )
             assets_silver_task = DataprocCreateBatchOperator(
                 task_id=f"assets_silver_{ed_code}",
@@ -183,7 +173,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"silver-assets-{ed_code.lower()}",
+                batch_id=f"silver-assets-{ed_code.lower()}-{run_id}",
             )
             assets_bronze_profile_task >> assets_bronze_task >> assets_silver_task
         with TaskGroup(group_id=f"{ed_code}_collaterals") as collaterals_tg:
@@ -209,7 +199,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"profile-bronze-collateral-{ed_code.lower()}",
+                batch_id=f"profile-bronze-collateral-{ed_code.lower()}-{run_id}",
             )
             collateral_bronze_task = DataprocCreateBatchOperator(
                 task_id=f"collateral_bronze_{ed_code}",
@@ -234,7 +224,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"create-bronze-collaterals-{ed_code.lower()}",
+                batch_id=f"create-bronze-collaterals-{ed_code.lower()}-{run_id}",
             )
             collateral_silver_task = DataprocCreateBatchOperator(
                 task_id=f"collateral_silver_{ed_code}",
@@ -259,7 +249,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"create-silver-collaterals-{ed_code.lower()}",
+                batch_id=f"create-silver-collaterals-{ed_code.lower()}-{run_id}",
             )
             (
                 collateral_bronze_profile_task
@@ -289,7 +279,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"profile-bronze-bond-info-{ed_code.lower()}",
+                batch_id=f"profile-bronze-bond-info-{ed_code.lower()}-{run_id}",
             )
             bond_info_bronze_task = DataprocCreateBatchOperator(
                 task_id=f"bond_info_bronze_{ed_code}",
@@ -314,7 +304,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"create-bronze-bond-info-{ed_code.lower()}",
+                batch_id=f"create-bronze-bond-info-{ed_code.lower()}-{run_id}",
             )
             bond_info_silver_task = DataprocCreateBatchOperator(
                 task_id=f"bond_info_silver_{ed_code}",
@@ -339,7 +329,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"create-silver-bond-info-{ed_code.lower()}",
+                batch_id=f"create-silver-bond-info-{ed_code.lower()}-{run_id}",
             )
             (
                 bond_info_bronze_profile_task
