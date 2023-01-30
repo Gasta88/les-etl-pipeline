@@ -2,6 +2,7 @@ import logging
 import sys
 import pandas as pd
 from google.cloud import storage
+import unicodedata
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -32,6 +33,31 @@ def prepare_dataset(ds_code, data):
     return pd.DataFrame(new_data)
 
 
+def prepare_manifest(manifest_df):
+    """
+    Create a nice CSV file where there is the mapping between QUANDL code and its description.
+
+    :param manifest_df: raw manifest data associated to QUANDL data.
+    :return df: final dataframe to be stored.
+    """
+    char_to_replace = {
+        "-": "_",
+        " ": "_",
+        "(": "",
+        ")": "",
+    }
+    manifest_df["new_name"] = manifest_df["name"].apply(
+        lambda x: unicodedata.normalize("NFKD", x)
+        .lower()
+        .replace(" - ", "-")
+        .replace(" -", "")
+        .translate(str.maketrans(char_to_replace))
+    )
+    manifest_df.drop(["name"], inplace=True)
+    manifest_df.rename(columns={"new_name": "name"}, inplace=True)
+    return manifest_df
+
+
 def generate_quandl_silver(
     raw_bucketname, data_bucketname, bronze_prefix, target_prefix
 ):
@@ -45,12 +71,21 @@ def generate_quandl_silver(
     :return status: 0 when succesful.
     """
     logger.info("Start QUANDL UPLOAD job.")
-
-    logger.info("Create NEW dataframe")
-    quandl_file = f"{bronze_prefix}/quandl_datasets.pkl"
     storage_client = storage.Client(project="dataops-369610")
     raw_bucket = storage_client.get_bucket(raw_bucketname)
     data_bucket = storage_client.get_bucket(data_bucketname)
+
+    logger.info("Prepare manifest table.")
+    maifest_file = f"{bronze_prefix}/SGE_TradingEconomics_Metadata.csv"
+    dest_csv_f = f'/tmp/{maifest_file.split("/")[-1]}'
+    manifest_df = pd.read_csv(dest_csv_f)
+    new_manifest_df = prepare_manifest(manifest_df)
+    data_bucket.blob(f"{target_prefix}/quandl_manifest.csv").upload_from_string(
+        new_manifest_df.to_csv(), "text/csv"
+    )
+    logger.info("Create NEW dataframe")
+    quandl_file = f"{bronze_prefix}/quandl_datasets.pkl"
+
     blob = raw_bucket.blob(quandl_file)
     dest_pkl_f = f'/tmp/{quandl_file.split("/")[-1]}'
     blob.download_to_filename(dest_pkl_f)
@@ -59,6 +94,9 @@ def generate_quandl_silver(
     for k, d in macro_econo_df.items():
         # TODO: The SGE label could not be always applicable. Need to re-engineer this part when/if new data from QUANDL is retrieved.
         code = k.replace("SGE/", "").replace(" - Value", "")
+        if code in ["ALBRATING", "DZARATING"]:
+            # Skip these datasets since there is no description for them.
+            continue
         df = prepare_dataset(code, d)
         data_bucket.blob(f"{target_prefix}/{code}.csv").upload_from_string(
             df.to_csv(), "text/csv"
