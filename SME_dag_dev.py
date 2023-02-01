@@ -11,14 +11,15 @@ from airflow.utils.db import provide_session
 from airflow.models import XCom
 from airflow.decorators import task
 
-# Prod Var definitions
+# Dev Var definitions
 PROJECT_ID = "dataops-369610"
 REGION = "europe-west3"
 CODE_BUCKET = "data-lake-code-847515094398"
-RAW_BUCKET = "algoritmica_data"
-DATA_BUCKET = "algoritmica_data_lake"
+RAW_BUCKET = "fgasta_test_raw"
+DATA_BUCKET = "fgasta_data_lake_test"
 PHS_CLUSTER = "spark-hist-srv-dataops-369610"
 METASTORE_CLUSTER = "data-catalog-dataops-369610"
+
 
 SUBNETWORK_URI = f"projects/{PROJECT_ID}/regions/{REGION}/subnetworks/default"
 PYTHON_FILE_LOCATION = f"gs://{CODE_BUCKET}/dist/main.py"
@@ -74,7 +75,7 @@ def get_raw_prefixes():
                 for b in storage_client.list_blobs(
                     # bucket.name, prefix="edw_data/downloaded-data/SME"
                     bucket.name,
-                    prefix="edw_data/downloaded-data/SME",
+                    prefix="mini_source",
                 )
                 if b.name.endswith(".csv")
             ]
@@ -97,8 +98,10 @@ with models.DAG(
 ) as dag:
     run_id = str(uuid1())
     raw_prefixes = get_raw_prefixes()
-    for rp in raw_prefixes[:50]:
+    for rp in raw_prefixes:
         ed_code = rp.split("/")[-1]
+        # # DEBUG
+        # if ed_code == "SMEMBE000095100220092":
         start = EmptyOperator(task_id=f"{ed_code}_start")
         with TaskGroup(group_id=f"{ed_code}_assets") as assets_tg:
             assets_bronze_profile_task = DataprocCreateBatchOperator(
@@ -115,7 +118,7 @@ with models.DAG(
                             f"--project={PROJECT_ID}",
                             f"--raw-bucketname={RAW_BUCKET}",
                             f"--data-bucketname={DATA_BUCKET}",
-                            f"--source-prefix=edw_data/downloaded-data/SME/{ed_code}",
+                            f"--source-prefix=mini_source/{ed_code}",
                             "--file-key=Loan_Data",
                             "--stage-name=profile_bronze_asset",
                         ],
@@ -123,7 +126,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-{run_id}",
+                batch_id=f"profile-bronze-asset-{ed_code.lower()}-{run_id}",
             )
             assets_bronze_task = DataprocCreateBatchOperator(
                 task_id=f"assets_bronze_{ed_code}",
@@ -139,7 +142,7 @@ with models.DAG(
                             f"--project={PROJECT_ID}",
                             f"--raw-bucketname={RAW_BUCKET}",
                             f"--data-bucketname={DATA_BUCKET}",
-                            f"--source-prefix=edw_data/downloaded-data/SME/{ed_code}",
+                            f"--source-prefix=mini_source/{ed_code}",
                             "--target-prefix=SME/bronze/assets",
                             "--file-key=Loan_Data",
                             "--stage-name=bronze_asset",
@@ -148,7 +151,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-{run_id}",
+                batch_id=f"bronze-assets-{ed_code.lower()}-{run_id}",
             )
             assets_silver_task = DataprocCreateBatchOperator(
                 task_id=f"assets_silver_{ed_code}",
@@ -173,7 +176,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-{run_id}",
+                batch_id=f"silver-assets-{ed_code.lower()}-{run_id}",
             )
             assets_bronze_profile_task >> assets_bronze_task >> assets_silver_task
         with TaskGroup(group_id=f"{ed_code}_collaterals") as collaterals_tg:
@@ -191,7 +194,7 @@ with models.DAG(
                             f"--project={PROJECT_ID}",
                             f"--raw-bucketname={RAW_BUCKET}",
                             f"--data-bucketname={DATA_BUCKET}",
-                            f"--source-prefix=edw_data/downloaded-data/SME/{ed_code}",
+                            f"--source-prefix=mini_source/{ed_code}",
                             "--file-key=Collateral",
                             "--stage-name=profile_bronze_collateral",
                         ],
@@ -199,7 +202,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-{run_id}",
+                batch_id=f"profile-bronze-collateral-{ed_code.lower()}-{run_id}",
             )
             collateral_bronze_task = DataprocCreateBatchOperator(
                 task_id=f"collateral_bronze_{ed_code}",
@@ -215,7 +218,7 @@ with models.DAG(
                             f"--project={PROJECT_ID}",
                             f"--raw-bucketname={RAW_BUCKET}",
                             f"--data-bucketname={DATA_BUCKET}",
-                            f"--source-prefix=edw_data/downloaded-data/SME/{ed_code}",
+                            f"--source-prefix=mini_source/{ed_code}",
                             "--target-prefix=SME/bronze/collaterals",
                             "--file-key=Collateral",
                             "--stage-name=bronze_collateral",
@@ -224,7 +227,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-{run_id}",
+                batch_id=f"create-bronze-collaterals-{ed_code.lower()}-{run_id}",
             )
             collateral_silver_task = DataprocCreateBatchOperator(
                 task_id=f"collateral_silver_{ed_code}",
@@ -249,7 +252,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-{run_id}",
+                batch_id=f"create-silver-collaterals-{ed_code.lower()}-{run_id}",
             )
             (
                 collateral_bronze_profile_task
@@ -271,7 +274,7 @@ with models.DAG(
                             f"--project={PROJECT_ID}",
                             f"--raw-bucketname={RAW_BUCKET}",
                             f"--data-bucketname={DATA_BUCKET}",
-                            f"--source-prefix=edw_data/downloaded-data/SME/{ed_code}",
+                            f"--source-prefix=mini_source/{ed_code}",
                             "--file-key=Bond_Info",
                             "--stage-name=profile_bronze_bond_info",
                         ],
@@ -279,7 +282,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-{run_id}",
+                batch_id=f"profile-bronze-bond-info-{ed_code.lower()}-{run_id}",
             )
             bond_info_bronze_task = DataprocCreateBatchOperator(
                 task_id=f"bond_info_bronze_{ed_code}",
@@ -295,7 +298,7 @@ with models.DAG(
                             f"--project={PROJECT_ID}",
                             f"--raw-bucketname={RAW_BUCKET}",
                             f"--data-bucketname={DATA_BUCKET}",
-                            f"--source-prefix=edw_data/downloaded-data/SME/{ed_code}",
+                            f"--source-prefix=mini_source/{ed_code}",
                             "--target-prefix=SME/bronze/bond_info",
                             "--file-key=Bond_Info",
                             "--stage-name=bronze_bond_info",
@@ -304,7 +307,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-{run_id}",
+                batch_id=f"create-bronze-bond-info-{ed_code.lower()}-{run_id}",
             )
             bond_info_silver_task = DataprocCreateBatchOperator(
                 task_id=f"bond_info_silver_{ed_code}",
@@ -329,7 +332,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-{run_id}",
+                batch_id=f"create-silver-bond-info-{ed_code.lower()}-{run_id}",
             )
             (
                 bond_info_bronze_profile_task

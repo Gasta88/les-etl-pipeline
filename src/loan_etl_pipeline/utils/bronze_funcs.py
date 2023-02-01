@@ -105,7 +105,7 @@ def create_dataframe(spark, bucket_name, csv_f, data_type):
                 "part",
                 F.concat(F.col("ed_code"), F.lit("_"), F.col("year"), F.col("month")),
             )
-            .drop("ImportDate")
+            .drop("ImportDate", "year", "month")
         )
         # repartition = 4 instances * 8 cores each * 3 for replication factor
         df = df.repartition(96)
