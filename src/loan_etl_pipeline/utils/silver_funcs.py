@@ -68,7 +68,7 @@ def get_all_pcds(bucket_name, data_type, ed_code):
     :return pcds: list of PCDs to be elaborated.
     """
     pcds = []
-    pcd_idx = 0
+    filename_idx = 0
     storage_client = storage.Client(project="dataops-369610")
     bucket = storage_client.get_bucket(bucket_name)
     csv_f = f'clean_dump/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_clean_{data_type}.csv'
@@ -78,12 +78,12 @@ def get_all_pcds(bucket_name, data_type, ed_code):
     with open(dest_csv_f, "r") as f:
         for i, line in enumerate(csv.reader(f)):
             if i == 0:
-                pcd_idx = line.index("filename")
+                filename_idx = line.index("filename")
                 continue
             else:
                 if len(line) == 0:
                     continue
-                pcd = "-".join(line[pcd_idx].split("/")[-1].split("_")[1:3])
+                pcd = "-".join(line[filename_idx].split("/")[-1].split("_")[1:3])
                 if pcd not in pcds:
                     pcds.append(pcd)
     return pcds
