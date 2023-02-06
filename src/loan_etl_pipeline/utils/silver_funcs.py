@@ -58,41 +58,6 @@ def cast_to_datatype(df, columns):
     return df
 
 
-def return_write_mode(bucket_name, prefix, pcds):
-    """
-    If PCDs are already presents as partition return "overwrite", otherwise "append" mode.
-
-    :param bucket_name: GS bucket where files are stored.
-    :param prefix: specific bucket prefix from where to collect files.
-    :param pcds: list of PCDs that have been elaborated in the previous Silver layer.
-    :return write_mode: label that express how data should be written on storage.
-    """
-    storage_client = storage.Client(project="dataops-369610")
-    check_list = []
-    ed_code = prefix.split("/")[-1]
-    if pcds is not None:
-        for pcd in pcds:
-            part_pcd = pcd.replace("-", "")
-            partition_prefix = f"{prefix}/part={ed_code}_{part_pcd}"
-            check_list.append(
-                len(
-                    [
-                        b.name
-                        for b in storage_client.list_blobs(
-                            bucket_name, prefix=partition_prefix
-                        )
-                    ]
-                )
-            )
-    else:
-        # In case of deal_details
-        return "append"
-    if sum(check_list) > 0:
-        return "overwrite"
-    else:
-        return "append"
-
-
 def get_all_pcds(bucket_name, data_type, ed_code):
     """
     Return list of PCDs inside CSV profiling output file.
@@ -103,6 +68,7 @@ def get_all_pcds(bucket_name, data_type, ed_code):
     :return pcds: list of PCDs to be elaborated.
     """
     pcds = []
+    pcd_idx = 0
     storage_client = storage.Client(project="dataops-369610")
     bucket = storage_client.get_bucket(bucket_name)
     csv_f = f'clean_dump/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_clean_{data_type}.csv'
@@ -112,10 +78,12 @@ def get_all_pcds(bucket_name, data_type, ed_code):
     with open(dest_csv_f, "r") as f:
         for i, line in enumerate(csv.reader(f)):
             if i == 0:
+                pcd_idx = line.index("filename")
                 continue
             else:
                 if len(line) == 0:
                     continue
-                pcd = "-".join(line[1].split("/")[-1].split("_")[1:3])
-                pcds.append(pcd)
+                pcd = "-".join(line[pcd_idx].split("/")[-1].split("_")[1:3])
+                if pcd not in pcds:
+                    pcds.append(pcd)
     return pcds

@@ -1,12 +1,5 @@
 from google.cloud import storage
 import csv
-from validation_rules import (
-    asset_schema,
-    collateral_schema,
-    bond_info_schema,
-    amortisation_schema,
-)
-from cerberus import Validator
 
 
 INITIAL_COL = {
@@ -15,23 +8,6 @@ INITIAL_COL = {
     "amortisation": "AS3",
     "bond_info": "BS1",
 }
-
-
-def get_profiling_rules(data_type):
-    """
-    Return QA rules for data_type.
-
-    :param data_type: type of data to handle, ex: amortisation, assets, collaterals.
-    :return validator: Cerberus validator with specific schema for profiling.
-    """
-    if data_type == "assets":
-        return Validator(asset_schema, allow_unknown=True)
-    if data_type == "collaterals":
-        return Validator(collateral_schema, allow_unknown=True)
-    if data_type == "bond_info":
-        return Validator(bond_info_schema, allow_unknown=True)
-    if data_type == "amortisation":
-        return Validator(amortisation_schema, allow_unknown=True)
 
 
 def get_csv_files(bucket_name, prefix, file_key, data_type):

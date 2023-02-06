@@ -3,10 +3,16 @@ import sys
 from google.cloud import storage
 import pandas as pd
 import datetime
+from cerberus import Validator
 from src.loan_etl_pipeline.utils.bronze_profile_funcs import (
     get_csv_files,
-    get_profiling_rules,
     profile_data,
+)
+from src.loan_etl_pipeline.utils.validation_rules import (
+    asset_schema,
+    collateral_schema,
+    bond_info_schema,
+    amortisation_schema,
 )
 
 # Setup logger
@@ -46,7 +52,14 @@ def profile_bronze_data(
         )
         return 0
     else:
-        validator = get_profiling_rules(data_type)
+        if data_type == "assets":
+            validator = Validator(asset_schema(), allow_unknown=True)
+        if data_type == "collaterals":
+            validator = Validator(collateral_schema(), allow_unknown=True)
+        if data_type == "bond_info":
+            validator = Validator(bond_info_schema(), allow_unknown=True)
+        if data_type == "amortisation":
+            validator = Validator(amortisation_schema(), allow_unknown=True)
 
         logger.info(f"Create NEW {ed_code} dataframe")
         all_new_files = get_csv_files(

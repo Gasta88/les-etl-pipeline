@@ -2,14 +2,12 @@ import logging
 import sys
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, StringType, DoubleType, BooleanType
-from delta import *
 from google.cloud import storage
 import datetime
 from src.loan_etl_pipeline.utils.silver_funcs import (
     replace_no_data,
     replace_bool_data,
     cast_to_datatype,
-    return_write_mode,
     get_all_pcds,
 )
 
@@ -287,7 +285,7 @@ def generate_asset_silver(spark, bucket_name, source_prefix, target_prefix, ed_c
             part_pcd = pcd.replace("-", "")
             logger.info(f"Processing {pcd} data from bronze to silver. ")
             bronze_df = (
-                spark.read.format("delta")
+                spark.read.format("parquet")
                 .load(f"gs://{bucket_name}/{source_prefix}")
                 .where(F.col("part") == f"{ed_code}_{part_pcd}")
                 .filter(F.col("iscurrent") == 1)
@@ -312,36 +310,35 @@ def generate_asset_silver(spark, bucket_name, source_prefix, target_prefix, ed_c
             performance_info_df = process_performance_info(cleaned_df, assets_columns)
 
             logger.info("Write dataframe")
-            write_mode = return_write_mode(bucket_name, target_prefix, pcds)
 
             (
-                loan_info_df.write.format("delta")
+                loan_info_df.write.format("parquet")
                 .partitionBy("part")
-                .mode(write_mode)
+                .mode("overwrite")
                 .save(f"gs://{bucket_name}/{target_prefix}/loan_info_table")
             )
             (
-                obligor_info_df.write.format("delta")
+                obligor_info_df.write.format("parquet")
                 .partitionBy("part")
-                .mode(write_mode)
+                .mode("overwrite")
                 .save(f"gs://{bucket_name}/{target_prefix}/obligor_info_table")
             )
             (
-                financial_info_df.write.format("delta")
+                financial_info_df.write.format("parquet")
                 .partitionBy("part")
-                .mode(write_mode)
+                .mode("overwrite")
                 .save(f"gs://{bucket_name}/{target_prefix}/financial_info_table")
             )
             (
-                interest_rate_df.write.format("delta")
+                interest_rate_df.write.format("parquet")
                 .partitionBy("part")
-                .mode(write_mode)
+                .mode("overwrite")
                 .save(f"gs://{bucket_name}/{target_prefix}/interest_rate_table")
             )
             (
-                performance_info_df.write.format("delta")
+                performance_info_df.write.format("parquet")
                 .partitionBy("part")
-                .mode(write_mode)
+                .mode("overwrite")
                 .save(f"gs://{bucket_name}/{target_prefix}/performance_info_table")
             )
     logger.info("End ASSET SILVER job.")

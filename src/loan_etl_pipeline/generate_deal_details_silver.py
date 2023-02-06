@@ -2,10 +2,8 @@ import logging
 import sys
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, StringType, DoubleType, BooleanType, IntegerType
-from delta import *
 from src.loan_etl_pipeline.utils.silver_funcs import (
     cast_to_datatype,
-    return_write_mode,
 )
 
 # Setup logger
@@ -109,11 +107,10 @@ def generate_deal_details_silver(spark, bucket_name, source_prefix, target_prefi
     deal_info_df = process_deal_info(cleaned_df)
 
     logger.info("Write dataframe")
-    write_mode = return_write_mode(bucket_name, target_prefix, None)
 
     (
-        deal_info_df.write.format("delta")
-        .mode(write_mode)
+        deal_info_df.write.format("parquet")
+        .mode("overwrite")
         .save(f"gs://{bucket_name}/{target_prefix}/deal_info_table")
     )
     logger.info("End DEAL DETAILS SILVER job.")

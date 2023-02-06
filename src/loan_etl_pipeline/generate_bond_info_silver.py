@@ -2,14 +2,12 @@ import logging
 import sys
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, StringType, DoubleType, BooleanType
-from delta import *
 from google.cloud import storage
 import datetime
 from src.loan_etl_pipeline.utils.silver_funcs import (
     replace_no_data,
     replace_bool_data,
     cast_to_datatype,
-    return_write_mode,
     get_all_pcds,
 )
 
@@ -162,7 +160,7 @@ def generate_bond_info_silver(
             part_pcd = pcd.replace("-", "")
             logger.info(f"Processing {pcd} data from bronze to silver. ")
             bronze_df = (
-                spark.read.format("delta")
+                spark.read.format("parquet")
                 .load(f"gs://{bucket_name}/{source_prefix}")
                 .where(F.col("part") == f"{ed_code}_{part_pcd}")
                 .filter(F.col("iscurrent") == 1)
@@ -185,30 +183,29 @@ def generate_bond_info_silver(
             tranche_df = process_tranche_info(cleaned_df, bond_info_columns)
 
             logger.info("Write dataframe")
-            write_mode = return_write_mode(bucket_name, target_prefix, pcds)
 
             (
-                info_df.write.format("delta")
+                info_df.write.format("parquet")
                 .partitionBy("part")
-                .mode(write_mode)
+                .mode("overwrite")
                 .save(f"gs://{bucket_name}/{target_prefix}/info_table")
             )
             (
-                collateral_df.write.format("delta")
+                collateral_df.write.format("parquet")
                 .partitionBy("part")
-                .mode(write_mode)
+                .mode("overwrite")
                 .save(f"gs://{bucket_name}/{target_prefix}/collaterals_table")
             )
             (
-                contact_df.write.format("delta")
+                contact_df.write.format("parquet")
                 .partitionBy("part")
-                .mode(write_mode)
+                .mode("overwrite")
                 .save(f"gs://{bucket_name}/{target_prefix}/contact_table")
             )
             (
-                tranche_df.write.format("delta")
+                tranche_df.write.format("parquet")
                 .partitionBy("part")
-                .mode(write_mode)
+                .mode("overwrite")
                 .save(f"gs://{bucket_name}/{target_prefix}/tranche_info_table")
             )
     logger.info("End BOND INFO SILVER job.")

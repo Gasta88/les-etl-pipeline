@@ -2,10 +2,9 @@ import logging
 import sys
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, StringType, DoubleType
-from delta import *
 from google.cloud import storage
 import datetime
-from src.loan_etl_pipeline.utils.silver_funcs import return_write_mode, get_all_pcds
+from src.loan_etl_pipeline.utils.silver_funcs import get_all_pcds
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -163,20 +162,19 @@ def generate_amortisation_silver(
             )
 
             logger.info("Write mandatory dataframe")
-            write_mode = return_write_mode(bucket_name, target_prefix, pcds)
             (
-                mandatory_info_df.write.format("delta")
+                mandatory_info_df.write.format("parquet")
                 .partitionBy("part")
-                .mode(write_mode)
+                .mode("overwrite")
                 .save(f"gs://{bucket_name}/{target_prefix}/mandatory_info_table")
             )
 
             logger.info("Write optional dataframe")
-            write_mode = return_write_mode(bucket_name, target_prefix, pcds)
+
             (
-                optional_info_df.write.format("delta")
+                optional_info_df.write.format("parquet")
                 .partitionBy("part")
-                .mode(write_mode)
+                .mode("overwrite")
                 .save(f"gs://{bucket_name}/{target_prefix}/optional_info_table")
             )
     logger.info("End AMORTISATION SILVER job.")
