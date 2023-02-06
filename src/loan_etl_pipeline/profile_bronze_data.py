@@ -75,7 +75,7 @@ def profile_bronze_data(
             for new_file_name in all_new_files:
                 logger.info(f"Checking {new_file_name}..")
                 clean_content, dirty_content = profile_data(
-                    spark, raw_bucketname, new_file_name, data_type, validator
+                    raw_bucketname, new_file_name, data_type, validator
                 )
                 dirty_records += dirty_content
                 clean_records += clean_content

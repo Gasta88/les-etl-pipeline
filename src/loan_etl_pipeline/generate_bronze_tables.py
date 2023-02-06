@@ -52,9 +52,7 @@ def generate_bronze_tables(
         sys.exit(1)
     else:
         logger.info(f"Create NEW {ed_code} dataframe")
-        pcds, new_df = create_dataframe(
-            spark, raw_bucketname, clean_dump_csv, data_type
-        )
+        pcds, new_df = create_dataframe(spark, clean_dump_csv, data_type)
         if new_df is None:
             logger.error("No dataframes were extracted from file. Workflow stopped!")
             sys.exit(1)

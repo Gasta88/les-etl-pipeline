@@ -41,11 +41,10 @@ def get_csv_files(bucket_name, prefix, file_key, data_type):
         return all_files
 
 
-def profile_data(spark, bucket_name, csv_f, data_type, validator):
+def profile_data(bucket_name, csv_f, data_type, validator):
     """
     Check whether the file is ok to be stored in the bronze layer or not.
 
-    :param spark: SparkSession object.
     :param bucket_name: GS bucket where files are stored.
     :param csv_f: CSV file to be read and profile.
     :param data_type: type of data to handle, ex: amortisation, assets, collaterals.
@@ -87,6 +86,8 @@ def profile_data(spark, bucket_name, csv_f, data_type, validator):
                     flag = validator.validate(record)
                     errors = None if flag else validator.errors
                     record["filename"] = csv_f
+                    record["pcd"] = "-".join(csv_f.split("/")[-1].split("_")[1:4])
+                    record["ed_code"] = csv_f.split("/")[-1].split("_")[0]
                     if not flag:
                         # Does not pass validation
                         record["qc_errors"] = errors

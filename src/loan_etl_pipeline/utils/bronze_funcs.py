@@ -4,7 +4,6 @@ from pyspark.sql.types import (
     TimestampType,
 )
 import csv
-import datetime
 
 PRIMARY_COLS = {
     "assets": ["AS1", "AS3"],
@@ -48,49 +47,39 @@ def get_old_df(spark, bucket_name, prefix, pcds, ed_code):
         return df
 
 
-def create_dataframe(spark, bucket_name, csv_f, data_type):
+def create_dataframe(spark, csv_blob, data_type):
     """
     Read files and generate one PySpark DataFrame from them.
 
     :param spark: SparkSession object.
-    :param bucket_name: GS bucket where files are stored.
-    :param csv_f: list of files to be read to generate the dataframe.
+    :param csv_blob: blob object of the clean dump on GSC.
     :param data_type: type of data to handle, ex: amortisation, assets, collaterals.
     :return df: PySpark datafram for loan asset data.
     """
     pcds = []
-    storage_client = storage.Client(project="dataops-369610")
-    bucket = storage_client.get_bucket(bucket_name)
-    blob = bucket.blob(csv_f)
-    dest_csv_f = f'/tmp/{csv_f.split("/")[-1]}'
-    blob.download_to_filename(dest_csv_f)
+    dest_csv_f = f'/tmp/{csv_blob.name.split("/")[-1]}'
+    csv_blob.download_to_filename(dest_csv_f)
     col_names = []
     content = []
+    pcd_idx = 0
     with open(dest_csv_f, "r") as f:
-        csv_id = dest_csv_f.split("/")[-1].split("_")[0]
-        csv_date = "-".join(dest_csv_f.split("/")[-1].split("_")[1:4])
-        pcds.append(csv_date)
         for i, line in enumerate(csv.reader(f)):
             if i == 0:
                 col_names = line
-                col_names[0] = PRIMARY_COLS[data_type][0]
-            elif i == 1:
-                continue
+                pcd_idx = line.index("pcd")
             else:
                 if len(line) == 0:
                     continue
                 content.append(line)
+                pcds.append(line[pcd_idx])
         # Prep array of primary cols to use in checksum column
-        checksum_cols = [F.col("ed_code"), F.col("ImportDate")] + [
+        checksum_cols = [F.col("ed_code"), F.col("pcd")] + [
             F.col(col_name) for col_name in PRIMARY_COLS[data_type]
         ]
         df = (
             spark.createDataFrame(content, col_names)
-            .withColumn("ed_code", F.lit(csv_id))
-            .replace("", None)
-            .withColumn("ImportDate", F.lit(csv_date))
-            .withColumn("year", F.year(F.col("ImportDate")))
-            .withColumn("month", F.month(F.col("ImportDate")))
+            .withColumn("year", F.year(F.col("pcd")))
+            .withColumn("month", F.month(F.col("pcd")))
             .withColumn(
                 "valid_from", F.lit(F.current_timestamp()).cast(TimestampType())
             )
@@ -104,13 +93,13 @@ def create_dataframe(spark, bucket_name, csv_f, data_type):
                 "part",
                 F.concat(F.col("ed_code"), F.lit("_"), F.col("year"), F.col("month")),
             )
-            .drop("ImportDate", "year", "month")
+            .drop("pcd", "year", "month")
         )
         # repartition = 4 instances * 8 cores each * 3 for replication factor
         df = df.repartition(96)
     if len(df.head(1)) == 0:
         return None
-    return (pcds, df)
+    return (list(set(pcds)), df)
 
 
 def perform_scd2(spark, source_df, target_df, data_type):
