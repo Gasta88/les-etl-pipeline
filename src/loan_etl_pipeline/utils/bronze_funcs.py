@@ -5,7 +5,6 @@ from pyspark.sql.types import (
 )
 import csv
 import datetime
-from functools import reduce
 
 PRIMARY_COLS = {
     "assets": ["AS1", "AS3"],
@@ -160,30 +159,3 @@ def perform_scd2(spark, source_df, target_df, data_type):
     """
     )
     return
-
-
-def get_all_files(bucket_name, data_type, ed_code):
-    """
-    Return list of files inside the deal to process.
-
-    :param bucket_name: GS bucket where files are stored.
-    :param data_type: type of data to handle, ex: amortisation, assets, collaterals.
-    :param ed_code: deal code that refers to the data to transform.
-    :return file_sets: collection indexed by ed_code of suitable raw files.
-    """
-    all_files = []
-    storage_client = storage.Client(project="dataops-369610")
-    bucket = storage_client.get_bucket(bucket_name)
-    csv_f = f'clean_dump/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_clean_{data_type}.csv'
-    blob = bucket.blob(csv_f)
-    dest_csv_f = f'/tmp/{csv_f.split("/")[-1]}'
-    blob.download_to_filename(dest_csv_f)
-    with open(dest_csv_f, "r") as f:
-        for i, line in enumerate(csv.reader(f)):
-            if i == 0:
-                continue
-            else:
-                if len(line) == 0:
-                    continue
-                all_files.append(line[1])
-    return all_files

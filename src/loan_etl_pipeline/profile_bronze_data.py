@@ -46,7 +46,7 @@ def profile_bronze_data(
         )
         return 0
     else:
-        table_rules = get_profiling_rules(data_type)
+        validator = get_profiling_rules(data_type)
 
         logger.info(f"Create NEW {ed_code} dataframe")
         all_new_files = get_csv_files(
@@ -57,38 +57,29 @@ def profile_bronze_data(
             sys.exit(1)
         else:
             logger.info(f"Retrieved {len(all_new_files)} {data_type} data CSV files.")
-            dirty_files = []
-            clean_files = []
+            dirty_records = []
+            clean_records = []
             for new_file_name in all_new_files:
                 logger.info(f"Checking {new_file_name}..")
-                profile_flag, error_text = profile_data(
-                    spark, raw_bucketname, new_file_name, data_type, table_rules
+                clean_content, dirty_content = profile_data(
+                    spark, raw_bucketname, new_file_name, data_type, validator
                 )
-                if profile_flag == "dirty":
-                    dirty_files.append((new_file_name, error_text))
-                else:
-                    clean_files.append(new_file_name)
-            if dirty_files == []:
-                logger.info("No failed CSV found.")
+                dirty_records += dirty_content
+                clean_records += clean_content
+            if dirty_records == []:
+                logger.info("No failed records found.")
             else:
-                logger.info(f"Found {len(dirty_files)} failed CSV found.")
-                dirty_data = {
-                    "csv_uri": [el[0] for el in dirty_files],
-                    "error_text": [el[1] for el in dirty_files],
-                }
-                dirty_df = pd.DataFrame(data=dirty_data)
+                logger.info(f"Found {len(dirty_records)} failed records found.")
+                dirty_df = pd.DataFrame(data=dirty_records)
                 bucket.blob(
                     f'dirty_dump/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_dirty_{data_type}.csv'
                 ).upload_from_string(dirty_df.to_csv(), "text/csv")
-            if clean_files == []:
-                logger.info("No passed CSV found. Workflow stopped!")
+            if clean_records == []:
+                logger.info("No passed records found. Workflow stopped!")
                 sys.exit(1)
             else:
-                logger.info(f"Found {len(clean_files)} clean CSV found.")
-                clean_data = {
-                    "csv_uri": clean_files,
-                }
-                clean_df = pd.DataFrame(data=clean_data)
+                logger.info(f"Found {len(clean_records)} clean CSV found.")
+                clean_df = pd.DataFrame(data=clean_records)
                 bucket.blob(
                     f'clean_dump/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_clean_{data_type}.csv'
                 ).upload_from_string(clean_df.to_csv(), "text/csv")
