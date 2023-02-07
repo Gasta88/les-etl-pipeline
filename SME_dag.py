@@ -1,5 +1,4 @@
 from google.cloud import storage
-from uuid import uuid1
 from airflow import models
 from airflow.providers.google.cloud.operators.dataproc import (
     DataprocCreateBatchOperator,
@@ -94,8 +93,11 @@ with models.DAG(
     default_args=default_args,  # The interval with which to schedule the DAG
     schedule_interval=None,  # Override to match your needs
     on_success_callback=cleanup_xcom,
+    on_failure_callback=cleanup_xcom,
     max_active_runs=8,
 ) as dag:
+    from uuid import uuid1
+
     run_id = str(uuid1())
     raw_prefixes = get_raw_prefixes()
     for rp in raw_prefixes:
@@ -393,9 +395,4 @@ with models.DAG(
             )
             deal_details_bronze_task >> deal_details_silver_task
         end = EmptyOperator(task_id=f"{ed_code}_end")
-        (
-            start
-            >> [assets_tg, collaterals_tg, bond_info_tg, deal_details_tg]
-            >> cleanup_xcom()
-            >> end
-        )
+        start >> [assets_tg, collaterals_tg, bond_info_tg, deal_details_tg] >> end

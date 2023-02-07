@@ -3,12 +3,10 @@ import sys
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, StringType, DoubleType, BooleanType
 from google.cloud import storage
-import datetime
 from src.loan_etl_pipeline.utils.silver_funcs import (
     replace_no_data,
     replace_bool_data,
     cast_to_datatype,
-    get_all_pcds,
 )
 
 # Setup logger
@@ -143,20 +141,21 @@ def generate_bond_info_silver(
     """
     logger.info("Start BOND_INFO SILVER job.")
     run_props = set_job_params()
-    storage_client = storage.Client()
-    bucket = storage_client.get_bucket(bucket_name)
-    clean_dump_csv = bucket.blob(
-        f'clean_dump/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_clean_bond_info.csv'
-    )
-    if not (clean_dump_csv.exists()):
+    storage_client = storage.Client(project="dataops-369610")
+    all_clean_dumps = [
+        b
+        for b in storage_client.list_blobs(bucket_name, prefix="clean_dump/bond_info")
+        if ed_code in b.name
+    ]
+    if all_clean_dumps == []:
         logger.info(
-            f"Could not find clean CSV dump file from BOND_INFO BRONZE PROFILING job. Workflow stopped!"
+            "Could not find clean CSV dump file from BOND_INFO BRONZE PROFILING BRONZE PROFILING job. Workflow stopped!"
         )
         sys.exit(1)
     else:
-        pcds = get_all_pcds(bucket_name, "bond_info", ed_code)
-        logger.info(f"Processing data for deal {ed_code}")
-        for pcd in pcds:
+        for clean_dump_csv in all_clean_dumps:
+            pcd = "_".join(clean_dump_csv.name.split("/")[-1].split("_")[1:4])
+            logger.info(f"Processing data for deal {ed_code}:{pcd}")
             part_pcd = pcd.replace("-", "")
             logger.info(f"Processing {pcd} data from bronze to silver. ")
             bronze_df = (
@@ -208,5 +207,8 @@ def generate_bond_info_silver(
                 .mode("overwrite")
                 .save(f"gs://{bucket_name}/{target_prefix}/tranche_info_table")
             )
+    logger.info("Remove clean dumps.")
+    for clean_dump_csv in all_clean_dumps:
+        clean_dump_csv.delete()
     logger.info("End BOND INFO SILVER job.")
     return 0

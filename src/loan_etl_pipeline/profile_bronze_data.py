@@ -26,12 +26,11 @@ logger.addHandler(handler)
 
 
 def profile_bronze_data(
-    spark, raw_bucketname, data_bucketname, source_prefix, file_key, data_type
+    raw_bucketname, data_bucketname, source_prefix, file_key, data_type
 ):
     """
     Run main steps of the module.
 
-    :param spark: SparkSession object.
     :param raw_bucketname: GS bucket where raw files are stored.
     :param data_bucketname: GS bucket where transformed files are stored.
     :param source_prefix: specific bucket prefix from where to collect source files.
@@ -41,60 +40,58 @@ def profile_bronze_data(
     """
     logger.info(f"Start {data_type.upper()} BRONZE PROFILING job.")
     ed_code = source_prefix.split("/")[-1]
-    storage_client = storage.Client()
+    storage_client = storage.Client(project="dataops-369610")
     bucket = storage_client.get_bucket(data_bucketname)
-    clean_dump_csv = bucket.blob(
-        f'clean_dump/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_clean_{data_type}.csv'
-    )
-    if clean_dump_csv.exists():
-        logger.info(
-            f"{data_type.upper()} BRONZE PROFILING job has been already profiled. Continue!"
-        )
-        return 0
+    # Pick Cerberus validator
+    if data_type == "assets":
+        validator = Validator(asset_schema(), allow_unknown=True)
+    if data_type == "collaterals":
+        validator = Validator(collateral_schema(), allow_unknown=True)
+    if data_type == "bond_info":
+        validator = Validator(bond_info_schema(), allow_unknown=True)
+    if data_type == "amortisation":
+        validator = Validator(amortisation_schema(), allow_unknown=True)
+    # Get all CSV files from ED
+    logger.info(f"Profile {ed_code} files.")
+    all_new_files = get_csv_files(raw_bucketname, source_prefix, file_key, data_type)
+    if len(all_new_files) == 0:
+        logger.warning("No new CSV files to retrieve. Workflow stopped!")
+        sys.exit(1)
     else:
-        if data_type == "assets":
-            validator = Validator(asset_schema(), allow_unknown=True)
-        if data_type == "collaterals":
-            validator = Validator(collateral_schema(), allow_unknown=True)
-        if data_type == "bond_info":
-            validator = Validator(bond_info_schema(), allow_unknown=True)
-        if data_type == "amortisation":
-            validator = Validator(amortisation_schema(), allow_unknown=True)
-
-        logger.info(f"Create NEW {ed_code} dataframe")
-        all_new_files = get_csv_files(
-            raw_bucketname, source_prefix, file_key, data_type
-        )
-        if len(all_new_files) == 0:
-            logger.warning("No new CSV files to retrieve. Workflow stopped!")
-            sys.exit(1)
-        else:
-            logger.info(f"Retrieved {len(all_new_files)} {data_type} data CSV files.")
-            dirty_records = []
-            clean_records = []
-            for new_file_name in all_new_files:
-                logger.info(f"Checking {new_file_name}..")
-                clean_content, dirty_content = profile_data(
-                    raw_bucketname, new_file_name, data_type, validator
+        logger.info(f"Retrieved {len(all_new_files)} {data_type} data CSV files.")
+        clean_content = []
+        dirty_content = []
+        for new_file_name in all_new_files:
+            logger.info(f"Checking {new_file_name}..")
+            pcd = "_".join(new_file_name.split("/")[-1].split("_")[1:4])
+            clean_dump_csv = bucket.blob(
+                f'clean_dump/{data_type}/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_{pcd}.csv'
+            )
+            # Check if this file has already been profiled. Skip in this case.
+            if clean_dump_csv.exists():
+                logger.info(
+                    f"{clean_dump_csv} BRONZE PROFILING job has been already done. Skip!"
                 )
-                dirty_records += dirty_content
-                clean_records += clean_content
-            if dirty_records == []:
+                continue
+            clean_content, dirty_content = profile_data(
+                raw_bucketname, new_file_name, data_type, validator
+            )
+            if dirty_content == []:
                 logger.info("No failed records found.")
             else:
-                logger.info(f"Found {len(dirty_records)} failed records found.")
-                dirty_df = pd.DataFrame(data=dirty_records)
+                logger.info(f"Found {len(dirty_content)} failed records found.")
+                dirty_df = pd.DataFrame(data=dirty_content)
                 bucket.blob(
-                    f'dirty_dump/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_dirty_{data_type}.csv'
+                    f'dirty_dump/{data_type}/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_{pcd}.csv'
                 ).upload_from_string(dirty_df.to_csv(), "text/csv")
-            if clean_records == []:
+            if clean_content == []:
                 logger.info("No passed records found. Workflow stopped!")
-                sys.exit(1)
+                continue
             else:
-                logger.info(f"Found {len(clean_records)} clean CSV found.")
-                clean_df = pd.DataFrame(data=clean_records)
+                logger.info(f"Found {len(clean_content)} clean CSV found.")
+                clean_df = pd.DataFrame(data=clean_content)
                 bucket.blob(
-                    f'clean_dump/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_clean_{data_type}.csv'
+                    f'clean_dump/{data_type}/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_{pcd}.csv'
                 ).upload_from_string(clean_df.to_csv(), "text/csv")
     logger.info(f"End {data_type.upper()} BRONZE PROFILING job.")
     return 0

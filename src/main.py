@@ -48,11 +48,10 @@ def run(
     # ----------------Bronze Quality layer ETL
     if stage_name == "profile_bronze_asset":
         status = profile_bronze_data(
-            spark, raw_bucketname, data_bucketname, source_prefix, file_key, "assets"
+            raw_bucketname, data_bucketname, source_prefix, file_key, "assets"
         )
     if stage_name == "profile_bronze_collateral":
         status = profile_bronze_data(
-            spark,
             raw_bucketname,
             data_bucketname,
             source_prefix,
@@ -61,11 +60,10 @@ def run(
         )
     if stage_name == "profile_bronze_bond_info":
         status = profile_bronze_data(
-            spark, raw_bucketname, data_bucketname, source_prefix, file_key, "bond_info"
+            raw_bucketname, data_bucketname, source_prefix, file_key, "bond_info"
         )
     if stage_name == "profile_bronze_amortisation":
         status = profile_bronze_data(
-            spark,
             raw_bucketname,
             data_bucketname,
             source_prefix,
@@ -77,7 +75,6 @@ def run(
     if stage_name == "bronze_asset":
         status = generate_bronze_tables(
             spark,
-            raw_bucketname,
             data_bucketname,
             source_prefix,
             target_prefix,
@@ -87,7 +84,6 @@ def run(
     if stage_name == "bronze_collateral":
         status = generate_bronze_tables(
             spark,
-            raw_bucketname,
             data_bucketname,
             source_prefix,
             target_prefix,
@@ -97,7 +93,6 @@ def run(
     if stage_name == "bronze_bond_info":
         status = generate_bronze_tables(
             spark,
-            raw_bucketname,
             data_bucketname,
             source_prefix,
             target_prefix,
@@ -107,7 +102,6 @@ def run(
     if stage_name == "bronze_amortisation":
         status = generate_bronze_tables(
             spark,
-            raw_bucketname,
             data_bucketname,
             source_prefix,
             target_prefix,

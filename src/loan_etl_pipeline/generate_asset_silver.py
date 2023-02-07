@@ -3,12 +3,10 @@ import sys
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, StringType, DoubleType, BooleanType
 from google.cloud import storage
-import datetime
 from src.loan_etl_pipeline.utils.silver_funcs import (
     replace_no_data,
     replace_bool_data,
     cast_to_datatype,
-    get_all_pcds,
 )
 
 # Setup logger
@@ -268,22 +266,22 @@ def generate_asset_silver(spark, bucket_name, source_prefix, target_prefix, ed_c
     """
     logger.info("Start ASSET SILVER job.")
     run_props = set_job_params()
-    storage_client = storage.Client()
-    bucket = storage_client.get_bucket(bucket_name)
-    clean_dump_csv = bucket.blob(
-        f'clean_dump/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_clean_assets.csv'
-    )
-    if not (clean_dump_csv.exists()):
+    storage_client = storage.Client(project="dataops-369610")
+    all_clean_dumps = [
+        b
+        for b in storage_client.list_blobs(bucket_name, prefix="clean_dump/assets")
+        if ed_code in b.name
+    ]
+    if all_clean_dumps == []:
         logger.info(
-            f"Could not find clean CSV dump file from ASSETS BRONZE PROFILING job. Workflow stopped!"
+            "Could not find clean CSV dump file from ASSETS BRONZE PROFILING BRONZE PROFILING job. Workflow stopped!"
         )
         sys.exit(1)
     else:
-        pcds = get_all_pcds(bucket_name, "assets", ed_code)
-        logger.info(f"Processing data for deal {ed_code}")
-        for pcd in pcds:
+        for clean_dump_csv in all_clean_dumps:
+            pcd = "_".join(clean_dump_csv.name.split("/")[-1].split("_")[1:4])
+            logger.info(f"Processing data for deal {ed_code}:{pcd}")
             part_pcd = pcd.replace("-", "")
-            logger.info(f"Processing {pcd} data from bronze to silver. ")
             bronze_df = (
                 spark.read.format("parquet")
                 .load(f"gs://{bucket_name}/{source_prefix}")
@@ -341,5 +339,8 @@ def generate_asset_silver(spark, bucket_name, source_prefix, target_prefix, ed_c
                 .mode("overwrite")
                 .save(f"gs://{bucket_name}/{target_prefix}/performance_info_table")
             )
+    logger.info("Remove clean dumps.")
+    for clean_dump_csv in all_clean_dumps:
+        clean_dump_csv.delete()
     logger.info("End ASSET SILVER job.")
     return 0
