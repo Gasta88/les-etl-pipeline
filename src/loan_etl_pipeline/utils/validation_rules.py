@@ -1,6 +1,7 @@
 import datetime
 
-TO_DATE = lambda s: datetime.datetime.strptime(s, "%Y-%m-%d")
+TO_DATE_DAY = lambda s: datetime.datetime.strptime(s, "%Y-%m-%d")
+TO_DATE_MONTH = lambda s: datetime.datetime.strptime(s, "%Y-%m")
 TO_NUMBER = lambda n: float(n)
 
 
@@ -11,7 +12,7 @@ def asset_schema():
     schema = {
         "AS1": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_DAY,
             "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime(2030, 12, 31),
         },
@@ -46,35 +47,36 @@ def asset_schema():
             "type": "string",
             "nullable": True,
         },
-        "AS18": {"type": "string", "allowed": [1, 2, 3, 4, 5], "nullable": True},
+        "AS18": {"type": "string", "allowed": ["1", "2", "3", "4", "5"], "nullable": True},
         "AS19": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_MONTH,
             # "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime(2030, 12, 31),
             "nullable": True,
         },
         "AS20": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_DAY,
             # "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime.now(),
             "nullable": True,
         },
-        "AS22": {"type": "string", "allowed": [1, 2, 3, 4], "nullable": True},
+        "AS22": {"type": "string", "allowed": ["1", "2", "3", "4"], "nullable": True},
         "AS23": {
             "type": "string",
             "allowed": ["Y", "N"],
+            "nullable": True
         },
         "AS24": {"type": "string", "nullable": True},
         "AS25": {
             "type": "string",
-            "allowed": [1, 2, 3, 4, 5, 6, 7, 8],
+            "allowed": ["1", "2", "3", "4", "5", "6", "7", "8"],
             "nullable": True,
         },
         "AS26": {
             "type": "string",
-            "allowed": [1, 2, 3, 4, 5],
+            "allowed": ["1", "2", "3", "4", "5"],
             "nullable": True,
         },
         "AS27": {
@@ -102,7 +104,7 @@ def asset_schema():
         },
         "AS31": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_DAY,
             # "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime.now(),
             "nullable": True,
@@ -162,6 +164,7 @@ def asset_schema():
         },
         "AS42": {
             "type": "string",
+            "nullable": True
         },
         "AS43": {"type": "string", "nullable": True},
         "AS44": {
@@ -176,13 +179,14 @@ def asset_schema():
         },
         "AS50": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_MONTH,
             # "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime.now(),
+            "nullable": True
         },
         "AS51": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_MONTH,
             # "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime.now(),
         },
@@ -207,17 +211,17 @@ def asset_schema():
         },
         "AS57": {
             "type": "string",
-            "allowed": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+            "allowed": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13"],
             "nullable": True,
         },
         "AS58": {
             "type": "string",
-            "allowed": [1, 2, 3, 4, 5, 6],
+            "allowed": ["1", "2", "3", "4", "5", "6"],
             "nullable": True,
         },
         "AS59": {
             "type": "string",
-            "allowed": [1, 2, 3, 4, 5, 6],
+            "allowed": ["1", "2", "3", "4", "5", "6"],
             "nullable": True,
         },
         "AS60": {
@@ -234,7 +238,7 @@ def asset_schema():
         },
         "AS62": {
             "type": "string",
-            "allowed": [1, 2, 3, 4, 5, 6, 7],
+            "allowed": ["1", "2", "3", "4", "5", "6", "7"],
         },
         "AS63": {
             "type": "number",
@@ -260,13 +264,14 @@ def asset_schema():
         },
         "AS67": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_DAY,
             # "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime.now(),
+            "nullable": True
         },
         "AS68": {
             "type": "string",
-            "allowed": [1, 2, 3, 4, 5],
+            "allowed": ["1", "2", "3", "4", "5"],
             "nullable": True,
         },
         "AS69": {
@@ -277,14 +282,14 @@ def asset_schema():
         },
         "AS70": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_DAY,
             # "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime.now(),
             "nullable": True,
         },
         "AS71": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_DAY,
             # "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime.now(),
             "nullable": True,
@@ -309,11 +314,11 @@ def asset_schema():
         },
         "AS83": {
             "type": "string",
-            "allowed": [1, 2, 3, 4, 56, 7, 8, 9, 10],
+            "allowed": ["1", "2", "3", "4", "5","6", "7", "8", "9", "10"],
         },
         "AS84": {
             "type": "string",
-            "allowed": [1, 2, 3, 4, 56, 7, 8, 9, 10, 11, 12],
+            "allowed": ["1", "2", "3", "4", "5","6", "7", "8", "9", "10", "11", "12"],
         },
         "AS85": {
             "type": "number",
@@ -328,7 +333,7 @@ def asset_schema():
         },
         "AS87": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_DAY,
             # "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime.now(),
             "nullable": True,
@@ -341,7 +346,7 @@ def asset_schema():
         },
         "AS89": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_DAY,
             # "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime.now(),
             "nullable": True,
@@ -354,7 +359,7 @@ def asset_schema():
         },
         "AS91": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_DAY,
             # "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime.now(),
             "nullable": True,
@@ -371,7 +376,7 @@ def asset_schema():
         },
         "AS94": {
             "type": "string",
-            "allowed": [1, 2, 3, 4, 5, 6],
+            "allowed": ["1", "2", "3", "4", "5", "6"],
             "nullable": True,
         },
         "AS100": {
@@ -446,7 +451,7 @@ def asset_schema():
         },
         "AS112": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_DAY,
             # "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime.now(),
             "nullable": True,
@@ -483,8 +488,8 @@ def asset_schema():
             "min": 0.0,
             "nullable": True,
         },
-        "AS121": {"type": "string", "allowed": ["Y", "N"]},
-        "AS122": {"type": "string", "allowed": ["Y", "N"]},
+        "AS121": {"type": "string", "allowed": ["Y", "N"],"nullable": True},
+        "AS122": {"type": "string", "allowed": ["Y", "N"],"nullable": True},
         "AS123": {
             "type": "string",
             "allowed": [1, 2, 3, 4],
@@ -492,9 +497,10 @@ def asset_schema():
         },
         "AS124": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_DAY,
             # "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime.now(),
+            "nullable": True
         },
         "AS125": {
             "type": "number",
@@ -509,7 +515,7 @@ def asset_schema():
         },
         "AS127": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_DAY,
             # "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime.now(),
             "nullable": True,
@@ -522,12 +528,12 @@ def asset_schema():
         },
         "AS129": {
             "type": "string",
-            "allowed": [1, 2, 3, 4, 5, 6],
+            "allowed": ["1", "2", "3", "4", "5", "6"],
             "nullable": True,
         },
         "AS130": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_DAY,
             # "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime.now(),
             "nullable": True,
@@ -540,16 +546,17 @@ def asset_schema():
         },
         "AS133": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_DAY,
             # "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime.now(),
             "nullable": True,
         },
         "AS134": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_DAY,
             # "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime.now(),
+            "nullable": True
         },
         "AS135": {
             "type": "number",
@@ -565,14 +572,16 @@ def asset_schema():
         },
         "AS137": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_DAY,
             # "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime.now(),
+            "nullable": True
         },
         "AS138": {
             "type": "number",
             "coerce": TO_NUMBER,
             "min": 0.0,
+            "nullable": True
         },
     }
 
@@ -590,7 +599,7 @@ def collateral_schema():
         "CS2": {
             "type": "string",
         },
-        "CS3": {"type": "string", "allowed": [1, 2, 3, 4, 5], "nullable": True},
+        "CS3": {"type": "string", "allowed": ["1", "2", "3", "4", "5"], "nullable": True},
         "CS4": {
             "type": "number",
             "coerce": TO_NUMBER,
@@ -606,29 +615,29 @@ def collateral_schema():
         "CS6": {
             "type": "string",
             "allowed": [
-                1,
-                2,
-                3,
-                4,
-                5,
-                6,
-                7,
-                8,
-                9,
-                10,
-                11,
-                12,
-                13,
-                14,
-                15,
-                16,
-                17,
-                18,
-                19,
-                20,
-                21,
-                22,
-                23,
+                "1",
+                "2",
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8",
+                "9",
+                "10",
+                "11",
+                "12",
+                "13",
+                "14",
+                "15",
+                "16",
+                "17",
+                "18",
+                "19",
+                "20",
+                "21",
+                "22",
+                "23",
             ],
             "nullable": True,
         },
@@ -642,29 +651,29 @@ def collateral_schema():
         },
         "CS11": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_DAY,
             # "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime.now(),
         },
         "CS12": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_DAY,
             # "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime.now(),
         },
         "CS13": {
             "type": "string",
-            "allowed": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+            "allowed": ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
             "nullable": True,
         },
         "CS214": {
             "type": "string",
-            "allowed": [1, 2, 3],
+            "allowed": ["1", "2", "3"],
             "nullable": True,
         },
         "CS15": {
             "type": "string",
-            "allowed": [1, 2, 3, 4],
+            "allowed": ["1", "2", "3", "4"],
         },
         "CS16": {
             "type": "string",
@@ -676,12 +685,12 @@ def collateral_schema():
         "CS21": {"type": "number", "coerce": TO_NUMBER, "min": 0.0, "nullable": True},
         "CS22": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_DAY,
             # "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime.now(),
             "nullable": True,
         },
-        "CS23": {"type": "string", "allowed": [1, 2, 3, 4], "nullable": True},
+        "CS23": {"type": "string", "allowed": ["1", "2", "3", "4"], "nullable": True},
         "CS24": {
             "type": "string",
         },
@@ -700,7 +709,7 @@ def bond_info_schema():
     schema = {
         "BS1": {
             "type": "datetime",
-            "coerce": TO_DATE,
+            "coerce": TO_DATE_DAY,
             # "min": datetime.datetime(2012, 1, 1),
             "max": datetime.datetime.now(),
         },
@@ -766,7 +775,7 @@ def amortisation_schema():
         else:
             schema[f"AS{i}"] = {
                 "type": "datetime",
-                "coerce": TO_DATE,
+                "coerce": TO_DATE_DAY,
                 "min": datetime.datetime(2012, 1, 1),
                 "max": (datetime.datetime.now() + datetime.timedelta(years=6)),
             }
@@ -781,7 +790,7 @@ def amortisation_schema():
         else:
             schema[f"AS{i}"] = {
                 "type": "datetime",
-                "coerce": TO_DATE,
+                "coerce": TO_DATE_DAY,
                 "min": datetime.datetime(2012, 1, 1),
                 "max": (datetime.datetime.now() + datetime.timedelta(years=6)),
                 "nullable": True,
