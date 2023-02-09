@@ -99,9 +99,9 @@ def generate_collateral_silver(
         sys.exit(1)
     else:
         for clean_dump_csv in all_clean_dumps:
-            pcd = "_".join(clean_dump_csv.name.split("/")[-1].split("_")[1:4])
+            pcd = "_".join(clean_dump_csv.name.split("/")[-1].split("_")[2:4])
             logger.info(f"Processing data for deal {ed_code}:{pcd}")
-            part_pcd = pcd.replace("-", "")
+            part_pcd = pcd.replace("_", "")
             logger.info(f"Processing {pcd} data from bronze to silver. ")
             bronze_df = (
                 spark.read.format("delta")

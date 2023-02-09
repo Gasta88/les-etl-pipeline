@@ -85,7 +85,7 @@ def profile_bronze_data(
                     f'dirty_dump/{data_type}/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_{pcd}.csv'
                 ).upload_from_string(dirty_df.to_csv(), "text/csv")
             if clean_content == []:
-                logger.info("No passed records found. Workflow stopped!")
+                logger.info("No passed records found. Skip!")
                 continue
             else:
                 logger.info(f"Found {len(clean_content)} clean CSV found.")

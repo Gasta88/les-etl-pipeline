@@ -103,7 +103,7 @@ with models.DAG(
     for rp in raw_prefixes:
         ed_code = rp.split("/")[-1]
         # DEBUG
-        if ed_code != "SMEMBE000095100220092":
+        if ed_code != "SMEMFR000101100220133":
             continue
         start = EmptyOperator(task_id=f"{ed_code}_start")
         with TaskGroup(group_id=f"{ed_code}_assets") as assets_tg:

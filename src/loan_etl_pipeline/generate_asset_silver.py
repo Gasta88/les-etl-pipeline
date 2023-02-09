@@ -279,9 +279,9 @@ def generate_asset_silver(spark, bucket_name, source_prefix, target_prefix, ed_c
         sys.exit(1)
     else:
         for clean_dump_csv in all_clean_dumps:
-            pcd = "_".join(clean_dump_csv.name.split("/")[-1].split("_")[1:4])
+            pcd = "_".join(clean_dump_csv.name.split("/")[-1].split("_")[2:4])
             logger.info(f"Processing data for deal {ed_code}:{pcd}")
-            part_pcd = pcd.replace("-", "")
+            part_pcd = pcd.replace("_", "")
             bronze_df = (
                 spark.read.format("parquet")
                 .load(f"gs://{bucket_name}/{source_prefix}")
