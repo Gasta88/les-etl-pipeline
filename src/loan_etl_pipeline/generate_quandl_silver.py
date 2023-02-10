@@ -3,6 +3,7 @@ import sys
 import pandas as pd
 from google.cloud import storage
 import unicodedata
+from collections import OrderedDict
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -12,6 +13,57 @@ handler.setLevel(logging.DEBUG)
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
+
+
+COUNTRY_MAPPER = OrderedDict(
+    {
+        "AND": "AD",
+        "ALB": "AL",
+        "AUT": "AT",
+        "BIH": "BA",
+        "BEL": "BE",
+        "BGR": "BG",
+        "BLR": "BY",
+        "CHE": "CH",
+        "SRB": "CS",
+        "MNE": "CS",
+        "CYP": "CY",
+        "CZE": "CZ",
+        "DEU": "DE",
+        "DNK": "FO",
+        "EST": "EE",
+        "ESP": "ES",
+        "FIN": "FI",
+        "FRA": "FR",
+        "GBR": "UK",
+        "GRC": "GR",
+        "HRV": "HR",
+        "HUN": "HU",
+        "IRL": "IE",
+        "ISL": "IS",
+        "ITA": "VA",
+        "LIE": "LI",
+        "LTU": "LT",
+        "LUX": "LU",
+        "LVA": "LV",
+        "MCO": "MC",
+        "MDA": "MD",
+        "MKD": "MK",
+        "MLT": "MT",
+        "NLD": "NL",
+        "NOR": "SJ",
+        "POL": "PL",
+        "PRT": "PT",
+        "ROU": "RO",
+        "RUS": "RU",
+        "SWE": "SE",
+        "SVN": "SI",
+        "SVK": "SK",
+        "TUR": "TR",
+        "UKR": "UA",
+        "EUR": "XC",
+    }
+)
 
 
 def prepare_dataset(ds_code, data):
@@ -46,15 +98,16 @@ def prepare_manifest(manifest_df):
         "(": "",
         ")": "",
     }
-    manifest_df["new_name"] = manifest_df["name"].apply(
+    manifest_df["name"] = manifest_df["name"].apply(
         lambda x: unicodedata.normalize("NFKD", x)
         .lower()
         .replace(" - ", "-")
         .replace(" -", "")
         .translate(str.maketrans(char_to_replace))
     )
-    manifest_df.drop(["name"], inplace=True)
-    manifest_df.rename(columns={"new_name": "name"}, inplace=True)
+    manifest_df["quandl_country"] = manifest_df["code"].str[:3]
+    manifest_df["ed_country"] = manifest_df["code"].str[:3]
+    manifest_df.replace({"ed_country": COUNTRY_MAPPER}, inplace=True)
     return manifest_df
 
 
@@ -77,7 +130,9 @@ def generate_quandl_silver(
 
     logger.info("Prepare manifest table.")
     maifest_file = f"{bronze_prefix}/SGE_TradingEconomics_Metadata.csv"
+    blob = raw_bucket.blob(maifest_file)
     dest_csv_f = f'/tmp/{maifest_file.split("/")[-1]}'
+    blob.download_to_filename(dest_csv_f)
     manifest_df = pd.read_csv(dest_csv_f)
     new_manifest_df = prepare_manifest(manifest_df)
     data_bucket.blob(f"{target_prefix}/quandl_manifest.csv").upload_from_string(

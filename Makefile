@@ -2,8 +2,7 @@ PROJECT_ID ?= dataops-369610
 REGION ?= europe-west3
 PROJECT_NUMBER ?= $$(gcloud projects list --filter=${PROJECT_ID} --format="value(PROJECT_NUMBER)")
 CODE_BUCKET ?= data-lake-code-${PROJECT_NUMBER}
-RAW_BUCKET ?= fgasta_test_raw
-# DATA_BUCKET ?= fgasta_data_lake
+RAW_BUCKET ?= algoritmica_data
 DATA_BUCKET ?= fgasta_data_lake_test
 PHS_BUCKET ?= spark-hist-repo-${PROJECT_NUMBER}
 APP_NAME ?= $$(cat pyproject.toml| grep name | cut -d" " -f3 | sed  's/"//g')
@@ -269,4 +268,4 @@ run_quandl_silver: ## Run the dataproc serverless job
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
 	--version=2.0 \
-	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source --target-prefix=externals/silver/quandl --stage-name=silver_quandl &
+	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=externals/quandl --target-prefix=externals/silver/quandl --stage-name=silver_quandl &
