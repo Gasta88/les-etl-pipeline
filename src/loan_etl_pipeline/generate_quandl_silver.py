@@ -4,6 +4,8 @@ import pandas as pd
 from google.cloud import storage
 import unicodedata
 from collections import OrderedDict
+import pyspark.sql.functions as F
+from google.cloud import bigquery
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -75,6 +77,9 @@ def prepare_dataset(ds_code, data):
     :return df: final dataframe to be stored
     """
     new_data = []
+    if len(data) == 0:
+        # Some datasets are empty
+        return None
     for k, v in data.items():
         tmp_dict = {}
         tmp_dict["name"] = ds_code
@@ -111,12 +116,33 @@ def prepare_manifest(manifest_df):
     return manifest_df
 
 
+def save_to_bigquery(df):
+    """
+    Save PySpark dataframe in BigQuery.
+
+    :param df: PySpark dataframe with all Quandl datasets.
+    """
+    client = bigquery.Client(project="dataops-369610")
+    dataset_id = "dataops-369610.quandl"
+    try:
+        dataset = client.get_dataset(dataset_id)
+    except:
+        logger.info("No datasets. Create one.")
+        dataset = bigquery.Dataset(dataset_id)
+        dataset.location("EU")
+        dataset = client.create_dataset(dataset, timeout=30)
+        logger.info(f"Created dataset: {client.project}.{dataset.dataset_id}")
+    df.write.format("bigquery").option("table", "quandl.quandl_datasets").save()
+    return
+
+
 def generate_quandl_silver(
-    raw_bucketname, data_bucketname, bronze_prefix, target_prefix
+    spark, raw_bucketname, data_bucketname, bronze_prefix, target_prefix
 ):
     """
     Run main steps of the module.
 
+    :param spark: SparkSession object.
     :param raw_bucketname: GS bucket where raw files are stored.
     :param data_bucketname: GS bucket where transformed files are stored.
     :param bronze_prefix: specific bucket prefix from where to collect bronze old data.
@@ -146,16 +172,20 @@ def generate_quandl_silver(
     blob.download_to_filename(dest_pkl_f)
     macro_econo_df = pd.read_pickle(dest_pkl_f)
 
+    list_dfs = []
     for k, d in macro_econo_df.items():
         # TODO: The SGE label could not be always applicable. Need to re-engineer this part when/if new data from QUANDL is retrieved.
         code = k.replace("SGE/", "").replace(" - Value", "")
         if code in ["ALBRATING", "DZARATING"]:
             # Skip these datasets since there is no description for them.
             continue
-        df = prepare_dataset(code, d)
-        data_bucket.blob(f"{target_prefix}/{code}.csv").upload_from_string(
-            df.to_csv(), "text/csv"
-        )
+        tmp_df = prepare_dataset(code, d)
+        if tmp_df is None:
+            continue
+        list_dfs.append(tmp_df)
+    df = pd.concat(list_dfs)
+    spark_df = spark.createDataFrame(df)
+    save_to_bigquery(spark_df)
 
     logger.info("End QUANDL UPLOAD job.")
     return 0

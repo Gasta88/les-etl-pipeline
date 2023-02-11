@@ -146,7 +146,7 @@ def run(
     # ----------------External sources ETL
     if stage_name == "silver_quandl":
         status = generate_quandl_silver(
-            raw_bucketname, data_bucketname, source_prefix, target_prefix
+            spark, raw_bucketname, data_bucketname, source_prefix, target_prefix
         )
 
 
