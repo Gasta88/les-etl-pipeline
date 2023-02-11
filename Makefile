@@ -264,8 +264,8 @@ run_quandl_silver: ## Run the dataproc serverless job
 	@gcloud dataproc batches submit --project ${PROJECT_ID} --region ${REGION} pyspark \
 	gs://${CODE_BUCKET}/dist/main.py --py-files=gs://${CODE_BUCKET}/dist/${APP_NAME}_${VERSION_NO}.zip \
 	--subnet default --properties spark.executor.instances=4,spark.driver.cores=8,spark.executor.cores=8,spark.executor.memory=16g,spark.app.name=loan_etl_pipeline \
-	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar \
+	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar,gs://${CODE_BUCKET}/dependencies/spark-3.1-bigquery-0.28.0-preview.jar \
 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
 	--version=2.0 \
-	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=externals/quandl --target-prefix=externals/silver/quandl --stage-name=silver_quandl &
+	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=externals/quandl --stage-name=silver_quandl &

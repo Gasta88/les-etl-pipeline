@@ -84,7 +84,6 @@ def prepare_dataset(ds_code, data):
         tmp_dict = {}
         tmp_dict["name"] = ds_code
         tmp_dict["date_time"] = k.to_pydatetime().strftime("%Y-%m-%d")
-        tmp_dict["year"] = k.to_pydatetime().strftime("%Y")
         tmp_dict["value"] = v
         new_data.append(tmp_dict)
     return pd.DataFrame(new_data)
@@ -113,32 +112,73 @@ def prepare_manifest(manifest_df):
     manifest_df["quandl_country"] = manifest_df["code"].str[:3]
     manifest_df["ed_country"] = manifest_df["code"].str[:3]
     manifest_df.replace({"ed_country": COUNTRY_MAPPER}, inplace=True)
+    manifest_df.drop(columns=["refreshed_at", "from_date", "to_date"], inplace=True)
     return manifest_df
 
 
-def save_to_bigquery(df):
+def prep_bigquery_env():
     """
-    Save PySpark dataframe in BigQuery.
+    If needed prepare dataset and table definition in BigQuery.
 
-    :param df: PySpark dataframe with all Quandl datasets.
+    :return manifest_table: BigQuery manifest table object.
+    :return data_table: BigQuery data table object.
     """
     client = bigquery.Client(project="dataops-369610")
-    dataset_id = "dataops-369610.quandl"
+    project = "dataops-369610"
+    dataset_name = "external_data"
+    data_table_name = "quandl_datasets"
+    manifest_table_name = "quandl_manifest"
     try:
-        dataset = client.get_dataset(dataset_id)
-    except:
-        logger.info("No datasets. Create one.")
-        dataset = bigquery.Dataset(dataset_id)
-        dataset.location("EU")
+        dataset = client.get_dataset(f"{project}.{dataset_name}")
+    except Exception as e:
+        print("No dataset. Create one.")
+        dataset = bigquery.Dataset(f"{project}.{dataset_name}")
+        dataset.location = "EU"
         dataset = client.create_dataset(dataset, timeout=30)
-        logger.info(f"Created dataset: {client.project}.{dataset.dataset_id}")
-    df.write.format("bigquery").option("table", "quandl.quandl_datasets").save()
-    return
+        print(f"Created dataset: {project}.{dataset_name}")
+    # Manifest table
+    try:
+        manifest_table = client.get_table(
+            f"{project}.{dataset_name}.{manifest_table_name}"
+        )
+    except Exception as e:
+        print("No manifest table. Create one.")
+        schema = [
+            bigquery.SchemaField("code", "STRING"),
+            bigquery.SchemaField("name", "STRING"),
+            bigquery.SchemaField("description", "STRING"),
+            bigquery.SchemaField("quandl_country", "STRING"),
+            bigquery.SchemaField("ed_country", "STRING"),
+        ]
+        manifest_table = bigquery.Table(
+            f"{project}.{dataset_name}.{manifest_table_name}", schema=schema
+        )
+        manifest_table = client.create_table(manifest_table)
+        print(f"Created table: {project}.{dataset_name}.{manifest_table_name}")
+    # Data table
+    try:
+        data_table = client.get_table(f"{project}.{dataset_name}.{data_table_name}")
+    except Exception as e:
+        print("No data table. Create one.")
+        schema = [
+            bigquery.SchemaField("name", "STRING"),
+            bigquery.SchemaField("date_time", "DATE"),
+            bigquery.SchemaField("value", "FLOAT64"),
+        ]
+        data_table = bigquery.Table(
+            f"{project}.{dataset_name}.{data_table_name}", schema=schema
+        )
+        data_table.time_partitioning = bigquery.TimePartitioning(
+            type_=bigquery.TimePartitioningType.YEAR,
+            field="date_time",  # name of column to use for partitioning
+        )
+        data_table.clustering_fields = ["name"]
+        data_table = client.create_table(data_table)
+        print(f"Created table: {project}.{dataset_name}.{data_table_name}")
+    return (manifest_table, data_table)
 
 
-def generate_quandl_silver(
-    spark, raw_bucketname, data_bucketname, bronze_prefix, target_prefix
-):
+def generate_quandl_silver(spark, raw_bucketname, data_bucketname, bronze_prefix):
     """
     Run main steps of the module.
 
@@ -146,13 +186,14 @@ def generate_quandl_silver(
     :param raw_bucketname: GS bucket where raw files are stored.
     :param data_bucketname: GS bucket where transformed files are stored.
     :param bronze_prefix: specific bucket prefix from where to collect bronze old data.
-    :param target_prefix: specific bucket prefix from where to store silver new data.
     :return status: 0 when succesful.
     """
     logger.info("Start QUANDL UPLOAD job.")
     storage_client = storage.Client(project="dataops-369610")
     raw_bucket = storage_client.get_bucket(raw_bucketname)
-    data_bucket = storage_client.get_bucket(data_bucketname)
+
+    logger.info("Prepare BigQuery env.")
+    manifest_table, data_table = prep_bigquery_env()
 
     logger.info("Prepare manifest table.")
     maifest_file = f"{bronze_prefix}/SGE_TradingEconomics_Metadata.csv"
@@ -161,9 +202,15 @@ def generate_quandl_silver(
     blob.download_to_filename(dest_csv_f)
     manifest_df = pd.read_csv(dest_csv_f)
     new_manifest_df = prepare_manifest(manifest_df)
-    data_bucket.blob(f"{target_prefix}/quandl_manifest.csv").upload_from_string(
-        new_manifest_df.to_csv(), "text/csv"
+    spark_df = spark.createDataFrame(new_manifest_df)
+    (
+        spark_df.write.format("bigquery")
+        .option("temporaryGcsBucket", data_bucketname)
+        .option("table", f"{manifest_table.dataset_id}.{manifest_table.table_id}")
+        .mode("overwrite")
+        .save()
     )
+
     logger.info("Create NEW dataframe")
     quandl_file = f"{bronze_prefix}/quandl_datasets.pkl"
 
@@ -185,7 +232,16 @@ def generate_quandl_silver(
         list_dfs.append(tmp_df)
     df = pd.concat(list_dfs)
     spark_df = spark.createDataFrame(df)
-    save_to_bigquery(spark_df)
+    (
+        spark_df.write.format("bigquery")
+        .option("temporaryGcsBucket", data_bucketname)
+        .option("partitionField", "date_time")
+        .option("partitionType", "YEAR")
+        .option("clusterFields", "name")
+        .option("table", f"{data_table.dataset_id}.{data_table.table_id}")
+        .mode("overwrite")
+        .save()
+    )
 
     logger.info("End QUANDL UPLOAD job.")
     return 0
