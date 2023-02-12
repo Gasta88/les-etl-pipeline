@@ -83,7 +83,8 @@ def prepare_dataset(ds_code, data):
     for k, v in data.items():
         tmp_dict = {}
         tmp_dict["name"] = ds_code
-        tmp_dict["date_time"] = k.to_pydatetime().strftime("%Y-%m-%d")
+        # tmp_dict["date_time"] = k.to_pydatetime().strftime("%Y-%m-%d")
+        tmp_dict["date_time"] = k.to_pydatetime().date()
         tmp_dict["value"] = v
         new_data.append(tmp_dict)
     return pd.DataFrame(new_data)
@@ -237,7 +238,7 @@ def generate_quandl_silver(spark, raw_bucketname, data_bucketname, bronze_prefix
         .option("temporaryGcsBucket", data_bucketname)
         .option("partitionField", "date_time")
         .option("partitionType", "YEAR")
-        .option("clusterFields", "name")
+        .option("clusteredFields", "name")
         .option("table", f"{data_table.dataset_id}.{data_table.table_id}")
         .mode("overwrite")
         .save()
