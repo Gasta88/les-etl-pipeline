@@ -1,7 +1,7 @@
 import logging
 import sys
 import pyspark.sql.functions as F
-from pyspark.sql.types import DateType, StringType, DoubleType
+from pyspark.sql.types import DateType, StringType, DoubleType, IntegerType
 from google.cloud import storage
 
 # Setup logger
@@ -23,9 +23,13 @@ def set_job_params():
     config = {}
     config["AMORTISATION_MANDATORY_COLUMNS"] = {
         "AS3": StringType(),
+        "pcd_year": IntegerType(),
+        "pcd_month": IntegerType(),
     }
     config["AMORTISATION_OPTIONAL_COLUMNS"] = {
         "AS3": StringType(),
+        "pcd_year": IntegerType(),
+        "pcd_month": IntegerType(),
     }
     for i in range(150, 390):
         if i % 2 == 0:
@@ -165,8 +169,8 @@ def generate_amortisation_silver(
             logger.info("Write mandatory dataframe")
             (
                 mandatory_info_df.write.format("parquet")
-                .partitionBy("part")
-                .mode("overwrite")
+                .partitionBy("pcd_year", "pcd_month")
+                .mode("append")
                 .save(f"gs://{bucket_name}/{target_prefix}/mandatory_info_table")
             )
 
@@ -174,8 +178,8 @@ def generate_amortisation_silver(
 
             (
                 optional_info_df.write.format("parquet")
-                .partitionBy("part")
-                .mode("overwrite")
+                .partitionBy("pcd_year", "pcd_month")
+                .mode("append")
                 .save(f"gs://{bucket_name}/{target_prefix}/optional_info_table")
             )
     logger.info("Remove clean dumps.")

@@ -62,18 +62,15 @@ def get_columns_collection(df):
     """
     Get collection of dataframe columns divided by topic.
 
-    :param df: Asset bronze Spark dataframe.
+    :param df: Bond Info bronze Spark dataframe.
     :return cols_dict: collection of columns labelled by topic.
     """
     cols_dict = {
-        "bond_info": ["ed_code", "part"]
-        + [f"BS{i}" for i in range(1, 11) if f"BS{i}" in df.columns],
-        "collateral_info": ["ed_code", "part"]
-        + [f"BS{i}" for i in range(11, 19) if f"BS{i}" in df.columns],
-        "contact_info": ["ed_code", "part"]
-        + [f"BS{i}" for i in range(19, 25) if f"BS{i}" in df.columns],
-        "tranche_info": ["ed_code", "part"]
-        + [f"BS{i}" for i in range(25, 40) if f"BS{i}" in df.columns],
+        "general": ["ed_code", "pcd_year", "pcd_month", "BS1", "BS2"],
+        "bond_info": [f"BS{i}" for i in range(3, 11) if f"BS{i}" in df.columns],
+        "collateral_info": [f"BS{i}" for i in range(11, 19) if f"BS{i}" in df.columns],
+        "contact_info": [f"BS{i}" for i in range(19, 25) if f"BS{i}" in df.columns],
+        "tranche_info": [f"BS{i}" for i in range(25, 40) if f"BS{i}" in df.columns],
     }
     return cols_dict
 
@@ -86,7 +83,7 @@ def process_bond_info(df, cols_dict):
     :param cols_dict: collection of columns labelled by their topic.
     :return new_df: silver type Spark dataframe.
     """
-    new_df = df.select(cols_dict["bond_info"]).dropDuplicates()
+    new_df = df.select(cols_dict["general"] + cols_dict["bond_info"]).dropDuplicates()
     return new_df
 
 
@@ -98,7 +95,9 @@ def process_collateral_info(df, cols_dict):
     :param cols_dict: collection of columns labelled by their topic.
     :return new_df: silver type Spark dataframe.
     """
-    new_df = df.select(["BS1", "BS2"] + cols_dict["collateral_info"]).dropDuplicates()
+    new_df = df.select(
+        cols_dict["general"] + cols_dict["collateral_info"]
+    ).dropDuplicates()
     return new_df
 
 
@@ -110,7 +109,9 @@ def process_contact_info(df, cols_dict):
     :param cols_dict: collection of columns labelled by their topic.
     :return new_df: silver type Spark dataframe.
     """
-    new_df = df.select(["BS1", "BS2"] + cols_dict["contact_info"]).dropDuplicates()
+    new_df = df.select(
+        cols_dict["general"] + cols_dict["contact_info"]
+    ).dropDuplicates()
     return new_df
 
 
@@ -122,7 +123,9 @@ def process_tranche_info(df, cols_dict):
     :param cols_dict: collection of columns labelled by their topic.
     :return new_df: silver type Spark dataframe.
     """
-    new_df = df.select(["BS1", "BS2"] + cols_dict["tranche_info"]).dropDuplicates()
+    new_df = df.select(
+        cols_dict["general"] + cols_dict["tranche_info"]
+    ).dropDuplicates()
     return new_df
 
 
@@ -185,26 +188,26 @@ def generate_bond_info_silver(
 
             (
                 info_df.write.format("parquet")
-                .partitionBy("part")
-                .mode("overwrite")
+                .partitionBy("pcd_year", "pcd_month")
+                .mode("append")
                 .save(f"gs://{bucket_name}/{target_prefix}/info_table")
             )
             (
                 collateral_df.write.format("parquet")
-                .partitionBy("part")
-                .mode("overwrite")
+                .partitionBy("pcd_year", "pcd_month")
+                .mode("append")
                 .save(f"gs://{bucket_name}/{target_prefix}/collaterals_table")
             )
             (
                 contact_df.write.format("parquet")
-                .partitionBy("part")
-                .mode("overwrite")
+                .partitionBy("pcd_year", "pcd_month")
+                .mode("append")
                 .save(f"gs://{bucket_name}/{target_prefix}/contact_table")
             )
             (
                 tranche_df.write.format("parquet")
-                .partitionBy("part")
-                .mode("overwrite")
+                .partitionBy("pcd_year", "pcd_month")
+                .mode("append")
                 .save(f"gs://{bucket_name}/{target_prefix}/tranche_info_table")
             )
     logger.info("Remove clean dumps.")

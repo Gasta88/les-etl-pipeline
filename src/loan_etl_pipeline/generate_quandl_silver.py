@@ -83,7 +83,6 @@ def prepare_dataset(ds_code, data):
     for k, v in data.items():
         tmp_dict = {}
         tmp_dict["name"] = ds_code
-        # tmp_dict["date_time"] = k.to_pydatetime().strftime("%Y-%m-%d")
         tmp_dict["date_time"] = k.to_pydatetime().date()
         tmp_dict["value"] = v
         new_data.append(tmp_dict)

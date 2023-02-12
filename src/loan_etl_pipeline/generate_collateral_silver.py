@@ -123,8 +123,8 @@ def generate_collateral_silver(
 
             (
                 info_df.write.format("parquet")
-                .partitionBy("part")
-                .mode("overwrite")
+                .partitionBy("pcd_year", "pcd_month")
+                .mode("append")
                 .save(f"gs://{bucket_name}/{target_prefix}/info_table")
             )
     logger.info("Remove clean dumps.")

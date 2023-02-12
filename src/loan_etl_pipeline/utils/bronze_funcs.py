@@ -78,8 +78,8 @@ def create_dataframe(spark, csv_blob, data_type):
         ]
         df = (
             spark.createDataFrame(content, col_names)
-            .withColumn("year", F.year(F.col("pcd")))
-            .withColumn("month", F.month(F.col("pcd")))
+            .withColumn("pcd_year", F.year(F.col("pcd")))
+            .withColumn("pcd_month", F.month(F.col("pcd")))
             .withColumn(
                 "valid_from", F.lit(F.current_timestamp()).cast(TimestampType())
             )
@@ -91,9 +91,11 @@ def create_dataframe(spark, csv_blob, data_type):
             )
             .withColumn(
                 "part",
-                F.concat(F.col("ed_code"), F.lit("_"), F.col("year"), F.col("month")),
+                F.concat(
+                    F.col("ed_code"), F.lit("_"), F.col("pcd_year"), F.col("pcd_month")
+                ),
             )
-            .drop("pcd", "year", "month")
+            # .drop("pcd", "year", "month")
         )
         # repartition = 4 instances * 8 cores each * 3 for replication factor
         df = df.repartition(96)

@@ -172,7 +172,7 @@ def get_columns_collection(df):
     :return cols_dict: collection of columns labelled by topic.
     """
     cols_dict = {
-        "general": ["ed_code", "part"]
+        "general": ["ed_code", "pcd_year", "pcd_month"]
         + [f"AS{i}" for i in range(1, 15) if f"AS{i}" in df.columns],
         "obligor_info": [f"AS{i}" for i in range(15, 50) if f"AS{i}" in df.columns],
         "loan_info": [f"AS{i}" for i in range(50, 80) if f"AS{i}" in df.columns],
@@ -311,32 +311,32 @@ def generate_asset_silver(spark, bucket_name, source_prefix, target_prefix, ed_c
 
             (
                 loan_info_df.write.format("parquet")
-                .partitionBy("part")
-                .mode("overwrite")
+                .partitionBy("pcd_year", "pcd_month")
+                .mode("append")
                 .save(f"gs://{bucket_name}/{target_prefix}/loan_info_table")
             )
             (
                 obligor_info_df.write.format("parquet")
-                .partitionBy("part")
-                .mode("overwrite")
+                .partitionBy("pcd_year", "pcd_month")
+                .mode("append")
                 .save(f"gs://{bucket_name}/{target_prefix}/obligor_info_table")
             )
             (
                 financial_info_df.write.format("parquet")
-                .partitionBy("part")
-                .mode("overwrite")
+                .partitionBy("pcd_year", "pcd_month")
+                .mode("append")
                 .save(f"gs://{bucket_name}/{target_prefix}/financial_info_table")
             )
             (
                 interest_rate_df.write.format("parquet")
-                .partitionBy("part")
-                .mode("overwrite")
+                .partitionBy("pcd_year", "pcd_month")
+                .mode("append")
                 .save(f"gs://{bucket_name}/{target_prefix}/interest_rate_table")
             )
             (
                 performance_info_df.write.format("parquet")
-                .partitionBy("part")
-                .mode("overwrite")
+                .partitionBy("pcd_year", "pcd_month")
+                .mode("append")
                 .save(f"gs://{bucket_name}/{target_prefix}/performance_info_table")
             )
     logger.info("Remove clean dumps.")
