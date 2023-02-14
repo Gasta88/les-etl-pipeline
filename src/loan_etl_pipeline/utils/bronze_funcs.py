@@ -95,7 +95,6 @@ def create_dataframe(spark, csv_blob, data_type):
                     F.col("ed_code"), F.lit("_"), F.col("pcd_year"), F.col("pcd_month")
                 ),
             )
-            # .drop("pcd", "year", "month")
         )
         # repartition = 4 instances * 8 cores each * 3 for replication factor
         df = df.repartition(96)

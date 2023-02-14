@@ -19,11 +19,7 @@ logger.addHandler(handler)
 
 
 def generate_bronze_tables(
-    spark,
-    data_bucketname,
-    source_prefix,
-    target_prefix,
-    data_type,
+    spark, data_bucketname, source_prefix, target_prefix, data_type, ingestion_date
 ):
     """
     Run main steps of the module.
@@ -33,6 +29,7 @@ def generate_bronze_tables(
     :param source_prefix: specific bucket prefix from where to collect bronze new data.
     :param target_prefix: specific bucket prefix from where to collect bronze old data.
     :param data_type: type of data to handle, ex: amortisation, assets, collaterals.
+    :param ingestion_date: date of the ETL ingestion.
     :return status: 0 if successful.
     """
     logger.info(f"Start {data_type.upper()} BRONZE job.")
@@ -43,7 +40,7 @@ def generate_bronze_tables(
         for b in storage_client.list_blobs(
             data_bucketname, prefix=f"clean_dump/{data_type}"
         )
-        if ed_code in b.name
+        if f"{ingestion_date}_{ed_code}" in b.name
     ]
     if all_clean_dumps == []:
         logger.info(

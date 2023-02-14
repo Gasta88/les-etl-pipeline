@@ -2,6 +2,7 @@ from google.cloud import storage
 from airflow import models
 from airflow.providers.google.cloud.operators.dataproc import (
     DataprocCreateBatchOperator,
+    DataprocDeleteBatchOperator,
 )
 from airflow.operators.empty import EmptyOperator
 from airflow.utils.dates import days_ago
@@ -15,8 +16,8 @@ PROJECT_ID = "dataops-369610"
 REGION = "europe-west3"
 CODE_BUCKET = "data-lake-code-847515094398"
 RAW_BUCKET = "algoritmica_data"
-# DATA_BUCKET = "algoritmica_data_lake"
-DATA_BUCKET = "fgasta_data_lake_test"
+DATA_BUCKET = "algoritmica_data_lake"
+# DATA_BUCKET = "fgasta_data_lake_test"
 PHS_CLUSTER = "spark-hist-srv-dataops-369610"
 METASTORE_CLUSTER = "data-catalog-dataops-369610"
 
@@ -87,28 +88,44 @@ default_args = {
     "start_date": days_ago(1),
     "project_id": PROJECT_ID,
     "region": REGION,
+    "retries": 1,
 }
 with models.DAG(
     "delta_lake_etl",  # The id you will see in the DAG airflow page
-    default_args=default_args,  # The interval with which to schedule the DAG
+    default_args=default_args,
     schedule_interval=None,  # Override to match your needs
     on_success_callback=cleanup_xcom,
     on_failure_callback=cleanup_xcom,
-    max_active_runs=8,
+    max_active_tasks=11,
 ) as dag:
     from uuid import uuid1
+    import datetime
 
-    run_id = str(uuid1())
     raw_prefixes = get_raw_prefixes()
     for rp in raw_prefixes:
         ed_code = rp.split("/")[-1]
+        ingestion_date = datetime.date.today().strftime("%Y-%m-%d")
+        # Unique batch ids per tasks
+        assets_profile_batch_id = f"{ed_code.lower()}-{str(uuid1())}"
+        assets_bronze_batch_id = f"{ed_code.lower()}-{str(uuid1())}"
+        assets_silver_batch_id = f"{ed_code.lower()}-{str(uuid1())}"
+        bond_info_profile_batch_id = f"{ed_code.lower()}-{str(uuid1())}"
+        bond_info_bronze_batch_id = f"{ed_code.lower()}-{str(uuid1())}"
+        bond_info_silver_batch_id = f"{ed_code.lower()}-{str(uuid1())}"
+        collaterals_profile_batch_id = f"{ed_code.lower()}-{str(uuid1())}"
+        collaterals_bronze_batch_id = f"{ed_code.lower()}-{str(uuid1())}"
+        collaterals_silver_batch_id = f"{ed_code.lower()}-{str(uuid1())}"
+        deal_details_bronze_batch_id = f"{ed_code.lower()}-{str(uuid1())}"
+        deal_details_silver_batch_id = f"{ed_code.lower()}-{str(uuid1())}"
+
         # DEBUG
-        if ed_code != "SMEMFR000101100220133":
+        if "SMESES" not in ed_code:
             continue
         start = EmptyOperator(task_id=f"{ed_code}_start")
+        # assets TaskGroup
         with TaskGroup(group_id=f"{ed_code}_assets") as assets_tg:
-            assets_bronze_profile_task = DataprocCreateBatchOperator(
-                task_id=f"assets_bronze_profile_{ed_code}",
+            assets_profile_task = DataprocCreateBatchOperator(
+                task_id=f"assets_profile_{ed_code}",
                 batch={
                     "pyspark_batch": {
                         "main_python_file_uri": PYTHON_FILE_LOCATION,
@@ -124,12 +141,13 @@ with models.DAG(
                             f"--source-prefix=edw_data/downloaded-data/SME/{ed_code}",
                             "--file-key=Loan_Data",
                             "--stage-name=profile_bronze_asset",
+                            f"--ingestion-date={ingestion_date}",
                         ],
                     },
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-{run_id}",
+                batch_id=assets_profile_batch_id,
             )
             assets_bronze_task = DataprocCreateBatchOperator(
                 task_id=f"assets_bronze_{ed_code}",
@@ -149,12 +167,13 @@ with models.DAG(
                             "--target-prefix=SME/bronze/assets",
                             "--file-key=Loan_Data",
                             "--stage-name=bronze_asset",
+                            f"--ingestion-date={ingestion_date}",
                         ],
                     },
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-{run_id}",
+                batch_id=assets_bronze_batch_id,
             )
             assets_silver_task = DataprocCreateBatchOperator(
                 task_id=f"assets_silver_{ed_code}",
@@ -174,17 +193,19 @@ with models.DAG(
                             "--target-prefix=SME/silver/assets",
                             f"--ed-code={ed_code}",
                             "--stage-name=silver_asset",
+                            f"--ingestion-date={ingestion_date}",
                         ],
                     },
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-{run_id}",
+                batch_id=assets_silver_batch_id,
             )
-            assets_bronze_profile_task >> assets_bronze_task >> assets_silver_task
+            assets_profile_task >> assets_bronze_task >> assets_silver_task
+        # collaterlas TaskGroup
         with TaskGroup(group_id=f"{ed_code}_collaterals") as collaterals_tg:
-            collateral_bronze_profile_task = DataprocCreateBatchOperator(
-                task_id=f"collateral_bronze_profile_{ed_code}",
+            collateral_profile_task = DataprocCreateBatchOperator(
+                task_id=f"collateral_profile_{ed_code}",
                 batch={
                     "pyspark_batch": {
                         "main_python_file_uri": PYTHON_FILE_LOCATION,
@@ -200,12 +221,13 @@ with models.DAG(
                             f"--source-prefix=edw_data/downloaded-data/SME/{ed_code}",
                             "--file-key=Collateral",
                             "--stage-name=profile_bronze_collateral",
+                            f"--ingestion-date={ingestion_date}",
                         ],
                     },
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-{run_id}",
+                batch_id=collaterals_profile_batch_id,
             )
             collateral_bronze_task = DataprocCreateBatchOperator(
                 task_id=f"collateral_bronze_{ed_code}",
@@ -225,12 +247,13 @@ with models.DAG(
                             "--target-prefix=SME/bronze/collaterals",
                             "--file-key=Collateral",
                             "--stage-name=bronze_collateral",
+                            f"--ingestion-date={ingestion_date}",
                         ],
                     },
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-{run_id}",
+                batch_id=collaterals_bronze_batch_id,
             )
             collateral_silver_task = DataprocCreateBatchOperator(
                 task_id=f"collateral_silver_{ed_code}",
@@ -250,21 +273,23 @@ with models.DAG(
                             "--target-prefix=SME/silver/collaterals",
                             f"--ed-code={ed_code}",
                             "--stage-name=silver_collateral",
+                            f"--ingestion-date={ingestion_date}",
                         ],
                     },
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-{run_id}",
+                batch_id=collaterals_silver_batch_id,
             )
             (
-                collateral_bronze_profile_task
+                collateral_profile_task
                 >> collateral_bronze_task
                 >> collateral_silver_task
             )
+        # bond_info TaskGroup
         with TaskGroup(group_id=f"{ed_code}_bond_info") as bond_info_tg:
-            bond_info_bronze_profile_task = DataprocCreateBatchOperator(
-                task_id=f"bond_info_bronze_profile_{ed_code}",
+            bond_info_profile_task = DataprocCreateBatchOperator(
+                task_id=f"bond_info_profile_{ed_code}",
                 batch={
                     "pyspark_batch": {
                         "main_python_file_uri": PYTHON_FILE_LOCATION,
@@ -280,12 +305,13 @@ with models.DAG(
                             f"--source-prefix=edw_data/downloaded-data/SME/{ed_code}",
                             "--file-key=Bond_Info",
                             "--stage-name=profile_bronze_bond_info",
+                            f"--ingestion-date={ingestion_date}",
                         ],
                     },
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-{run_id}",
+                batch_id=bond_info_profile_batch_id,
             )
             bond_info_bronze_task = DataprocCreateBatchOperator(
                 task_id=f"bond_info_bronze_{ed_code}",
@@ -305,12 +331,13 @@ with models.DAG(
                             "--target-prefix=SME/bronze/bond_info",
                             "--file-key=Bond_Info",
                             "--stage-name=bronze_bond_info",
+                            f"--ingestion-date={ingestion_date}",
                         ],
                     },
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-{run_id}",
+                batch_id=bond_info_bronze_batch_id,
             )
             bond_info_silver_task = DataprocCreateBatchOperator(
                 task_id=f"bond_info_silver_{ed_code}",
@@ -330,18 +357,16 @@ with models.DAG(
                             "--target-prefix=SME/silver/bond_info",
                             f"--ed-code={ed_code}",
                             "--stage-name=silver_bond_info",
+                            f"--ingestion-date={ingestion_date}",
                         ],
                     },
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-{run_id}",
+                batch_id=bond_info_silver_batch_id,
             )
-            (
-                bond_info_bronze_profile_task
-                >> bond_info_bronze_task
-                >> bond_info_silver_task
-            )
+            (bond_info_profile_task >> bond_info_bronze_task >> bond_info_silver_task)
+        # deal details TaskGroup
         with TaskGroup(group_id=f"{ed_code}_deal_details") as deal_details_tg:
             deal_details_bronze_task = DataprocCreateBatchOperator(
                 task_id=f"deal_details_bronze_{ed_code}",
@@ -366,7 +391,7 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-{run_id}",
+                batch_id=deal_details_bronze_batch_id,
             )
             deal_details_silver_task = DataprocCreateBatchOperator(
                 task_id=f"deal_details_silver_{ed_code}",
@@ -391,8 +416,81 @@ with models.DAG(
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-{run_id}",
+                batch_id=deal_details_silver_batch_id,
             )
             deal_details_bronze_task >> deal_details_silver_task
+        # clean-up TaskGroup
+        # with TaskGroup(group_id=f"{ed_code}_clean_up") as clean_up_tg:
+        #     delete_assets_profile = DataprocDeleteBatchOperator(
+        #         task_id=f"delete_assets_profile_{ed_code}",
+        #         project_id=PROJECT_ID,
+        #         #region=REGION,
+        #         batch_id=assets_profile_batch_id,
+        #     )
+        #     delete_assets_bronze = DataprocDeleteBatchOperator(
+        #         task_id=f"delete_assets_bronze_{ed_code}",
+        #         project_id=PROJECT_ID,
+        #         #region=REGION,
+        #         batch_id=assets_bronze_batch_id,
+        #     )
+        #     delete_assets_silver = DataprocDeleteBatchOperator(
+        #         task_id=f"delete_assets_silver_{ed_code}",
+        #         project_id=PROJECT_ID,
+        #         #region=REGION,
+        #         batch_id=assets_silver_batch_id,
+        #     )
+        #     delete_collaterals_profile = DataprocDeleteBatchOperator(
+        #         task_id=f"delete_collaterals_profile_{ed_code}",
+        #         project_id=PROJECT_ID,
+        #         #region=REGION,
+        #         batch_id=collaterals_profile_batch_id,
+        #     )
+        #     delete_collaterals_bronze = DataprocDeleteBatchOperator(
+        #         task_id=f"delete_collaterals_bronze_{ed_code}",
+        #         project_id=PROJECT_ID,
+        #         #region=REGION,
+        #         batch_id=collaterals_bronze_batch_id,
+        #     )
+        #     delete_collaterals_silver = DataprocDeleteBatchOperator(
+        #         task_id=f"delete_collaterals_silver_{ed_code}",
+        #         project_id=PROJECT_ID,
+        #         #region=REGION,
+        #         batch_id=collaterals_silver_batch_id,
+        #     )
+        #     delete_bond_info_profile = DataprocDeleteBatchOperator(
+        #         task_id=f"delete_bond_info_profile_{ed_code}",
+        #         project_id=PROJECT_ID,
+        #         #region=REGION,
+        #         batch_id=bond_info_profile_batch_id,
+        #     )
+        #     delete_bond_info_bronze = DataprocDeleteBatchOperator(
+        #         task_id=f"delete_bond_info_bronze_{ed_code}",
+        #         project_id=PROJECT_ID,
+        #         #region=REGION,
+        #         batch_id=bond_info_bronze_batch_id,
+        #     )
+        #     delete_bond_info_silver = DataprocDeleteBatchOperator(
+        #         task_id=f"delete_bond_info_silver_{ed_code}",
+        #         project_id=PROJECT_ID,
+        #         #region=REGION,
+        #         batch_id=bond_info_silver_batch_id,
+        #     )
+        #     delete_deal_details_bronze = DataprocDeleteBatchOperator(
+        #         task_id=f"delete_deal_details_bronze_{ed_code}",
+        #         project_id=PROJECT_ID,
+        #         #region=REGION,
+        #         batch_id=deal_details_bronze_batch_id,
+        #     )
+        #     delete_deal_details_silver = DataprocDeleteBatchOperator(
+        #         task_id=f"delete_deal_details_silver_{ed_code}",
+        #         project_id=PROJECT_ID,
+        #         #region=REGION,
+        #         batch_id=deal_details_silver_batch_id,
+        #     )
         end = EmptyOperator(task_id=f"{ed_code}_end")
-        start >> [assets_tg, collaterals_tg, bond_info_tg, deal_details_tg] >> end
+        (
+            start
+            >> [assets_tg, collaterals_tg, bond_info_tg, deal_details_tg]
+            # >> clean_up_tg
+            >> end
+        )

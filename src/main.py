@@ -33,6 +33,7 @@ def run(
     ed_code,
     file_key,
     stage_name,
+    ingestion_date,
 ):
     """
     :param raw_bucketname: GS bucket where original files are stored.
@@ -42,13 +43,19 @@ def run(
     :param ed_code: deal code used for Silver layer ETL.
     :param file_key: label for file name that helps with the cherry picking with file type.
     :param stage_name: name of the ETL stage.
+    :param ingestion_date: date of the ETL ingestion.
     :return: None
     """
     spark = start_spark()
     # ----------------Bronze Quality layer ETL
     if stage_name == "profile_bronze_asset":
         status = profile_bronze_data(
-            raw_bucketname, data_bucketname, source_prefix, file_key, "assets"
+            raw_bucketname,
+            data_bucketname,
+            source_prefix,
+            file_key,
+            "assets",
+            ingestion_date,
         )
     if stage_name == "profile_bronze_collateral":
         status = profile_bronze_data(
@@ -57,10 +64,16 @@ def run(
             source_prefix,
             file_key,
             "collaterals",
+            ingestion_date,
         )
     if stage_name == "profile_bronze_bond_info":
         status = profile_bronze_data(
-            raw_bucketname, data_bucketname, source_prefix, file_key, "bond_info"
+            raw_bucketname,
+            data_bucketname,
+            source_prefix,
+            file_key,
+            "bond_info",
+            ingestion_date,
         )
     if stage_name == "profile_bronze_amortisation":
         status = profile_bronze_data(
@@ -69,6 +82,7 @@ def run(
             source_prefix,
             file_key,
             "amortisation",
+            ingestion_date,
         )
 
     # ----------------Bronze layer ETL
@@ -79,6 +93,7 @@ def run(
             source_prefix,
             target_prefix,
             "assets",
+            ingestion_date,
         )
 
     if stage_name == "bronze_collateral":
@@ -88,6 +103,7 @@ def run(
             source_prefix,
             target_prefix,
             "collaterals",
+            ingestion_date,
         )
 
     if stage_name == "bronze_bond_info":
@@ -97,6 +113,7 @@ def run(
             source_prefix,
             target_prefix,
             "bond_info",
+            ingestion_date,
         )
 
     if stage_name == "bronze_amortisation":
@@ -106,6 +123,7 @@ def run(
             source_prefix,
             target_prefix,
             "amortisation",
+            ingestion_date,
         )
     if stage_name == "bronze_deal_details":
         status = generate_deal_details_bronze(
@@ -120,22 +138,42 @@ def run(
     # ----------------Silver layer ETL
     if stage_name == "silver_asset":
         status = generate_asset_silver(
-            spark, data_bucketname, source_prefix, target_prefix, ed_code
+            spark,
+            data_bucketname,
+            source_prefix,
+            target_prefix,
+            ed_code,
+            ingestion_date,
         )
 
     if stage_name == "silver_collateral":
         status = generate_collateral_silver(
-            spark, data_bucketname, source_prefix, target_prefix, ed_code
+            spark,
+            data_bucketname,
+            source_prefix,
+            target_prefix,
+            ed_code,
+            ingestion_date,
         )
 
     if stage_name == "silver_bond_info":
         status = generate_bond_info_silver(
-            spark, data_bucketname, source_prefix, target_prefix, ed_code
+            spark,
+            data_bucketname,
+            source_prefix,
+            target_prefix,
+            ed_code,
+            ingestion_date,
         )
 
     if stage_name == "silver_amortisation":
         status = generate_amortisation_silver(
-            spark, data_bucketname, source_prefix, target_prefix, ed_code
+            spark,
+            data_bucketname,
+            source_prefix,
+            target_prefix,
+            ed_code,
+            ingestion_date,
         )
 
     if stage_name == "silver_deal_details":
@@ -209,6 +247,14 @@ if __name__ == "__main__":
         help="Name of the ETL stage, like bronze_asset or silver_collateral",
     )
 
+    parser.add_argument(
+        "--ingestion-date",
+        type=str,
+        dest="ingestion_date",
+        required=False,
+        help="Date of the ETL ingestion",
+    )
+
     known_args, pipeline_args = parser.parse_known_args()
 
     run(
@@ -219,4 +265,5 @@ if __name__ == "__main__":
         ed_code=known_args.ed_code,
         file_key=known_args.file_key,
         stage_name=known_args.stage_name,
+        ingestion_date=known_args.ingestion_date,
     )

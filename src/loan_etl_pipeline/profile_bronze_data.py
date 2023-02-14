@@ -2,7 +2,6 @@ import logging
 import sys
 from google.cloud import storage
 import pandas as pd
-import datetime
 from cerberus import Validator
 from src.loan_etl_pipeline.utils.bronze_profile_funcs import (
     get_csv_files,
@@ -26,7 +25,7 @@ logger.addHandler(handler)
 
 
 def profile_bronze_data(
-    raw_bucketname, data_bucketname, source_prefix, file_key, data_type
+    raw_bucketname, data_bucketname, source_prefix, file_key, data_type, ingestion_date
 ):
     """
     Run main steps of the module.
@@ -36,6 +35,7 @@ def profile_bronze_data(
     :param source_prefix: specific bucket prefix from where to collect source files.
     :param file_key: label for file name that helps with the cherry picking with data_type.
     :param data_type: type of data to handle, ex: amortisation, assets, collaterals.
+    :param ingestion_date: date of the ETL ingestion.
     :return status: 0 if successful.
     """
     logger.info(f"Start {data_type.upper()} BRONZE PROFILING job.")
@@ -65,7 +65,7 @@ def profile_bronze_data(
             logger.info(f"Checking {new_file_name}..")
             pcd = "_".join(new_file_name.split("/")[-1].split("_")[1:4])
             clean_dump_csv = bucket.blob(
-                f'clean_dump/{data_type}/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_{pcd}.csv'
+                f"clean_dump/{data_type}/{ingestion_date}_{ed_code}_{pcd}.csv"
             )
             # Check if this file has already been profiled. Skip in this case.
             if clean_dump_csv.exists():
@@ -82,8 +82,8 @@ def profile_bronze_data(
                 logger.info(f"Found {len(dirty_content)} failed records found.")
                 dirty_df = pd.DataFrame(data=dirty_content)
                 bucket.blob(
-                    f'dirty_dump/{data_type}/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_{pcd}.csv'
-                ).upload_from_string(dirty_df.to_csv(), "text/csv")
+                    f"dirty_dump/{data_type}/{ingestion_date}_{ed_code}_{pcd}.csv"
+                ).upload_from_string(dirty_df.to_csv(index=False), "text/csv")
             if clean_content == []:
                 logger.info("No passed records found. Skip!")
                 continue
@@ -91,7 +91,7 @@ def profile_bronze_data(
                 logger.info(f"Found {len(clean_content)} clean CSV found.")
                 clean_df = pd.DataFrame(data=clean_content)
                 bucket.blob(
-                    f'clean_dump/{data_type}/{datetime.date.today().strftime("%Y-%m-%d")}_{ed_code}_{pcd}.csv'
-                ).upload_from_string(clean_df.to_csv(), "text/csv")
+                    f"clean_dump/{data_type}/{ingestion_date}_{ed_code}_{pcd}.csv"
+                ).upload_from_string(clean_df.to_csv(index=False), "text/csv")
     logger.info(f"End {data_type.upper()} BRONZE PROFILING job.")
     return 0

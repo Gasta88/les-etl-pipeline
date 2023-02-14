@@ -130,7 +130,7 @@ def process_tranche_info(df, cols_dict):
 
 
 def generate_bond_info_silver(
-    spark, bucket_name, source_prefix, target_prefix, ed_code
+    spark, bucket_name, source_prefix, target_prefix, ed_code, ingestion_date
 ):
     """
     Run main steps of the module.
@@ -140,6 +140,7 @@ def generate_bond_info_silver(
     :param source_prefix: specific bucket prefix from where to collect bronze data.
     :param target_prefix: specific bucket prefix from where to deposit silver data.
     :param ed_code: deal code to process.
+    :param ingestion_date: date of the ETL ingestion.
     :return status: 0 if successful.
     """
     logger.info("Start BOND_INFO SILVER job.")
@@ -148,7 +149,7 @@ def generate_bond_info_silver(
     all_clean_dumps = [
         b
         for b in storage_client.list_blobs(bucket_name, prefix="clean_dump/bond_info")
-        if ed_code in b.name
+        if f"{ingestion_date}_{ed_code}" in b.name
     ]
     if all_clean_dumps == []:
         logger.info(

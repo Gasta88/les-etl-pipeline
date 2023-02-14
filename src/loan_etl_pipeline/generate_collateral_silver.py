@@ -72,7 +72,7 @@ def process_collateral_info(df):
 
 
 def generate_collateral_silver(
-    spark, bucket_name, source_prefix, target_prefix, ed_code
+    spark, bucket_name, source_prefix, target_prefix, ed_code, ingestion_date
 ):
     """
     Run main steps of the module.
@@ -82,6 +82,7 @@ def generate_collateral_silver(
     :param source_prefix: specific bucket prefix from where to collect bronze data.
     :param target_prefix: specific bucket prefix from where to deposit silver data.
     :param ed_code: deal code to process.
+    :param ingestion_date: date of the ETL ingestion.
     :return status: 0 if successful.
     """
     logger.info("Start COLLATERAL SILVER job.")
@@ -90,7 +91,7 @@ def generate_collateral_silver(
     all_clean_dumps = [
         b
         for b in storage_client.list_blobs(bucket_name, prefix="clean_dump/collaterals")
-        if ed_code in b.name
+        if f"{ingestion_date}_{ed_code}" in b.name
     ]
     if all_clean_dumps == []:
         logger.info(
@@ -108,7 +109,14 @@ def generate_collateral_silver(
                 .load(f"gs://{bucket_name}/{source_prefix}")
                 .where(F.col("part") == f"{ed_code}_{part_pcd}")
                 .filter(F.col("iscurrent") == 1)
-                .drop("valid_from", "valid_to", "checksum", "iscurrent")
+                .drop(
+                    "valid_from",
+                    "valid_to",
+                    "checksum",
+                    "iscurrent",
+                    "filename",
+                    "part",
+                )
             )
             logger.info("Remove ND values.")
             tmp_df1 = replace_no_data(bronze_df)
