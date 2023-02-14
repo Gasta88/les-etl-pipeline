@@ -63,10 +63,10 @@ def profile_data(bucket_name, csv_f, data_type, validator):
     try:
         with open(dest_csv_f, "r") as f:
             for i, line in enumerate(csv.reader(f)):
-                # START DEBUG
-                if i == 50:
-                    break
-                # END DEBUG
+                # # START DEBUG
+                # if i == 50:
+                #     break
+                # # END DEBUG
                 if data_type == "amortisation":
                     # Just check that AS3 is present instead of the hundreds of columns that the file has.
                     curr_line = line[:1]
