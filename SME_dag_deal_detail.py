@@ -111,9 +111,9 @@ with models.DAG(
     for rp in raw_prefixes:
         ed_code = rp.split("/")[-1]
 
-        # DEBUG
-        if "SMESES" not in ed_code:
-            continue
+        # # DEBUG
+        # if "SMESES" not in ed_code:
+        #     continue
         start = EmptyOperator(task_id=f"{ed_code}_start")
         # deal details TaskGroup
         with TaskGroup(group_id=f"{ed_code}_deal_details") as tg:

@@ -94,7 +94,7 @@ def profile_bronze_data(
                     f"clean_dump/{data_type}/{ingestion_date}_{ed_code}_{pcd}.csv"
                 ).upload_from_string(clean_df.to_csv(index=False), "text/csv")
             # START DEBUG ONLY 1 FILE
-            break
+            # break
             # END DEBUG
     logger.info(f"End {data_type.upper()} BRONZE PROFILING job.")
     return 0

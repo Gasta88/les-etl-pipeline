@@ -112,8 +112,8 @@ with models.DAG(
         ed_code = rp.split("/")[-1]
 
         # DEBUG
-        if "SMESES" not in ed_code:
-            continue
+        # if "SMESES" not in ed_code:
+        #     continue
         start = EmptyOperator(task_id=f"{ed_code}_start")
         # bond_info TaskGroup
         with TaskGroup(group_id=f"{ed_code}_bond_info") as tg:
