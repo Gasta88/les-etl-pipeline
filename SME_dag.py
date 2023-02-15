@@ -102,7 +102,7 @@ with models.DAG(
     import sys
     import logging
 
-    ingestion_date = "2023-02-14"
+    ingestion_date = "2023-02-15"
     if ingestion_date is None:
         logging.error("No ingestion date set. DAG stopped!!")
         sys.exit(1)
