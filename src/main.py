@@ -265,5 +265,6 @@ if __name__ == "__main__":
         ed_code=known_args.ed_code,
         file_key=known_args.file_key,
         stage_name=known_args.stage_name,
-        ingestion_date=known_args.ingestion_date,
+        # ingestion_date=known_args.ingestion_date,
+        ingestion_date="2023-02-14",
     )

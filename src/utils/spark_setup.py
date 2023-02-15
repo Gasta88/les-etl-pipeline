@@ -23,6 +23,8 @@ def start_spark():
             "spark.delta.logStore.gs.impl",
             "io.delta.storage.GCSLogStore",
         )
+        .config("spark.sql.parquet.datetimeRebaseModeInRead", "CORRECTED")
+        .config("spark.sql.parquet.datetimeRebaseModeInWrite", "CORRECTED")
         .getOrCreate()
     )
     return spark

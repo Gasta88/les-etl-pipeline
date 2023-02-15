@@ -99,12 +99,18 @@ with models.DAG(
     max_active_tasks=11,
 ) as dag:
     from uuid import uuid1
-    import datetime
+    import sys
+    import logging
 
+    ingestion_date = "2023-02-14"
+    if ingestion_date is None:
+        logging.error("No ingestion date set. DAG stopped!!")
+        sys.exit(1)
+    logging.info(f"Ingestion date: {ingestion_date}")
     raw_prefixes = get_raw_prefixes()
     for rp in raw_prefixes:
         ed_code = rp.split("/")[-1]
-        ingestion_date = datetime.date.today().strftime("%Y-%m-%d")
+
         # Unique batch ids per tasks
         assets_profile_batch_id = f"{ed_code.lower()}-{str(uuid1())}"
         assets_bronze_batch_id = f"{ed_code.lower()}-{str(uuid1())}"
