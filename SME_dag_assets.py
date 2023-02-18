@@ -98,7 +98,6 @@ with models.DAG(
     on_failure_callback=cleanup_xcom,
     max_active_tasks=1,
 ) as dag:
-    from uuid import uuid1
     import sys
     import logging
 
@@ -158,7 +157,6 @@ with models.DAG(
                             f"--data-bucketname={DATA_BUCKET}",
                             f"--source-prefix=edw_data/downloaded-data/SME/{ed_code}",
                             "--target-prefix=SME/bronze/assets",
-                            "--file-key=Loan_Data",
                             "--stage-name=bronze_asset",
                             f"--ingestion-date={ingestion_date}",
                         ],

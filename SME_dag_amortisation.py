@@ -91,7 +91,7 @@ default_args = {
     "retries": 0,
 }
 with models.DAG(
-    "sme_collaterals",  # The id you will see in the DAG airflow page
+    "sme_amortisation",  # The id you will see in the DAG airflow page
     default_args=default_args,
     schedule_interval=None,  # Override to match your needs
     on_success_callback=cleanup_xcom,
@@ -110,12 +110,12 @@ with models.DAG(
     for rp in raw_prefixes:
         ed_code = rp.split("/")[-1]
 
-        # # DEBUG
+        # DEBUG
         # if "SMESES" not in ed_code:
         #     continue
         start = EmptyOperator(task_id=f"{ed_code}_start")
-        # collaterlas TaskGroup
-        with TaskGroup(group_id=f"{ed_code}_collaterals") as tg:
+        # assets TaskGroup
+        with TaskGroup(group_id=f"{ed_code}_amortisation") as tg:
             profile_task = DataprocCreateBatchOperator(
                 task_id=f"profile_{ed_code}",
                 batch={
@@ -131,15 +131,15 @@ with models.DAG(
                             f"--raw-bucketname={RAW_BUCKET}",
                             f"--data-bucketname={DATA_BUCKET}",
                             f"--source-prefix=edw_data/downloaded-data/SME/{ed_code}",
-                            "--file-key=Collateral",
-                            "--stage-name=profile_bronze_collateral",
+                            "--file-key=Amortization",
+                            "--stage-name=profile_bronze_amortisation",
                             f"--ingestion-date={ingestion_date}",
                         ],
                     },
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-collaterals-profile",
+                batch_id=f"{ed_code.lower()}-amortisation-profile",
             )
             bronze_task = DataprocCreateBatchOperator(
                 task_id=f"bronze_{ed_code}",
@@ -156,15 +156,15 @@ with models.DAG(
                             f"--raw-bucketname={RAW_BUCKET}",
                             f"--data-bucketname={DATA_BUCKET}",
                             f"--source-prefix=edw_data/downloaded-data/SME/{ed_code}",
-                            "--target-prefix=SME/bronze/collaterals",
-                            "--stage-name=bronze_collateral",
+                            "--target-prefix=SME/bronze/amortisation",
+                            "--stage-name=bronze_amortisation",
                             f"--ingestion-date={ingestion_date}",
                         ],
                     },
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-collaterals-bronze",
+                batch_id=f"{ed_code.lower()}-amortisation-bronze",
             )
             silver_task = DataprocCreateBatchOperator(
                 task_id=f"silver_{ed_code}",
@@ -180,38 +180,38 @@ with models.DAG(
                             f"--project={PROJECT_ID}",
                             f"--raw-bucketname={RAW_BUCKET}",
                             f"--data-bucketname={DATA_BUCKET}",
-                            "--source-prefix=SME/bronze/collaterals",
-                            "--target-prefix=SME/silver/collaterals",
+                            "--source-prefix=SME/bronze/amortisation",
+                            "--target-prefix=SME/silver/amortisation",
                             f"--ed-code={ed_code}",
-                            "--stage-name=silver_collateral",
+                            "--stage-name=silver_amortisation",
                             f"--ingestion-date={ingestion_date}",
                         ],
                     },
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-collaterals-silver",
+                batch_id=f"{ed_code.lower()}-amortisation-silver",
             )
-            (profile_task >> bronze_task >> silver_task)
+            profile_task >> bronze_task >> silver_task
         # clean-up TaskGroup
         with TaskGroup(group_id=f"{ed_code}_clean_up") as clean_up_tg:
             delete_profile = DataprocDeleteBatchOperator(
                 task_id=f"delete_profile_{ed_code}",
                 project_id=PROJECT_ID,
                 region=REGION,
-                batch_id=f"{ed_code.lower()}-collaterals-profile",
+                batch_id=f"{ed_code.lower()}-amortisation-profile",
             )
             delete_bronze = DataprocDeleteBatchOperator(
                 task_id=f"delete_bronze_{ed_code}",
                 project_id=PROJECT_ID,
                 region=REGION,
-                batch_id=f"{ed_code.lower()}-collaterals-bronze",
+                batch_id=f"{ed_code.lower()}-amortisation-bronze",
             )
             delete_silver = DataprocDeleteBatchOperator(
                 task_id=f"delete_silver_{ed_code}",
                 project_id=PROJECT_ID,
                 region=REGION,
-                batch_id=f"{ed_code.lower()}-collaterals-silver",
+                batch_id=f"{ed_code.lower()}-amortisation-silver",
             )
         end = EmptyOperator(task_id=f"{ed_code}_end")
         (start >> tg >> clean_up_tg >> end)

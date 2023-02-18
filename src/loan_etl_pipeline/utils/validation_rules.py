@@ -788,7 +788,7 @@ def amortisation_schema():
     Return validation schema for AMORTISATION PROFILE data type.
     """
     schema = {"AS3": {"type": "string"}}
-    for i in range(150, 390):
+    for i in range(150, 270):
         if i % 2 == 0:
             schema[f"AS{i}"] = {"type": "number", "coerce": TO_NUMBER, "min": 0.0}
         else:
@@ -797,21 +797,5 @@ def amortisation_schema():
                 "coerce": TO_DATE,
                 "min": datetime.datetime(2012, 1, 1),
                 "max": (datetime.datetime.now() + datetime.timedelta(years=6)),
-            }
-    for i in range(390, 1350):
-        if i % 2 == 0:
-            schema[f"AS{i}"] = {
-                "type": "number",
-                "coerce": TO_NUMBER,
-                "min": 0.0,
-                "nullable": True,
-            }
-        else:
-            schema[f"AS{i}"] = {
-                "type": "datetime",
-                "coerce": TO_DATE,
-                "min": datetime.datetime(2012, 1, 1),
-                "max": (datetime.datetime.now() + datetime.timedelta(years=6)),
-                "nullable": True,
             }
     return schema

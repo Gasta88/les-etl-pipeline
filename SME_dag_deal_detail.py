@@ -98,7 +98,6 @@ with models.DAG(
     on_failure_callback=cleanup_xcom,
     max_active_tasks=1,
 ) as dag:
-    from uuid import uuid1
     import sys
     import logging
 

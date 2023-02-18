@@ -21,26 +21,17 @@ def set_job_params():
     :return config: dictionary with properties used in this job.
     """
     config = {}
-    config["AMORTISATION_MANDATORY_COLUMNS"] = {
+    config["AMORTISATION_COLUMNS"] = {
         "AS3": StringType(),
         "pcd_year": IntegerType(),
         "pcd_month": IntegerType(),
     }
-    config["AMORTISATION_OPTIONAL_COLUMNS"] = {
-        "AS3": StringType(),
-        "pcd_year": IntegerType(),
-        "pcd_month": IntegerType(),
-    }
-    for i in range(150, 390):
+
+    for i in range(150, 270):
         if i % 2 == 0:
-            config["AMORTISATION_MANDATORY_COLUMNS"][f"AS{i}"] = DoubleType()
+            config["AMORTISATION_COLUMNS"][f"AS{i}"] = DoubleType()
         else:
-            config["AMORTISATION_MANDATORY_COLUMNS"][f"AS{i}"] = DateType()
-    for i in range(390, 1350):
-        if i % 2 == 0:
-            config["AMORTISATION_OPTIONAL_COLUMNS"][f"AS{i}"] = DoubleType()
-        else:
-            config["AMORTISATION_OPTIONAL_COLUMNS"][f"AS{i}"] = DateType()
+            config["AMORTISATION_COLUMNS"][f"AS{i}"] = DateType()
     return config
 
 
@@ -94,7 +85,8 @@ def unpivot_dataframe(df, columns):
         value_vars=double_columns,
         var_name="DOUBLE_COLUMNS",
         value_name="DOUBLE_VALUE",
-    )
+    ).filter(F.col("DOUBLE_VALUE").isNotNull())
+
     scd2_df = df.select("AS3", "part")
     new_df = (
         date_df.join(double_df, on="AS3", how="inner")
@@ -150,18 +142,8 @@ def generate_amortisation_silver(
                 .repartition(96)
             )
             logger.info("Cast data to correct types.")
-            tmp_df1 = unpivot_dataframe(
-                bronze_df, run_props["AMORTISATION_MANDATORY_COLUMNS"]
-            )
-            tmp_df2 = unpivot_dataframe(
-                bronze_df, run_props["AMORTISATION_OPTIONAL_COLUMNS"]
-            )
-            mandatory_info_df = tmp_df1.withColumn(
-                "DATE_VALUE", F.to_date(F.col("DATE_VALUE"))
-            ).withColumn(
-                "DOUBLE_VALUE", F.round(F.col("DOUBLE_VALUE").cast(DoubleType()), 2)
-            )
-            optional_info_df = tmp_df2.withColumn(
+            tmp_df = unpivot_dataframe(bronze_df, run_props["AMORTISATION_COLUMNS"])
+            info_df = tmp_df.withColumn(
                 "DATE_VALUE", F.to_date(F.col("DATE_VALUE"))
             ).withColumn(
                 "DOUBLE_VALUE", F.round(F.col("DOUBLE_VALUE").cast(DoubleType()), 2)
@@ -169,20 +151,14 @@ def generate_amortisation_silver(
 
             logger.info("Write mandatory dataframe")
             (
-                mandatory_info_df.write.format("parquet")
+                info_df.write.format("parquet")
                 .partitionBy("pcd_year", "pcd_month")
                 .mode("append")
-                .save(f"gs://{bucket_name}/{target_prefix}/mandatory_info_table")
+                .save(f"gs://{bucket_name}/{target_prefix}/info_table")
             )
 
             logger.info("Write optional dataframe")
 
-            (
-                optional_info_df.write.format("parquet")
-                .partitionBy("pcd_year", "pcd_month")
-                .mode("append")
-                .save(f"gs://{bucket_name}/{target_prefix}/optional_info_table")
-            )
     logger.info("Remove clean dumps.")
     for clean_dump_csv in all_clean_dumps:
         clean_dump_csv.delete()
