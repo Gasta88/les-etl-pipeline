@@ -180,8 +180,8 @@ def generate_bond_info_silver(
             info_df = process_bond_info(cleaned_df, bond_info_columns)
             logger.info("Generate collateral info dataframe")
             collateral_df = process_collateral_info(cleaned_df, bond_info_columns)
-            logger.info("Generate contact info dataframe")
-            contact_df = process_contact_info(cleaned_df, bond_info_columns)
+            # logger.info("Generate contact info dataframe")
+            # contact_df = process_contact_info(cleaned_df, bond_info_columns)
             logger.info("Generate tranche info dataframe")
             tranche_df = process_tranche_info(cleaned_df, bond_info_columns)
 
@@ -199,12 +199,12 @@ def generate_bond_info_silver(
                 .mode("append")
                 .save(f"gs://{bucket_name}/{target_prefix}/collaterals_table")
             )
-            (
-                contact_df.write.format("parquet")
-                .partitionBy("pcd_year", "pcd_month")
-                .mode("append")
-                .save(f"gs://{bucket_name}/{target_prefix}/contact_table")
-            )
+            # (
+            #     contact_df.write.format("parquet")
+            #     .partitionBy("pcd_year", "pcd_month")
+            #     .mode("append")
+            #     .save(f"gs://{bucket_name}/{target_prefix}/contact_table")
+            # )
             (
                 tranche_df.write.format("parquet")
                 .partitionBy("pcd_year", "pcd_month")
