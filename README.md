@@ -1,4 +1,4 @@
-# Loan Data Exploration
+# SME ETl pipeline
 
 This repository hosts the ETL that creates the Algoritmica data lakehouse.
 
@@ -53,28 +53,4 @@ Run the following command to prepare the code and uploa it onto GCP:
 > make setup && make build
 ```
 
-To profile the bronze tables run the following command:
-
-```bash
-> make -j3 all_bronze_profile
-```
-
-To build the bronze tables run the following command:
-
-```bash
-> make -j4 all_bronze
-```
-
-To build the silver tables run the following command:
-
-```bash
-> make -j4 all_silver
-```
-
-To build the Quandl dataset run the following command:
-
-```bash
-> make run_quandl_silver
-```
-
-User the `GNU screen` utility to detach a session and continue to work on the terminal.
+Upload the desired DAG file onto Google Cloud Composer and start the workflow manually.

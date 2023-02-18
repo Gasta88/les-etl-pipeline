@@ -181,12 +181,6 @@ def run(
             spark, data_bucketname, source_prefix, target_prefix
         )
 
-    # ----------------External sources ETL
-    if stage_name == "silver_quandl":
-        status = generate_quandl_silver(
-            spark, raw_bucketname, data_bucketname, source_prefix
-        )
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

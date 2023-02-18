@@ -10,7 +10,8 @@ for i, l in enumerate(result.stdout.split("\n")):
     batch_id = l.split(" ")[0]
     status = l.split(" ")[-1]
     # print(f"Removing {batch_id}")
-    if status in ["SUCCEEDED", "FAILED"]:
+    # if status in ["SUCCEEDED", "FAILED"]:
+    if status in ["SUCCEEDED"]:
         try:
             bashCommand = f'gcloud dataproc batches delete {batch_id} --region="europe-west3" --async --quiet &&'
             print(bashCommand)
