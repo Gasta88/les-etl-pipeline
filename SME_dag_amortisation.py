@@ -111,8 +111,8 @@ with models.DAG(
         ed_code = rp.split("/")[-1]
 
         # DEBUG
-        # if "SMESES" not in ed_code:
-        #     continue
+        if "SMESES000060100320061" not in ed_code:
+            continue
         start = EmptyOperator(task_id=f"{ed_code}_start")
         # assets TaskGroup
         with TaskGroup(group_id=f"{ed_code}_amortisation") as tg:

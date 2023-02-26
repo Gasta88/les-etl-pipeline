@@ -21,9 +21,6 @@ from src.loan_etl_pipeline.generate_deal_details_silver import (
     generate_deal_details_silver,
 )
 
-# External sources
-from src.loan_etl_pipeline.generate_quandl_silver import generate_quandl_silver
-
 
 def run(
     raw_bucketname,

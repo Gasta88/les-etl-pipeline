@@ -87,7 +87,7 @@ def unpivot_dataframe(df, columns):
         value_name="DOUBLE_VALUE",
     ).filter(F.col("DOUBLE_VALUE").isNotNull())
 
-    scd2_df = df.select("AS3", "part")
+    scd2_df = df.select("AS3", "part", "pcd_year", "pcd_month")
     new_df = (
         date_df.join(double_df, on="AS3", how="inner")
         .join(scd2_df, on="AS3", how="inner")
