@@ -101,7 +101,7 @@ with models.DAG(
     import sys
     import logging
 
-    ingestion_date = "2023-02-15"
+    ingestion_date = "2023-02-27"
     if ingestion_date is None:
         logging.error("No ingestion date set. DAG stopped!!")
         sys.exit(1)
@@ -194,24 +194,25 @@ with models.DAG(
             )
             profile_task >> bronze_task >> silver_task
         # clean-up TaskGroup
-        with TaskGroup(group_id=f"{ed_code}_clean_up") as clean_up_tg:
-            delete_profile = DataprocDeleteBatchOperator(
-                task_id=f"delete_profile_{ed_code}",
-                project_id=PROJECT_ID,
-                region=REGION,
-                batch_id=f"{ed_code.lower()}-amortisation-profile",
-            )
-            delete_bronze = DataprocDeleteBatchOperator(
-                task_id=f"delete_bronze_{ed_code}",
-                project_id=PROJECT_ID,
-                region=REGION,
-                batch_id=f"{ed_code.lower()}-amortisation-bronze",
-            )
-            delete_silver = DataprocDeleteBatchOperator(
-                task_id=f"delete_silver_{ed_code}",
-                project_id=PROJECT_ID,
-                region=REGION,
-                batch_id=f"{ed_code.lower()}-amortisation-silver",
-            )
+        # with TaskGroup(group_id=f"{ed_code}_clean_up") as clean_up_tg:
+        #     delete_profile = DataprocDeleteBatchOperator(
+        #         task_id=f"delete_profile_{ed_code}",
+        #         project_id=PROJECT_ID,
+        #         #region=REGION,
+        #         batch_id=f"{ed_code.lower()}-amortisation-profile",
+        #     )
+        #     delete_bronze = DataprocDeleteBatchOperator(
+        #         task_id=f"delete_bronze_{ed_code}",
+        #         project_id=PROJECT_ID,
+        #         #region=REGION,
+        #         batch_id=f"{ed_code.lower()}-amortisation-bronze",
+        #     )
+        #     delete_silver = DataprocDeleteBatchOperator(
+        #         task_id=f"delete_silver_{ed_code}",
+        #         project_id=PROJECT_ID,
+        #         #region=REGION,
+        #         batch_id=f"{ed_code.lower()}-amortisation-silver",
+        #     )
         end = EmptyOperator(task_id=f"{ed_code}_end")
-        (start >> tg >> clean_up_tg >> end)
+        # (start >> tg >> clean_up_tg >> end)
+        (start >> tg >> end)

@@ -156,11 +156,10 @@ def generate_amortisation_silver(
                 .mode("append")
                 .save(f"gs://{bucket_name}/{target_prefix}/info_table")
             )
+            logger.info(f"Written {info_df.count()} rows.")
 
-            logger.info("Write optional dataframe")
-
-    logger.info("Remove clean dumps.")
-    for clean_dump_csv in all_clean_dumps:
-        clean_dump_csv.delete()
+    # logger.info("Remove clean dumps.")
+    # for clean_dump_csv in all_clean_dumps:
+    #     clean_dump_csv.delete()
     logger.info("End AMORTISATION SILVER job.")
     return 0
