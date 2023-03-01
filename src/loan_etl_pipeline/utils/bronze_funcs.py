@@ -28,7 +28,7 @@ def get_old_df(spark, bucket_name, prefix, pcds, ed_code):
     storage_client = storage.Client(project="dataops-369610")
     check_list = []
     for pcd in pcds:
-        part_pcd = pcd.replace("-", "")
+        part_pcd = "_".join(pcd.split("-")[:2]).replace("_0", "").replace("_", "")
         partition_prefix = f"{prefix}/part={ed_code}_{part_pcd}"
         files_in_partition = [
             b.name

@@ -131,7 +131,7 @@ def generate_amortisation_silver(
         for clean_dump_csv in all_clean_dumps:
             pcd = "_".join(clean_dump_csv.name.split("/")[-1].split("_")[2:4])
             logger.info(f"Processing data for deal {ed_code}:{pcd}")
-            part_pcd = pcd.replace("_", "")
+            part_pcd = pcd.replace("_0", "").replace("_", "")
             logger.info(f"Processing {pcd} data from bronze to silver. ")
             bronze_df = (
                 spark.read.format("delta")
@@ -141,6 +141,7 @@ def generate_amortisation_silver(
                 .drop("valid_from", "valid_to", "checksum", "iscurrent")
                 .repartition(96)
             )
+            logger.info(f"Bronze df has {bronze_df.count()} rows.")
             logger.info("Cast data to correct types.")
             tmp_df = unpivot_dataframe(bronze_df, run_props["AMORTISATION_COLUMNS"])
             info_df = tmp_df.withColumn(
@@ -149,6 +150,7 @@ def generate_amortisation_silver(
                 "DOUBLE_VALUE", F.round(F.col("DOUBLE_VALUE").cast(DoubleType()), 2)
             )
 
+            logger.info(f"Write {info_df.count()} rows.")
             logger.info("Write mandatory dataframe")
             (
                 info_df.write.format("parquet")
@@ -156,7 +158,6 @@ def generate_amortisation_silver(
                 .mode("append")
                 .save(f"gs://{bucket_name}/{target_prefix}/info_table")
             )
-            logger.info(f"Written {info_df.count()} rows.")
 
     # logger.info("Remove clean dumps.")
     # for clean_dump_csv in all_clean_dumps:
