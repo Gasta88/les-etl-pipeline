@@ -139,9 +139,7 @@ def generate_amortisation_silver(
                 .where(F.col("part") == f"{ed_code}_{part_pcd}")
                 .filter(F.col("iscurrent") == 1)
                 .drop("valid_from", "valid_to", "checksum", "iscurrent")
-                .repartition(96)
             )
-            logger.info(f"Bronze df has {bronze_df.count()} rows.")
             logger.info("Cast data to correct types.")
             tmp_df = unpivot_dataframe(bronze_df, run_props["AMORTISATION_COLUMNS"])
             info_df = tmp_df.withColumn(
@@ -150,8 +148,7 @@ def generate_amortisation_silver(
                 "DOUBLE_VALUE", F.round(F.col("DOUBLE_VALUE").cast(DoubleType()), 2)
             )
 
-            logger.info(f"Write {info_df.count()} rows.")
-            logger.info("Write mandatory dataframe")
+            logger.info("Write dataframe")
             (
                 info_df.write.format("parquet")
                 .partitionBy("pcd_year", "pcd_month")
@@ -159,8 +156,8 @@ def generate_amortisation_silver(
                 .save(f"gs://{bucket_name}/{target_prefix}/info_table")
             )
 
-    # logger.info("Remove clean dumps.")
-    # for clean_dump_csv in all_clean_dumps:
-    #     clean_dump_csv.delete()
+    logger.info("Remove clean dumps.")
+    for clean_dump_csv in all_clean_dumps:
+        clean_dump_csv.delete()
     logger.info("End AMORTISATION SILVER job.")
     return 0

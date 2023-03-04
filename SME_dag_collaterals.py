@@ -16,8 +16,8 @@ PROJECT_ID = "dataops-369610"
 REGION = "europe-west3"
 CODE_BUCKET = "data-lake-code-847515094398"
 RAW_BUCKET = "algoritmica_data"
-# DATA_BUCKET = "algoritmica_data_lake"
-DATA_BUCKET = "fgasta_data_lake_test"
+DATA_BUCKET = "algoritmica_data_lake"
+# DATA_BUCKET = "fgasta_data_lake_test"
 PHS_CLUSTER = "spark-hist-srv-dataops-369610"
 METASTORE_CLUSTER = "data-catalog-dataops-369610"
 
@@ -101,7 +101,7 @@ with models.DAG(
     import sys
     import logging
 
-    ingestion_date = "2023-02-15"
+    ingestion_date = "2023-03-04"
     if ingestion_date is None:
         logging.error("No ingestion date set. DAG stopped!!")
         sys.exit(1)
@@ -115,103 +115,104 @@ with models.DAG(
         #     continue
         start = EmptyOperator(task_id=f"{ed_code}_start")
         # collaterlas TaskGroup
-        with TaskGroup(group_id=f"{ed_code}_collaterals") as tg:
-            profile_task = DataprocCreateBatchOperator(
-                task_id=f"profile_{ed_code}",
-                batch={
-                    "pyspark_batch": {
-                        "main_python_file_uri": PYTHON_FILE_LOCATION,
-                        "jar_file_uris": [
-                            SPARK_DELTA_JAR_FILE,
-                            SPARK_DELTA_STORE_JAR_FILE,
-                        ],
-                        "python_file_uris": [PY_FILES],
-                        "args": [
-                            f"--project={PROJECT_ID}",
-                            f"--raw-bucketname={RAW_BUCKET}",
-                            f"--data-bucketname={DATA_BUCKET}",
-                            f"--source-prefix=edw_data/downloaded-data/SME/{ed_code}",
-                            "--file-key=Collateral",
-                            "--stage-name=profile_bronze_collateral",
-                            f"--ingestion-date={ingestion_date}",
-                        ],
-                    },
-                    "environment_config": ENVIRONMENT_CONFIG,
-                    "runtime_config": RUNTIME_CONFIG,
+        # with TaskGroup(group_id=f"{ed_code}_collaterals") as tg:
+        #     profile_task = DataprocCreateBatchOperator(
+        #         task_id=f"profile_{ed_code}",
+        #         batch={
+        #             "pyspark_batch": {
+        #                 "main_python_file_uri": PYTHON_FILE_LOCATION,
+        #                 "jar_file_uris": [
+        #                     SPARK_DELTA_JAR_FILE,
+        #                     SPARK_DELTA_STORE_JAR_FILE,
+        #                 ],
+        #                 "python_file_uris": [PY_FILES],
+        #                 "args": [
+        #                     f"--project={PROJECT_ID}",
+        #                     f"--raw-bucketname={RAW_BUCKET}",
+        #                     f"--data-bucketname={DATA_BUCKET}",
+        #                     f"--source-prefix=edw_data/downloaded-data/SME/{ed_code}",
+        #                     "--file-key=Collateral",
+        #                     "--stage-name=profile_bronze_collateral",
+        #                     f"--ingestion-date={ingestion_date}",
+        #                 ],
+        #             },
+        #             "environment_config": ENVIRONMENT_CONFIG,
+        #             "runtime_config": RUNTIME_CONFIG,
+        #         },
+        #         batch_id=f"{ed_code.lower()}-collaterals-profile",
+        #     )
+        #     bronze_task = DataprocCreateBatchOperator(
+        #         task_id=f"bronze_{ed_code}",
+        #         batch={
+        #             "pyspark_batch": {
+        #                 "main_python_file_uri": PYTHON_FILE_LOCATION,
+        #                 "jar_file_uris": [
+        #                     SPARK_DELTA_JAR_FILE,
+        #                     SPARK_DELTA_STORE_JAR_FILE,
+        #                 ],
+        #                 "python_file_uris": [PY_FILES],
+        #                 "args": [
+        #                     f"--project={PROJECT_ID}",
+        #                     f"--raw-bucketname={RAW_BUCKET}",
+        #                     f"--data-bucketname={DATA_BUCKET}",
+        #                     f"--source-prefix=edw_data/downloaded-data/SME/{ed_code}",
+        #                     "--target-prefix=SME/bronze/collaterals",
+        #                     "--stage-name=bronze_collateral",
+        #                     f"--ingestion-date={ingestion_date}",
+        #                 ],
+        #             },
+        #             "environment_config": ENVIRONMENT_CONFIG,
+        #             "runtime_config": RUNTIME_CONFIG,
+        #         },
+        #         batch_id=f"{ed_code.lower()}-collaterals-bronze",
+        #     )
+        silver_task = DataprocCreateBatchOperator(
+            task_id=f"silver_{ed_code}",
+            batch={
+                "pyspark_batch": {
+                    "main_python_file_uri": PYTHON_FILE_LOCATION,
+                    "jar_file_uris": [
+                        SPARK_DELTA_JAR_FILE,
+                        SPARK_DELTA_STORE_JAR_FILE,
+                    ],
+                    "python_file_uris": [PY_FILES],
+                    "args": [
+                        f"--project={PROJECT_ID}",
+                        f"--raw-bucketname={RAW_BUCKET}",
+                        f"--data-bucketname={DATA_BUCKET}",
+                        "--source-prefix=SME/bronze/collaterals",
+                        "--target-prefix=SME/silver/collaterals",
+                        f"--ed-code={ed_code}",
+                        "--stage-name=silver_collateral",
+                        f"--ingestion-date={ingestion_date}",
+                    ],
                 },
-                batch_id=f"{ed_code.lower()}-collaterals-profile",
-            )
-            bronze_task = DataprocCreateBatchOperator(
-                task_id=f"bronze_{ed_code}",
-                batch={
-                    "pyspark_batch": {
-                        "main_python_file_uri": PYTHON_FILE_LOCATION,
-                        "jar_file_uris": [
-                            SPARK_DELTA_JAR_FILE,
-                            SPARK_DELTA_STORE_JAR_FILE,
-                        ],
-                        "python_file_uris": [PY_FILES],
-                        "args": [
-                            f"--project={PROJECT_ID}",
-                            f"--raw-bucketname={RAW_BUCKET}",
-                            f"--data-bucketname={DATA_BUCKET}",
-                            f"--source-prefix=edw_data/downloaded-data/SME/{ed_code}",
-                            "--target-prefix=SME/bronze/collaterals",
-                            "--stage-name=bronze_collateral",
-                            f"--ingestion-date={ingestion_date}",
-                        ],
-                    },
-                    "environment_config": ENVIRONMENT_CONFIG,
-                    "runtime_config": RUNTIME_CONFIG,
-                },
-                batch_id=f"{ed_code.lower()}-collaterals-bronze",
-            )
-            silver_task = DataprocCreateBatchOperator(
-                task_id=f"silver_{ed_code}",
-                batch={
-                    "pyspark_batch": {
-                        "main_python_file_uri": PYTHON_FILE_LOCATION,
-                        "jar_file_uris": [
-                            SPARK_DELTA_JAR_FILE,
-                            SPARK_DELTA_STORE_JAR_FILE,
-                        ],
-                        "python_file_uris": [PY_FILES],
-                        "args": [
-                            f"--project={PROJECT_ID}",
-                            f"--raw-bucketname={RAW_BUCKET}",
-                            f"--data-bucketname={DATA_BUCKET}",
-                            "--source-prefix=SME/bronze/collaterals",
-                            "--target-prefix=SME/silver/collaterals",
-                            f"--ed-code={ed_code}",
-                            "--stage-name=silver_collateral",
-                            f"--ingestion-date={ingestion_date}",
-                        ],
-                    },
-                    "environment_config": ENVIRONMENT_CONFIG,
-                    "runtime_config": RUNTIME_CONFIG,
-                },
-                batch_id=f"{ed_code.lower()}-collaterals-silver",
-            )
-            (profile_task >> bronze_task >> silver_task)
+                "environment_config": ENVIRONMENT_CONFIG,
+                "runtime_config": RUNTIME_CONFIG,
+            },
+            batch_id=f"{ed_code.lower()}-collaterals-silver",
+        )
+        # (profile_task >> bronze_task >> silver_task)
         # clean-up TaskGroup
-        with TaskGroup(group_id=f"{ed_code}_clean_up") as clean_up_tg:
-            delete_profile = DataprocDeleteBatchOperator(
-                task_id=f"delete_profile_{ed_code}",
-                project_id=PROJECT_ID,
-                region=REGION,
-                batch_id=f"{ed_code.lower()}-collaterals-profile",
-            )
-            delete_bronze = DataprocDeleteBatchOperator(
-                task_id=f"delete_bronze_{ed_code}",
-                project_id=PROJECT_ID,
-                region=REGION,
-                batch_id=f"{ed_code.lower()}-collaterals-bronze",
-            )
-            delete_silver = DataprocDeleteBatchOperator(
-                task_id=f"delete_silver_{ed_code}",
-                project_id=PROJECT_ID,
-                region=REGION,
-                batch_id=f"{ed_code.lower()}-collaterals-silver",
-            )
+        # with TaskGroup(group_id=f"{ed_code}_clean_up") as clean_up_tg:
+        #     delete_profile = DataprocDeleteBatchOperator(
+        #         task_id=f"delete_profile_{ed_code}",
+        #         project_id=PROJECT_ID,
+        #         #region=REGION,
+        #         batch_id=f"{ed_code.lower()}-collaterals-profile",
+        #     )
+        #     delete_bronze = DataprocDeleteBatchOperator(
+        #         task_id=f"delete_bronze_{ed_code}",
+        #         project_id=PROJECT_ID,
+        #         #region=REGION,
+        #         batch_id=f"{ed_code.lower()}-collaterals-bronze",
+        #     )
+        delete_silver = DataprocDeleteBatchOperator(
+            task_id=f"delete_silver_{ed_code}",
+            project_id=PROJECT_ID,
+            region=REGION,
+            batch_id=f"{ed_code.lower()}-collaterals-silver",
+        )
         end = EmptyOperator(task_id=f"{ed_code}_end")
-        (start >> tg >> clean_up_tg >> end)
+        # (start >> tg >> clean_up_tg >> end)
+        (start >> silver_task >> delete_silver >> end)

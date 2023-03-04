@@ -270,11 +270,24 @@ def generate_asset_silver(
     logger.info("Start ASSET SILVER job.")
     run_props = set_job_params()
     storage_client = storage.Client(project="dataops-369610")
-    all_clean_dumps = [
-        b
-        for b in storage_client.list_blobs(bucket_name, prefix="clean_dump/assets")
-        if f"{ingestion_date}_{ed_code}" in b.name
-    ]
+    # all_clean_dumps = [
+    #     b
+    #     for b in storage_client.list_blobs(bucket_name, prefix="clean_dump/assets")
+    #     if f"{ingestion_date}_{ed_code}" in b.name
+    # ]
+    # TODO: <delete
+    all_clean_dumps = list(
+        set(
+            [
+                "/".join(b.name.split("/")[:-1])
+                for b in storage_client.list_blobs(
+                    bucket_name, prefix="SME/bronze/assets"
+                )
+                if f"part={ed_code}" in b.name
+            ]
+        )
+    )
+    # TODO: delete>
     if all_clean_dumps == []:
         logger.info(
             "Could not find clean CSV dump file from ASSETS BRONZE PROFILING BRONZE PROFILING job. Workflow stopped!"
@@ -282,16 +295,27 @@ def generate_asset_silver(
         sys.exit(1)
     else:
         for clean_dump_csv in all_clean_dumps:
-            pcd = "_".join(clean_dump_csv.name.split("/")[-1].split("_")[2:4])
-            logger.info(f"Processing data for deal {ed_code}:{pcd}")
-            part_pcd = pcd.replace("_", "")
+            # pcd = "_".join(clean_dump_csv.name.split("/")[-1].split("_")[2:4])
+            # logger.info(f"Processing data for deal {ed_code}:{pcd}")
+            # part_pcd = pcd.replace("_0", "").replace("_", "")
+            # bronze_df = (
+            #     spark.read.format("delta")
+            #     .load(f"gs://{bucket_name}/{source_prefix}")
+            #     .where(F.col("part") == f"{ed_code}_{part_pcd}")
+            #     .filter(F.col("iscurrent") == 1)
+            #     .drop("valid_from", "valid_to", "checksum", "iscurrent")
+            # )
+            # TODO: <delete
+            logger.info(f"Processing data for deal {clean_dump_csv}")
+            part = clean_dump_csv.split("/")[-1].replace("part=", "")
             bronze_df = (
-                spark.read.format("parquet")
+                spark.read.format("delta")
                 .load(f"gs://{bucket_name}/{source_prefix}")
-                .where(F.col("part") == f"{ed_code}_{part_pcd}")
+                .where(F.col("part") == part)
                 .filter(F.col("iscurrent") == 1)
                 .drop("valid_from", "valid_to", "checksum", "iscurrent")
             )
+            # TODO: delete>
             assets_columns = get_columns_collection(bronze_df)
             logger.info("Remove ND values.")
             tmp_df1 = replace_no_data(bronze_df)
@@ -342,8 +366,8 @@ def generate_asset_silver(
                 .mode("append")
                 .save(f"gs://{bucket_name}/{target_prefix}/performance_info_table")
             )
-    logger.info("Remove clean dumps.")
-    for clean_dump_csv in all_clean_dumps:
-        clean_dump_csv.delete()
+    # logger.info("Remove clean dumps.")
+    # for clean_dump_csv in all_clean_dumps:
+    #     clean_dump_csv.delete()
     logger.info("End ASSET SILVER job.")
     return 0
