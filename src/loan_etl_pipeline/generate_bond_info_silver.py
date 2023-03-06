@@ -160,10 +160,10 @@ def generate_bond_info_silver(
         for clean_dump_csv in all_clean_dumps:
             pcd = "_".join(clean_dump_csv.name.split("/")[-1].split("_")[2:4])
             logger.info(f"Processing data for deal {ed_code}:{pcd}")
-            part_pcd = pcd.replace("_", "")
+            part_pcd = pcd.replace("_0", "").replace("_", "")
             logger.info(f"Processing {pcd} data from bronze to silver. ")
             bronze_df = (
-                spark.read.format("parquet")
+                spark.read.format("delta")
                 .load(f"gs://{bucket_name}/{source_prefix}")
                 .where(F.col("part") == f"{ed_code}_{part_pcd}")
                 .filter(F.col("iscurrent") == 1)

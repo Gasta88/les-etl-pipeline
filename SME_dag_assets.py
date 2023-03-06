@@ -16,8 +16,8 @@ PROJECT_ID = "dataops-369610"
 REGION = "europe-west3"
 CODE_BUCKET = "data-lake-code-847515094398"
 RAW_BUCKET = "algoritmica_data"
-# DATA_BUCKET = "algoritmica_data_lake"
-DATA_BUCKET = "fgasta_data_lake_test"
+DATA_BUCKET = "algoritmica_data_lake"
+# DATA_BUCKET = "fgasta_data_lake_test"
 PHS_CLUSTER = "spark-hist-srv-dataops-369610"
 METASTORE_CLUSTER = "data-catalog-dataops-369610"
 
@@ -101,7 +101,7 @@ with models.DAG(
     import sys
     import logging
 
-    ingestion_date = "2023-02-15"
+    ingestion_date = "2023-03-04"
     if ingestion_date is None:
         logging.error("No ingestion date set. DAG stopped!!")
         sys.exit(1)
@@ -110,9 +110,9 @@ with models.DAG(
     for rp in raw_prefixes:
         ed_code = rp.split("/")[-1]
 
-        # DEBUG
-        # if "SMESES" not in ed_code:
-        #    continue
+        # # DEBUG
+        # if "SMESES000060100320061" not in ed_code:
+        #     continue
         start = EmptyOperator(task_id=f"{ed_code}_start")
         # assets TaskGroup
         with TaskGroup(group_id=f"{ed_code}_assets") as tg:

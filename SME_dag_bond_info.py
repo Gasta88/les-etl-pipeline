@@ -16,8 +16,8 @@ PROJECT_ID = "dataops-369610"
 REGION = "europe-west3"
 CODE_BUCKET = "data-lake-code-847515094398"
 RAW_BUCKET = "algoritmica_data"
-# DATA_BUCKET = "algoritmica_data_lake"
-DATA_BUCKET = "fgasta_data_lake_test"
+DATA_BUCKET = "algoritmica_data_lake"
+# DATA_BUCKET = "fgasta_data_lake_test"
 PHS_CLUSTER = "spark-hist-srv-dataops-369610"
 METASTORE_CLUSTER = "data-catalog-dataops-369610"
 
@@ -101,7 +101,7 @@ with models.DAG(
     import sys
     import logging
 
-    ingestion_date = "2023-02-15"
+    ingestion_date = "2023-03-04"
     if ingestion_date is None:
         logging.error("No ingestion date set. DAG stopped!!")
         sys.exit(1)
@@ -207,11 +207,11 @@ with models.DAG(
                 region=REGION,
                 batch_id=f"{ed_code.lower()}-bond-info-bronze",
             )
-            delete_silver = DataprocDeleteBatchOperator(
-                task_id=f"delete_silver_{ed_code}",
-                project_id=PROJECT_ID,
-                region=REGION,
-                batch_id=f"{ed_code.lower()}-bond-info-silver",
-            )
+        delete_silver = DataprocDeleteBatchOperator(
+            task_id=f"delete_silver_{ed_code}",
+            project_id=PROJECT_ID,
+            region=REGION,
+            batch_id=f"{ed_code.lower()}-bond-info-silver",
+        )
         end = EmptyOperator(task_id=f"{ed_code}_end")
         (start >> tg >> clean_up_tg >> end)
