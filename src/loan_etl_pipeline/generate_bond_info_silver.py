@@ -146,24 +146,11 @@ def generate_bond_info_silver(
     logger.info("Start BOND_INFO SILVER job.")
     run_props = set_job_params()
     storage_client = storage.Client(project="dataops-369610")
-    # all_clean_dumps = [
-    #     b
-    #     for b in storage_client.list_blobs(bucket_name, prefix="clean_dump/bond_info")
-    #     if f"{ingestion_date}_{ed_code}" in b.name
-    # ]
-    # TODO: <delete
-    all_clean_dumps = list(
-        set(
-            [
-                "/".join(b.name.split("/")[:-1])
-                for b in storage_client.list_blobs(
-                    bucket_name, prefix="SME/bronze/bond_info"
-                )
-                if f"part={ed_code}" in b.name
-            ]
-        )
-    )
-    # TODO: delete>
+    all_clean_dumps = [
+        b
+        for b in storage_client.list_blobs(bucket_name, prefix="clean_dump/bond_info")
+        if f"{ingestion_date}_{ed_code}" in b.name
+    ]
     if all_clean_dumps == []:
         logger.info(
             "Could not find clean CSV dump file from BOND_INFO BRONZE PROFILING BRONZE PROFILING job. Workflow stopped!"
@@ -171,28 +158,17 @@ def generate_bond_info_silver(
         sys.exit(1)
     else:
         for clean_dump_csv in all_clean_dumps:
-            # pcd = "_".join(clean_dump_csv.name.split("/")[-1].split("_")[2:4])
-            # logger.info(f"Processing data for deal {ed_code}:{pcd}")
-            # part_pcd = pcd.replace("_0", "").replace("_", "")
-            # logger.info(f"Processing {pcd} data from bronze to silver. ")
-            # bronze_df = (
-            #     spark.read.format("delta")
-            #     .load(f"gs://{bucket_name}/{source_prefix}")
-            #     .where(F.col("part") == f"{ed_code}_{part_pcd}")
-            #     .filter(F.col("iscurrent") == 1)
-            #     .drop("valid_from", "valid_to", "checksum", "iscurrent")
-            # )
-            # TODO: <delete
-            logger.info(f"Processing data for deal {clean_dump_csv}")
-            part = clean_dump_csv.split("/")[-1].replace("part=", "")
+            pcd = "_".join(clean_dump_csv.name.split("/")[-1].split("_")[2:4])
+            logger.info(f"Processing data for deal {ed_code}:{pcd}")
+            part_pcd = pcd.replace("_0", "").replace("_", "")
+            logger.info(f"Processing {pcd} data from bronze to silver. ")
             bronze_df = (
                 spark.read.format("delta")
                 .load(f"gs://{bucket_name}/{source_prefix}")
-                .where(F.col("part") == part)
+                .where(F.col("part") == f"{ed_code}_{part_pcd}")
                 .filter(F.col("iscurrent") == 1)
                 .drop("valid_from", "valid_to", "checksum", "iscurrent")
             )
-            # TODO: delete>
             logger.info("Remove ND values.")
             tmp_df1 = replace_no_data(bronze_df)
             logger.info("Replace Y/N with boolean flags.")
@@ -235,8 +211,8 @@ def generate_bond_info_silver(
                 .mode("append")
                 .save(f"gs://{bucket_name}/{target_prefix}/tranche_info_table")
             )
-    # logger.info("Remove clean dumps.")
-    # for clean_dump_csv in all_clean_dumps:
-    #     clean_dump_csv.delete()
+    logger.info("Remove clean dumps.")
+    for clean_dump_csv in all_clean_dumps:
+        clean_dump_csv.delete()
     logger.info("End BOND INFO SILVER job.")
     return 0
