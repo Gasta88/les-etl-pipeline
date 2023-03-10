@@ -1028,7 +1028,7 @@ def amortisation_schema():
                 "type": "datetime",
                 "coerce": TO_DATE,
                 "min": datetime.datetime(2012, 1, 1),
-                "max": (datetime.datetime.now() + datetime.timedelta(days=2190)),
+                "max": (datetime.datetime.now() + datetime.timedelta(days=13880)),
                 "meta": {"label": f"Outstanding Balance Period {i-150} Date"},
             }
     return schema
