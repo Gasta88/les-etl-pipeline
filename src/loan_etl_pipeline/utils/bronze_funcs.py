@@ -14,35 +14,29 @@ PRIMARY_COLS = {
 }
 
 
-def get_old_df(spark, bucket_name, prefix, pcds, ed_code):
+def get_old_df(spark, bucket_name, prefix, part_pcd, ed_code):
     """
     Return BRONZE table, but only the partitions from the specified pcds.
 
     :param spark: SparkSession object.
     :param bucket_name: GS bucket where files are stored.
     :param prefix: specific bucket prefix from where to collect files.
-    :param pcds: list of PCD from source files (valid only when generating TARGET dataframe).
+    :param part_pcd: PCD in part format to retrieve old data.
     :param ed_code: deal code to look up for legacy data.
     :return df: Spark dataframe.
     """
     storage_client = storage.Client(project="dataops-369610")
-    check_list = []
-    for pcd in pcds:
-        part_pcd = "_".join(pcd.split("-")[:2]).replace("_0", "").replace("_", "")
-        partition_prefix = f"{prefix}/part={ed_code}_{part_pcd}"
-        files_in_partition = [
-            b.name
-            for b in storage_client.list_blobs(bucket_name, prefix=partition_prefix)
-        ]
-        if len(files_in_partition) > 0:
-            check_list.append(pcd)
-    if check_list == []:
+    partition_prefix = f"{prefix}/part={ed_code}_{part_pcd}"
+    files_in_partition = [
+        b.name for b in storage_client.list_blobs(bucket_name, prefix=partition_prefix)
+    ]
+    if len(files_in_partition) == 0:
         return None
     else:
         df = (
             spark.read.format("delta")
             .load(f"gs://{bucket_name}/{prefix}")
-            .where(f"part={ed_code}_{part_pcd}")
+            .where(F.col("part") == f"{ed_code}_{part_pcd}")
         )
         return df
 
@@ -56,12 +50,10 @@ def create_dataframe(spark, csv_blob, data_type):
     :param data_type: type of data to handle, ex: amortisation, assets, collaterals.
     :return df: PySpark datafram for loan asset data.
     """
-    pcds = []
     dest_csv_f = f'/tmp/{csv_blob.name.split("/")[-1]}'
     csv_blob.download_to_filename(dest_csv_f)
     col_names = []
     content = []
-    pcd_idx = 0
     with open(dest_csv_f, "r") as f:
         for i, line in enumerate(csv.reader(f)):
             if i == 0:
@@ -71,7 +63,6 @@ def create_dataframe(spark, csv_blob, data_type):
                 if len(line) == 0:
                     continue
                 content.append(line)
-                pcds.append(line[pcd_idx])
         # Prep array of primary cols to use in checksum column
         checksum_cols = [F.col("ed_code"), F.col("pcd")] + [
             F.col(col_name) for col_name in PRIMARY_COLS[data_type]
@@ -100,7 +91,7 @@ def create_dataframe(spark, csv_blob, data_type):
         df = df.repartition(96)
     if len(df.head(1)) == 0:
         return None
-    return (list(set(pcds)), df)
+    return df
 
 
 def perform_scd2(spark, source_df, target_df, data_type):

@@ -51,17 +51,18 @@ def generate_bronze_tables(
         logger.info(f"Create NEW {ed_code} dataframe")
         for clean_dump_csv in all_clean_dumps:
             logger.info(f"Processing {clean_dump_csv.name}.")
-            pcds, new_df = create_dataframe(spark, clean_dump_csv, data_type)
+            pcd = "_".join(clean_dump_csv.name.split("/")[-1].split("_")[2:4])
+            logger.info(f"Processing data for deal {ed_code}:{pcd}")
+            part_pcd = pcd.replace("_0", "").replace("_", "")
+            logger.info(f"Retrieve OLD {ed_code} dataframe. Use following PCD: {pcd}")
+            old_df = get_old_df(
+                spark, data_bucketname, target_prefix, part_pcd, ed_code
+            )
+            new_df = create_dataframe(spark, clean_dump_csv, data_type)
             if new_df is None:
                 logger.error("No dataframes were extracted from file. Skip!")
                 continue
             else:
-                logger.info(
-                    f"Retrieve OLD {ed_code} dataframe. Use following PCDs: {pcds}"
-                )
-                old_df = get_old_df(
-                    spark, data_bucketname, target_prefix, pcds, ed_code
-                )
                 if old_df is None:
                     logger.info(f"Initial load into {data_type.upper()} BRONZE")
                     (
