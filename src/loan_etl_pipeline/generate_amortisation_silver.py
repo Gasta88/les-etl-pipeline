@@ -87,7 +87,7 @@ def unpivot_dataframe(df, columns):
         value_name="DOUBLE_VALUE",
     ).filter(F.col("DOUBLE_VALUE").isNotNull())
 
-    scd2_df = df.select("AS3", "part", "pcd_year", "pcd_month")
+    scd2_df = df.select("AS3", "pcd_year", "pcd_month")
     new_df = (
         date_df.join(double_df, on="AS3", how="inner")
         .join(scd2_df, on="AS3", how="inner")
@@ -142,10 +142,12 @@ def generate_amortisation_silver(
             )
             logger.info("Cast data to correct types.")
             tmp_df = unpivot_dataframe(bronze_df, run_props["AMORTISATION_COLUMNS"])
-            info_df = tmp_df.withColumn(
-                "DATE_VALUE", F.to_date(F.col("DATE_VALUE"))
-            ).withColumn(
-                "DOUBLE_VALUE", F.round(F.col("DOUBLE_VALUE").cast(DoubleType()), 2)
+            info_df = (
+                tmp_df.withColumn("DATE_VALUE", F.to_date(F.col("DATE_VALUE")))
+                .withColumn(
+                    "DOUBLE_VALUE", F.round(F.col("DOUBLE_VALUE").cast(DoubleType()), 2)
+                )
+                .withColumn("ed_code", ed_code)
             )
 
             logger.info("Write dataframe")

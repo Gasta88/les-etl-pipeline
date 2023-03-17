@@ -197,14 +197,14 @@ requests = ["requests (>=2.20.0,<3.0.0dev)"]
 
 [[package]]
 name = "google-cloud-bigquery"
-version = "3.6.0"
+version = "3.7.0"
 description = "Google BigQuery API client library"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "google-cloud-bigquery-3.6.0.tar.gz", hash = "sha256:5886c14f29097158d59afa74a6732dbdd583e6ef30dc9934a56ad532906de356"},
-    {file = "google_cloud_bigquery-3.6.0-py2.py3-none-any.whl", hash = "sha256:ed875c3a52050d140660850f04aaa59c1ec03b420a31fa7cc643a1726fc784d1"},
+    {file = "google-cloud-bigquery-3.7.0.tar.gz", hash = "sha256:cf9f543fad3aaf4871c53f56b718e1ef94a9a778b17f16890015f6fc25c328ec"},
+    {file = "google_cloud_bigquery-3.7.0-py2.py3-none-any.whl", hash = "sha256:d273e6a4fddd24317055c4f7a727b78edb165e714e646d8276df0761fa7023d0"},
 ]
 
 [package.dependencies]
