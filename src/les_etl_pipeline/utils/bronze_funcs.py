@@ -6,10 +6,8 @@ from pyspark.sql.types import (
 import csv
 
 PRIMARY_COLS = {
-    "assets": ["AS1", "AS3"],
-    "collaterals": ["CS1"],
-    "amortisation": ["AS3"],
-    "bond_info": ["BS1", "BS2"],
+    "assets": ["AL1", "AL2"],
+    "bond_info": ["BL1", "BL2"],
     "deal_details": ["ed_code", "PoolCutOffDate"],
 }
 
@@ -58,7 +56,6 @@ def create_dataframe(spark, csv_blob, data_type):
         for i, line in enumerate(csv.reader(f)):
             if i == 0:
                 col_names = line
-                pcd_idx = line.index("pcd")
             else:
                 if len(line) == 0:
                     continue

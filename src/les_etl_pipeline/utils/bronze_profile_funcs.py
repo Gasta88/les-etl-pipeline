@@ -3,10 +3,8 @@ import csv
 
 
 INITIAL_COL = {
-    "assets": "AS1",
-    "collaterals": "CS1",
-    "amortisation": "AS3",
-    "bond_info": "BS1",
+    "assets": "AL1",
+    "bond_info": "BL1",
 }
 
 
@@ -27,7 +25,7 @@ def get_csv_files(bucket_name, prefix, file_key, data_type):
             for b in storage_client.list_blobs(bucket_name, prefix=prefix)
             if (b.name.endswith(".csv"))
             and (file_key in b.name)
-            and not ("Labeled0M" in b.name)  # This is generated internally by Cal
+            and not ("Labeled" in b.name)  # This is generated internally by Cal
         ]
     else:
         all_files = [
@@ -63,11 +61,7 @@ def profile_data(bucket_name, csv_f, data_type, validator):
     try:
         with open(dest_csv_f, "r") as f:
             for i, line in enumerate(csv.reader(f)):
-                if data_type == "amortisation":
-                    # Just check that AS3 is present instead of the hundreds of columns that the file has.
-                    curr_line = line[:121]
-                else:
-                    curr_line = line
+                curr_line = line
                 if i == 0:
                     col_names = curr_line
                     col_names[0] = INITIAL_COL[data_type]

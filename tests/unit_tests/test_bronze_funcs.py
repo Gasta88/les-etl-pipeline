@@ -1,6 +1,6 @@
 import unittest
 import warnings
-from src.loan_etl_pipeline.utils.bronze_funcs import perform_scd2
+from src.les_etl_pipeline.utils.bronze_funcs import perform_scd2
 from pyspark.sql import SparkSession
 
 

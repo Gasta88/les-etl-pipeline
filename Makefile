@@ -9,8 +9,7 @@ APP_NAME ?= $$(cat pyproject.toml| grep name | cut -d" " -f3 | sed  's/"//g')
 VERSION_NO ?= $$(poetry version --short)
 SRC_WITH_DEPS ?= src_with_deps
 DELTA_JAR_FILE ?= delta-core_2.13-2.1.0.jar
-# ED_CODE ?= SMEMBE000095100220092
-ED_CODE ?= SMESES000176100320040
+ED_CODE ?= LESMIT000432100120136/
 
 .PHONY: $(shell sed -n -e '/^$$/ { n ; /^[^ .\#][^ ]*:/ { s/:.*$$// ; p ; } ; }' $(MAKEFILE_LIST))
 
@@ -58,48 +57,48 @@ build: clean ## Build Python Package with Dependencies
 
 
 
-run_amortisation_profile_bronze: ## Run the dataproc serverless job
-	# @gcloud compute networks subnets update default \
-	# --region=${REGION} \
-	# --enable-private-ip-google-access
-	@gcloud dataproc batches submit --project ${PROJECT_ID} --region ${REGION} pyspark \
-	gs://${CODE_BUCKET}/dist/main.py --py-files=gs://${CODE_BUCKET}/dist/${APP_NAME}_${VERSION_NO}.zip \
-	--subnet default --properties spark.executor.instances=4,spark.driver.cores=8,spark.executor.cores=16,spark.executor.memory=64g,spark.app.name=loan_etl_pipeline \
-	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar \
-	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
-	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
-	--version=2.0 \
-	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source/${ED_CODE} --file-key=Amortization --stage-name=profile_bronze_amortisation &
+# run_amortisation_profile_bronze: ## Run the dataproc serverless job
+# 	# @gcloud compute networks subnets update default \
+# 	# --region=${REGION} \
+# 	# --enable-private-ip-google-access
+# 	@gcloud dataproc batches submit --project ${PROJECT_ID} --region ${REGION} pyspark \
+# 	gs://${CODE_BUCKET}/dist/main.py --py-files=gs://${CODE_BUCKET}/dist/${APP_NAME}_${VERSION_NO}.zip \
+# 	--subnet default --properties spark.executor.instances=4,spark.driver.cores=8,spark.executor.cores=16,spark.executor.memory=64g,spark.app.name=loan_etl_pipeline \
+# 	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar \
+# 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
+# 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
+# 	--version=2.0 \
+# 	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source/${ED_CODE} --file-key=Amortization --stage-name=profile_bronze_amortisation &
 
 
 
-#-------------------------------------------------------------------------------------------
+# #-------------------------------------------------------------------------------------------
 
-run_amortisation_bronze: ## Run the dataproc serverless job
-	# @gcloud compute networks subnets update default \
-	# --region=${REGION} \
-	# --enable-private-ip-google-access
-	@gcloud dataproc batches submit --project ${PROJECT_ID} --region ${REGION} pyspark \
-	gs://${CODE_BUCKET}/dist/main.py --py-files=gs://${CODE_BUCKET}/dist/${APP_NAME}_${VERSION_NO}.zip \
-	--subnet default --properties spark.executor.instances=4,spark.driver.cores=8,spark.executor.cores=16,spark.executor.memory=64g,spark.app.name=loan_etl_pipeline \
-	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar \
-	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
-	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
-	--version=2.0 \
-	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source/${ED_CODE} --target-prefix=SME/bronze/amortisation --file-key=Amortization --stage-name=bronze_amortisation &
+# run_amortisation_bronze: ## Run the dataproc serverless job
+# 	# @gcloud compute networks subnets update default \
+# 	# --region=${REGION} \
+# 	# --enable-private-ip-google-access
+# 	@gcloud dataproc batches submit --project ${PROJECT_ID} --region ${REGION} pyspark \
+# 	gs://${CODE_BUCKET}/dist/main.py --py-files=gs://${CODE_BUCKET}/dist/${APP_NAME}_${VERSION_NO}.zip \
+# 	--subnet default --properties spark.executor.instances=4,spark.driver.cores=8,spark.executor.cores=16,spark.executor.memory=64g,spark.app.name=loan_etl_pipeline \
+# 	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar \
+# 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
+# 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
+# 	--version=2.0 \
+# 	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=mini_source/${ED_CODE} --target-prefix=SME/bronze/amortisation --file-key=Amortization --stage-name=bronze_amortisation &
 
-#-------------------------------------------------------------------------------------------
+# #-------------------------------------------------------------------------------------------
 
 
-run_amortisation_silver: ## Run the dataproc serverless job
-	# @gcloud compute networks subnets update default \
-	# --region=${REGION} \
-	# --enable-private-ip-google-access
-	@gcloud dataproc batches submit --project ${PROJECT_ID} --region ${REGION} pyspark \
-	gs://${CODE_BUCKET}/dist/main.py --py-files=gs://${CODE_BUCKET}/dist/${APP_NAME}_${VERSION_NO}.zip \
-	--subnet default --properties spark.executor.instances=4,spark.driver.cores=8,spark.executor.cores=16,spark.executor.memory=64g,spark.app.name=loan_etl_pipeline \
-	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar \
-	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
-	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
-	--version=2.0 \
-	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=SME/bronze/amortisation --target-prefix=SME/silver/amortisation --ed-code=${ED_CODE} --stage-name=silver_amortisation &
+# run_amortisation_silver: ## Run the dataproc serverless job
+# 	# @gcloud compute networks subnets update default \
+# 	# --region=${REGION} \
+# 	# --enable-private-ip-google-access
+# 	@gcloud dataproc batches submit --project ${PROJECT_ID} --region ${REGION} pyspark \
+# 	gs://${CODE_BUCKET}/dist/main.py --py-files=gs://${CODE_BUCKET}/dist/${APP_NAME}_${VERSION_NO}.zip \
+# 	--subnet default --properties spark.executor.instances=4,spark.driver.cores=8,spark.executor.cores=16,spark.executor.memory=64g,spark.app.name=loan_etl_pipeline \
+# 	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar \
+# 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
+# 	--history-server-cluster=projects/${PROJECT_ID}/regions/${REGION}/clusters/spark-hist-srv-${PROJECT_ID} \
+# 	--version=2.0 \
+# 	-- --project=${PROJECT_ID} --raw-bucketname=${RAW_BUCKET} --data-bucketname=${DATA_BUCKET} --source-prefix=SME/bronze/amortisation --target-prefix=SME/silver/amortisation --ed-code=${ED_CODE} --stage-name=silver_amortisation &

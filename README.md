@@ -1,4 +1,4 @@
-# SME ETl pipeline
+# LES ETl pipeline
 
 This repository hosts the ETL that creates the Algoritmica data lakehouse.
 
@@ -30,16 +30,7 @@ Two stages of data profiling are applied to the ETL. These are divided into:
 
 ## Data assumptions
 
-Most of the assumptions are explored via the notebooks hosted in `experiments`.
-
-For `assets` the primary key column is a combination of the _ed code_
-(extracted from the file name) and the column AS3.
-
-For `collateral` the primary colum is a combination of the _ed code_ and the column CS1.
-
-For `bond info` the primary colum is a combination of the _ed code_ and the column BS1 and BS2.
-
-For `amortisation` the primary colum is a combination of the _ed code_ and the column AS3.
+TBD
 
 ## How to run the project
 

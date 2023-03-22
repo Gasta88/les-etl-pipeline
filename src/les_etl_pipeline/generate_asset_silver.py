@@ -3,7 +3,7 @@ import sys
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, StringType, DoubleType, BooleanType
 from google.cloud import storage
-from src.loan_etl_pipeline.utils.silver_funcs import (
+from src.les_etl_pipeline.utils.silver_funcs import (
     replace_no_data,
     replace_bool_data,
     cast_to_datatype,
@@ -27,24 +27,27 @@ def set_job_params():
     """
     config = {}
     config["DATE_COLUMNS"] = [
-        "AS1",
-        "AS19",
-        "AS20",
-        "AS31",
-        "AS50",
-        "AS51",
-        "AS67",
-        "AS70",
-        "AS71",
-        "AS87",
-        "AS91",
-        "AS112",
-        "AS124",
-        "AS127",
-        "AS130",
-        "AS133",
-        "AS134",
-        "AS137",
+        "AL1",
+        "AL19",
+        "AL20",
+        "AL31",
+        "AL48",
+        "AL50",
+        "AL51",
+        "AL52",
+        "AL69",
+        "AL95",
+        "AL100",
+        "AL101",
+        "AL107",
+        "AL110",
+        "AL113",
+        "AL116",
+        "AL117",
+        "AL120",
+        "AL136",
+        "AL145",
+        "AL148",
     ]
     config["ASSET_COLUMNS"] = {
         "AS1": DateType(),

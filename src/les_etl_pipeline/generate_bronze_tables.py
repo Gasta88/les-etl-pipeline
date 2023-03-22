@@ -1,7 +1,7 @@
 import logging
 import sys
 from google.cloud import storage
-from src.loan_etl_pipeline.utils.bronze_funcs import (
+from src.les_etl_pipeline.utils.bronze_funcs import (
     get_old_df,
     create_dataframe,
     perform_scd2,

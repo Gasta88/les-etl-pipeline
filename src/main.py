@@ -2,22 +2,18 @@ import argparse
 from src.utils.spark_setup import start_spark
 
 # Bronze profile packages
-from src.loan_etl_pipeline.profile_bronze_data import profile_bronze_data
+from src.les_etl_pipeline.profile_bronze_data import profile_bronze_data
 
 # Bronze layer packages
-from src.loan_etl_pipeline.generate_bronze_tables import generate_bronze_tables
-from src.loan_etl_pipeline.generate_deal_details_bronze import (
+from src.les_etl_pipeline.generate_bronze_tables import generate_bronze_tables
+from src.les_etl_pipeline.generate_deal_details_bronze import (
     generate_deal_details_bronze,
 )
 
 # Silver layer packages
-from src.loan_etl_pipeline.generate_asset_silver import generate_asset_silver
-from src.loan_etl_pipeline.generate_collateral_silver import generate_collateral_silver
-from src.loan_etl_pipeline.generate_bond_info_silver import generate_bond_info_silver
-from src.loan_etl_pipeline.generate_amortisation_silver import (
-    generate_amortisation_silver,
-)
-from src.loan_etl_pipeline.generate_deal_details_silver import (
+from src.les_etl_pipeline.generate_asset_silver import generate_asset_silver
+from src.les_etl_pipeline.generate_asset_silver import generate_bond_info_silver
+from src.les_etl_pipeline.generate_deal_details_silver import (
     generate_deal_details_silver,
 )
 
@@ -54,15 +50,6 @@ def run(
             "assets",
             ingestion_date,
         )
-    if stage_name == "profile_bronze_collateral":
-        status = profile_bronze_data(
-            raw_bucketname,
-            data_bucketname,
-            source_prefix,
-            file_key,
-            "collaterals",
-            ingestion_date,
-        )
     if stage_name == "profile_bronze_bond_info":
         status = profile_bronze_data(
             raw_bucketname,
@@ -70,15 +57,6 @@ def run(
             source_prefix,
             file_key,
             "bond_info",
-            ingestion_date,
-        )
-    if stage_name == "profile_bronze_amortisation":
-        status = profile_bronze_data(
-            raw_bucketname,
-            data_bucketname,
-            source_prefix,
-            file_key,
-            "amortisation",
             ingestion_date,
         )
 
@@ -93,16 +71,6 @@ def run(
             ingestion_date,
         )
 
-    if stage_name == "bronze_collateral":
-        status = generate_bronze_tables(
-            spark,
-            data_bucketname,
-            source_prefix,
-            target_prefix,
-            "collaterals",
-            ingestion_date,
-        )
-
     if stage_name == "bronze_bond_info":
         status = generate_bronze_tables(
             spark,
@@ -113,15 +81,6 @@ def run(
             ingestion_date,
         )
 
-    if stage_name == "bronze_amortisation":
-        status = generate_bronze_tables(
-            spark,
-            data_bucketname,
-            source_prefix,
-            target_prefix,
-            "amortisation",
-            ingestion_date,
-        )
     if stage_name == "bronze_deal_details":
         status = generate_deal_details_bronze(
             spark,
@@ -143,28 +102,8 @@ def run(
             ingestion_date,
         )
 
-    if stage_name == "silver_collateral":
-        status = generate_collateral_silver(
-            spark,
-            data_bucketname,
-            source_prefix,
-            target_prefix,
-            ed_code,
-            ingestion_date,
-        )
-
     if stage_name == "silver_bond_info":
         status = generate_bond_info_silver(
-            spark,
-            data_bucketname,
-            source_prefix,
-            target_prefix,
-            ed_code,
-            ingestion_date,
-        )
-
-    if stage_name == "silver_amortisation":
-        status = generate_amortisation_silver(
             spark,
             data_bucketname,
             source_prefix,

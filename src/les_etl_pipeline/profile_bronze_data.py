@@ -3,11 +3,11 @@ import sys
 from google.cloud import storage
 import pandas as pd
 from cerberus import Validator
-from src.loan_etl_pipeline.utils.bronze_profile_funcs import (
+from src.les_etl_pipeline.utils.bronze_profile_funcs import (
     get_csv_files,
     profile_data,
 )
-from src.loan_etl_pipeline.utils.validation_rules import (
+from src.les_etl_pipeline.utils.validation_rules import (
     asset_schema,
     collateral_schema,
     bond_info_schema,
@@ -93,8 +93,5 @@ def profile_bronze_data(
                 bucket.blob(
                     f"clean_dump/{data_type}/{ingestion_date}_{ed_code}_{pcd}.csv"
                 ).upload_from_string(clean_df.to_csv(index=False), "text/csv")
-            # START DEBUG ONLY 1 FILE
-            # break
-            # END DEBUG
     logger.info(f"End {data_type.upper()} BRONZE PROFILING job.")
     return 0

@@ -708,8 +708,6 @@ def asset_schema():
 
     return schema
 
-
-def collateral_schema():
     """
     Return validation schema for COLLATERALS data type.
     """
@@ -1009,8 +1007,6 @@ def bond_info_schema():
 
     return schema
 
-
-def amortisation_schema():
     """
     Return validation schema for AMORTISATION PROFILE data type.
     """

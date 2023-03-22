@@ -1,6 +1,6 @@
 import unittest
 import warnings
-from src.loan_etl_pipeline.utils.silver_funcs import replace_no_data, replace_bool_data
+from src.les_etl_pipeline.utils.silver_funcs import replace_no_data, replace_bool_data
 from pyspark.sql import SparkSession
 
 

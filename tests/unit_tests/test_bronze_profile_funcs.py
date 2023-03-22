@@ -1,6 +1,6 @@
 import unittest
 import warnings
-from src.loan_etl_pipeline.utils.bronze_profile_funcs import (
+from src.les_etl_pipeline.utils.bronze_profile_funcs import (
     _get_checks_dict,
 )
 import json

@@ -8,7 +8,7 @@ import pyspark.sql.functions as F
 from pyspark.sql.types import (
     TimestampType,
 )
-from src.loan_etl_pipeline.utils.bronze_funcs import perform_scd2
+from src.les_etl_pipeline.utils.bronze_funcs import perform_scd2
 from delta import *
 
 # Setup logger
@@ -87,7 +87,6 @@ def create_dataframe(spark, bucket_name, xml_file):
     :return df: PySpark dataframe.
     :return pcd: pool cutoff date.
     """
-    # pcds = []
     storage_client = storage.Client(project="dataops-369610")
     bucket = storage_client.get_bucket(bucket_name)
     blob = bucket.blob(xml_file)
