@@ -28,32 +28,42 @@ def set_job_params():
     config = {}
     config["DATE_COLUMNS"] = ["BS1", "BS27", "BS28", "BS38", "BS39"]
     config["BOND_COLUMNS"] = {
-        "BS1": DateType(),
-        "BS2": StringType(),
-        "BS3": DoubleType(),
-        "BS4": DoubleType(),
-        "BS5": BooleanType(),
-        "BS6": StringType(),
-        "BS11": DoubleType(),
-        "BS12": BooleanType(),
-        "BS13": DoubleType(),
-        "BS19": StringType(),
-        "BS20": StringType(),
-        "BS25": StringType(),
-        "BS26": StringType(),
-        "BS27": DateType(),
-        "BS28": DateType(),
-        "BS29": StringType(),
-        "BS30": DoubleType(),
-        "BS31": DoubleType(),
-        "BS32": StringType(),
-        "BS33": DoubleType(),
-        "BS34": DoubleType(),
-        "BS35": DoubleType(),
-        "BS36": DoubleType(),
-        "BS37": DoubleType(),
-        "BS38": DateType(),
-        "BS39": DateType(),
+        "BL1": DateType(),
+        "BL2": StringType(),
+        "BL4": BooleanType(),
+        "BL5": BooleanType(),
+        "BL11": DoubleType(),
+        "BL12": BooleanType(),
+        "BL13": DoubleType(),
+        "BL14": DoubleType(),
+        "BL15": DoubleType(),
+        "BL16": DoubleType(),
+        "BL17": DoubleType(),
+        "BL18": DateType(),
+        "BL19": StringType(),
+        "BL20": StringType(),
+        "BL25": StringType(),
+        "BL26": StringType(),
+        "BL27": DateType(),
+        "BL28": DateType(),
+        "BL29": StringType(),
+        "BL30": DoubleType(),
+        "BL31": DoubleType(),
+        "BL32": StringType(),
+        "BL33": DoubleType(),
+        "BL34": DoubleType(),
+        "BL35": DoubleType(),
+        "BL36": DoubleType(),
+        "BL37": DoubleType(),
+        "BL38": DateType(),
+        "BL39": DateType(),
+        "BL40": DateType(),
+        "BL41": StringType(),
+        "BL42": DateType(),
+        "BL43": DoubleType(),
+        "BL44": DoubleType(),
+        "BL45": DoubleType(),
+        "BL46": DoubleType(),
     }
     return config
 
@@ -66,11 +76,10 @@ def get_columns_collection(df):
     :return cols_dict: collection of columns labelled by topic.
     """
     cols_dict = {
-        "general": ["ed_code", "pcd_year", "pcd_month", "BS1", "BS2"],
-        "bond_info": [f"BS{i}" for i in range(3, 11) if f"BS{i}" in df.columns],
-        "collateral_info": [f"BS{i}" for i in range(11, 19) if f"BS{i}" in df.columns],
-        "contact_info": [f"BS{i}" for i in range(19, 25) if f"BS{i}" in df.columns],
-        "tranche_info": [f"BS{i}" for i in range(25, 40) if f"BS{i}" in df.columns],
+        "general": ["ed_code", "pcd_year", "pcd_month", "BL1", "BL2"],
+        "bond_info": [f"BL{i}" for i in range(3, 19) if f"BL{i}" in df.columns],
+        "transaction_info": [f"BL{i}" for i in range(19, 25) if f"BL{i}" in df.columns],
+        "tranche_info": [f"BL{i}" for i in range(25, 51) if f"BL{i}" in df.columns],
     }
     return cols_dict
 
@@ -87,30 +96,16 @@ def process_bond_info(df, cols_dict):
     return new_df
 
 
-def process_collateral_info(df, cols_dict):
+def process_transaction_info(df, cols_dict):
     """
-    Extract collateral info dimension from bronze Spark dataframe.
+    Extract transaction info dimension from bronze Spark dataframe.
 
     :param df: Spark bronze dataframe.
     :param cols_dict: collection of columns labelled by their topic.
     :return new_df: silver type Spark dataframe.
     """
     new_df = df.select(
-        cols_dict["general"] + cols_dict["collateral_info"]
-    ).dropDuplicates()
-    return new_df
-
-
-def process_contact_info(df, cols_dict):
-    """
-    Extract contact info dimension from bronze Spark dataframe.
-
-    :param df: Spark bronze dataframe.
-    :param cols_dict: collection of columns labelled by their topic.
-    :return new_df: silver type Spark dataframe.
-    """
-    new_df = df.select(
-        cols_dict["general"] + cols_dict["contact_info"]
+        cols_dict["general"] + cols_dict["transaction_info"]
     ).dropDuplicates()
     return new_df
 
@@ -178,10 +173,8 @@ def generate_bond_info_silver(
             bond_info_columns = get_columns_collection(cleaned_df)
             logger.info("Generate bond info dataframe")
             info_df = process_bond_info(cleaned_df, bond_info_columns)
-            logger.info("Generate collateral info dataframe")
-            collateral_df = process_collateral_info(cleaned_df, bond_info_columns)
-            # logger.info("Generate contact info dataframe")
-            # contact_df = process_contact_info(cleaned_df, bond_info_columns)
+            logger.info("Generate transaction info dataframe")
+            transaction_df = process_transaction_info(cleaned_df, bond_info_columns)
             logger.info("Generate tranche info dataframe")
             tranche_df = process_tranche_info(cleaned_df, bond_info_columns)
 
@@ -194,17 +187,11 @@ def generate_bond_info_silver(
                 .save(f"gs://{bucket_name}/{target_prefix}/info_table")
             )
             (
-                collateral_df.write.format("parquet")
+                transaction_df.write.format("parquet")
                 .partitionBy("pcd_year", "pcd_month")
                 .mode("append")
-                .save(f"gs://{bucket_name}/{target_prefix}/collaterals_table")
+                .save(f"gs://{bucket_name}/{target_prefix}/transaction_table")
             )
-            # (
-            #     contact_df.write.format("parquet")
-            #     .partitionBy("pcd_year", "pcd_month")
-            #     .mode("append")
-            #     .save(f"gs://{bucket_name}/{target_prefix}/contact_table")
-            # )
             (
                 tranche_df.write.format("parquet")
                 .partitionBy("pcd_year", "pcd_month")
