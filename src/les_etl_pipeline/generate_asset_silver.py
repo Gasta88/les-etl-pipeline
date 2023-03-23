@@ -50,119 +50,133 @@ def set_job_params():
         "AL148",
     ]
     config["ASSET_COLUMNS"] = {
-        "AS1": DateType(),
-        "AS2": StringType(),
-        "AS3": StringType(),
-        "AS4": StringType(),
-        "AS5": StringType(),
-        "AS6": StringType(),
-        "AS7": StringType(),
-        "AS8": StringType(),
-        "AS15": StringType(),
-        "AS16": StringType(),
-        "AS17": StringType(),
-        "AS18": StringType(),
-        "AS19": DateType(),
-        "AS20": DateType(),
-        "AS21": StringType(),
-        "AS22": StringType(),
-        "AS23": BooleanType(),
-        "AS24": StringType(),
-        "AS25": StringType(),
-        "AS26": StringType(),
-        "AS27": DoubleType(),
-        "AS28": DoubleType(),
-        "AS29": BooleanType(),
-        "AS30": DoubleType(),
-        "AS31": DateType(),
-        "AS32": StringType(),
-        "AS33": StringType(),
-        "AS34": StringType(),
-        "AS35": StringType(),
-        "AS36": StringType(),
-        "AS37": DoubleType(),
-        "AS38": DoubleType(),
-        "AS39": DoubleType(),
-        "AS40": DoubleType(),
-        "AS41": DoubleType(),
-        "AS42": StringType(),
-        "AS43": StringType(),
-        "AS44": DoubleType(),
-        "AS45": StringType(),
-        "AS50": DateType(),
-        "AS51": DateType(),
-        "AS52": StringType(),
-        "AS53": BooleanType(),
-        "AS54": DoubleType(),
-        "AS55": DoubleType(),
-        "AS56": DoubleType(),
-        "AS57": StringType(),
-        "AS58": StringType(),
-        "AS59": StringType(),
-        "AS60": DoubleType(),
-        "AS61": DoubleType(),
-        "AS62": StringType(),
-        "AS63": DoubleType(),
-        "AS64": DoubleType(),
-        "AS65": StringType(),
-        "AS66": DoubleType(),
-        "AS67": DateType(),
-        "AS68": StringType(),
-        "AS69": DoubleType(),
-        "AS70": DateType(),
-        "AS71": DateType(),
-        "AS80": DoubleType(),
-        "AS81": DoubleType(),
-        "AS82": DoubleType(),
-        "AS83": StringType(),
-        "AS84": StringType(),
-        "AS85": DoubleType(),
-        "AS86": DoubleType(),
-        "AS87": DateType(),
-        "AS88": DoubleType(),
-        "AS89": StringType(),
-        "AS90": DoubleType(),
-        "AS91": DateType(),
-        "AS92": StringType(),
-        "AS93": DoubleType(),
-        "AS94": StringType(),
-        "AS100": DoubleType(),
-        "AS101": DoubleType(),
-        "AS102": DoubleType(),
-        "AS103": DoubleType(),
-        "AS104": DoubleType(),
-        "AS105": DoubleType(),
-        "AS106": DoubleType(),
-        "AS107": DoubleType(),
-        "AS108": DoubleType(),
-        "AS109": DoubleType(),
-        "AS110": DoubleType(),
-        "AS111": StringType(),
-        "AS112": DateType(),
-        "AS115": DoubleType(),
-        "AS116": DoubleType(),
-        "AS117": DoubleType(),
-        "AS118": DoubleType(),
-        "AS119": DoubleType(),
-        "AS120": DoubleType(),
-        "AS121": BooleanType(),
-        "AS122": BooleanType(),
-        "AS123": StringType(),
-        "AS124": DateType(),
-        "AS125": DoubleType(),
-        "AS126": DoubleType(),
-        "AS127": DateType(),
-        "AS128": DoubleType(),
-        "AS129": StringType(),
-        "AS130": DateType(),
-        "AS131": BooleanType(),
-        "AS132": DoubleType(),
-        "AS133": DateType(),
-        "AS134": DateType(),
-        "AS135": DoubleType(),
-        "AS136": DoubleType(),
-        "AS137": DateType(),
-        "AS138": DoubleType(),
+        "AL1": DateType(),
+        "AL2": StringType(),
+        "AL3": StringType(),
+        "AL4": StringType(),
+        "AL5": StringType(),
+        "AL6": StringType(),
+        "AL7": BooleanType(),
+        "AL8": StringType(),
+        "AL9": StringType(),
+        "AL10": StringType(),
+        "AL15": StringType(),
+        "AL16": StringType(),
+        "AL17": StringType(),
+        "AL18": StringType(),
+        "AL19": DateType(),
+        "AL20": DateType(),
+        "AL21": StringType(),
+        "AL22": StringType(),
+        "AL23": BooleanType(),
+        "AL29": BooleanType(),
+        "AL30": DoubleType(),
+        "AL31": DateType(),
+        "AL32": StringType(),
+        "AL33": StringType(),
+        "AL34": StringType(),
+        "AL35": StringType(),
+        "AL36": StringType(),
+        "AL37": DoubleType(),
+        "AL38": DoubleType(),
+        "AL39": DoubleType(),
+        "AL40": DoubleType(),
+        "AL41": DoubleType(),
+        "AL42": StringType(),
+        "AL43": StringType(),
+        "AL44": DoubleType(),
+        "AL45": StringType(),
+        "AL46": StringType(),
+        "AL47": BooleanType(),
+        "AL48": DateType(),
+        "AL50": DateType(),
+        "AL51": DateType(),
+        "AL52": DateType(),
+        "AL53": DoubleType(),
+        "AL54": DoubleType(),
+        "AL55": DoubleType(),
+        "AL56": DoubleType(),
+        "AL57": DoubleType(),
+        "AL58": StringType(),
+        "AL59": StringType(),
+        "AL60": StringType(),
+        "AL61": DoubleType(),
+        "AL62": DoubleType(),
+        "AL63": DoubleType(),
+        "AL64": StringType(),
+        "AL66": StringType(),
+        "AL67": StringType(),
+        "AL68": DoubleType(),
+        "AL69": DateType(),
+        "AL70": StringType(),
+        "AL74": DoubleType(),
+        "AL75": DoubleType(),
+        "AL76": StringType(),
+        "AL77": DoubleType(),
+        "AL78": DoubleType(),
+        "AL79": DoubleType(),
+        "AL80": DoubleType(),
+        "AL83": DoubleType(),
+        "AL84": DoubleType(),
+        "AL85": DoubleType(),
+        "AL86": DoubleType(),
+        "AL87": DoubleType(),
+        "AL88": DoubleType(),
+        "AL89": DoubleType(),
+        "AL90": DoubleType(),
+        "AL91": DoubleType(),
+        "AL92": DoubleType(),
+        "AL93": DoubleType(),
+        "AL94": StringType(),
+        "AL95": DateType(),
+        "AL98": DoubleType(),
+        "AL99": DoubleType(),
+        "AL100": DateType(),
+        "AL101": DateType(),
+        "AL102": DoubleType(),
+        "AL103": DoubleType(),
+        "AL104": BooleanType(),
+        "AL105": BooleanType(),
+        "AL106": StringType(),
+        "AL107": DateType(),
+        "AL108": DoubleType(),
+        "AL109": DoubleType(),
+        "AL110": DateType(),
+        "AL111": DoubleType(),
+        "AL112": StringType(),
+        "AL113": DateType(),
+        "AL114": BooleanType(),
+        "AL115": DoubleType(),
+        "AL116": DateType(),
+        "AL117": DateType(),
+        "AL118": DoubleType(),
+        "AL119": DoubleType(),
+        "AL120": DateType(),
+        "AL121": DoubleType(),
+        "AL122": StringType(),
+        "AL123": BooleanType(),
+        "AL124": DoubleType(),
+        "AL125": DoubleType(),
+        "AL126": BooleanType(),
+        "AL127": DoubleType(),
+        "AL128": DoubleType(),
+        "AL129": DoubleType(),
+        "AL133": StringType(),
+        "AL134": StringType(),
+        "AL135": StringType(),
+        "AL136": DateType(),
+        "AL137": StringType(),
+        "AL138": DoubleType(),
+        "AL139": StringType(),
+        "AL140": BooleanType(),
+        "AL141": StringType(),
+        "AL142": DoubleType(),
+        "AL143": DoubleType(),
+        "AL144": StringType(),
+        "AL145": DateType(),
+        "AL146": DoubleType(),
+        "AL147": StringType(),
+        "AL148": DateType(),
     }
     return config
 
@@ -176,41 +190,44 @@ def get_columns_collection(df):
     """
     cols_dict = {
         "general": ["ed_code", "pcd_year", "pcd_month"]
-        + [f"AS{i}" for i in range(1, 15) if f"AS{i}" in df.columns],
-        "obligor_info": [f"AS{i}" for i in range(15, 50) if f"AS{i}" in df.columns],
-        "loan_info": [f"AS{i}" for i in range(50, 80) if f"AS{i}" in df.columns],
-        "interest_rate": [f"AS{i}" for i in range(80, 100) if f"AS{i}" in df.columns],
-        "financial_info": [f"AS{i}" for i in range(100, 115) if f"AS{i}" in df.columns],
+        + [f"AL{i}" for i in range(1, 5) if f"AL{i}" in df.columns],
+        "lease_info": [f"AL{i}" for i in range(5, 50) if f"AL{i}" in df.columns],
+        "lease_features": [f"AL{i}" for i in range(50, 74) if f"AL{i}" in df.columns],
+        "interest_rate": [f"AL{i}" for i in range(74, 83) if f"AL{i}" in df.columns],
+        "financial_info": [f"AL{i}" for i in range(83, 98) if f"AL{i}" in df.columns],
         "performance_info": [
-            f"AS{i}" for i in range(115, 146) if f"AS{i}" in df.columns
+            f"AL{i}" for i in range(98, 133) if f"AL{i}" in df.columns
+        ],
+        "collateral_info": [
+            f"AL{i}" for i in range(133, 154) if f"AL{i}" in df.columns
         ],
     }
     return cols_dict
 
 
-def process_obligor_info(df, cols_dict):
+def process_lease_info(df, cols_dict):
     """
-    Extract obligor info dimension from bronze Spark dataframe.
+    Extract lease info dimension from bronze Spark dataframe.
+
+    :param df: Spark bronze dataframe.
+    :param cols_dict: collection of columns labelled by their topic.
+    :return new_df: silver type Spark dataframe.
+    """
+    new_df = df.select(cols_dict["general"] + cols_dict["lease_info"]).dropDuplicates()
+    return new_df
+
+
+def process_lease_features(df, cols_dict):
+    """
+    Extract lease features dimension from bronze Spark dataframe.
 
     :param df: Spark bronze dataframe.
     :param cols_dict: collection of columns labelled by their topic.
     :return new_df: silver type Spark dataframe.
     """
     new_df = df.select(
-        cols_dict["general"] + cols_dict["obligor_info"]
+        cols_dict["general"] + cols_dict["lease_features"]
     ).dropDuplicates()
-    return new_df
-
-
-def process_loan_info(df, cols_dict):
-    """
-    Extract loan info dimension from bronze Spark dataframe.
-
-    :param df: Spark bronze dataframe.
-    :param cols_dict: collection of columns labelled by their topic.
-    :return new_df: silver type Spark dataframe.
-    """
-    new_df = df.select(cols_dict["general"] + cols_dict["loan_info"]).dropDuplicates()
     return new_df
 
 
@@ -252,6 +269,20 @@ def process_performance_info(df, cols_dict):
     """
     new_df = df.select(
         cols_dict["general"] + cols_dict["performance_info"]
+    ).dropDuplicates()
+    return new_df
+
+
+def process_collateral_info(df, cols_dict):
+    """
+    Extract collateral info dimension from bronze Spark dataframe.
+
+    :param df: Spark bronze dataframe.
+    :param cols_dict: collection of columns labelled by their topic.
+    :return new_df: silver type Spark dataframe.
+    """
+    new_df = df.select(
+        cols_dict["general"] + cols_dict["collateral_info"]
     ).dropDuplicates()
     return new_df
 
@@ -302,30 +333,32 @@ def generate_asset_silver(
             tmp_df2 = replace_bool_data(tmp_df1)
             logger.info("Cast data to correct types.")
             cleaned_df = cast_to_datatype(tmp_df2, run_props["ASSET_COLUMNS"])
-            logger.info("Generate obligor info dataframe")
-            obligor_info_df = process_obligor_info(cleaned_df, assets_columns)
-            logger.info("Generate loan info dataframe")
-            loan_info_df = process_loan_info(cleaned_df, assets_columns)
+            logger.info("Generate lease info dataframe")
+            lease_info_df = process_lease_info(cleaned_df, assets_columns)
+            logger.info("Generate lease features dataframe")
+            lease_features_df = process_lease_features(cleaned_df, assets_columns)
             logger.info("Generate interest rate dataframe")
             interest_rate_df = process_interest_rate(cleaned_df, assets_columns)
             logger.info("Generate financial info dataframe")
             financial_info_df = process_financial_info(cleaned_df, assets_columns)
             logger.info("Generate performace info dataframe")
             performance_info_df = process_performance_info(cleaned_df, assets_columns)
+            logger.info("Generate collateral info dataframe")
+            collateral_info_df = process_collateral_info(cleaned_df, assets_columns)
 
             logger.info("Write dataframe")
 
             (
-                loan_info_df.write.format("parquet")
+                lease_info_df.write.format("parquet")
                 .partitionBy("pcd_year", "pcd_month")
                 .mode("append")
-                .save(f"gs://{bucket_name}/{target_prefix}/loan_info_table")
+                .save(f"gs://{bucket_name}/{target_prefix}/lease_info_table")
             )
             (
-                obligor_info_df.write.format("parquet")
+                lease_features_df.write.format("parquet")
                 .partitionBy("pcd_year", "pcd_month")
                 .mode("append")
-                .save(f"gs://{bucket_name}/{target_prefix}/obligor_info_table")
+                .save(f"gs://{bucket_name}/{target_prefix}/lease_features_table")
             )
             (
                 financial_info_df.write.format("parquet")
@@ -344,6 +377,12 @@ def generate_asset_silver(
                 .partitionBy("pcd_year", "pcd_month")
                 .mode("append")
                 .save(f"gs://{bucket_name}/{target_prefix}/performance_info_table")
+            )
+            (
+                collateral_info_df.write.format("parquet")
+                .partitionBy("pcd_year", "pcd_month")
+                .mode("append")
+                .save(f"gs://{bucket_name}/{target_prefix}/collateral_info_table")
             )
     logger.info("Remove clean dumps.")
     for clean_dump_csv in all_clean_dumps:

@@ -43,7 +43,7 @@ ENVIRONMENT_CONFIG = {
 
 RUNTIME_CONFIG = {
     "properties": {
-        "spark.app.name": "loan_etl_pipeline",
+        "spark.app.name": "les_etl_pipeline",
         "spark.executor.instances": "4",
         "spark.driver.cores": "8",
         "spark.executor.cores": "8",
