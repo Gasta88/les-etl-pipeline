@@ -9,9 +9,7 @@ from src.les_etl_pipeline.utils.bronze_profile_funcs import (
 )
 from src.les_etl_pipeline.utils.validation_rules import (
     asset_schema,
-    collateral_schema,
     bond_info_schema,
-    amortisation_schema,
 )
 
 # Setup logger

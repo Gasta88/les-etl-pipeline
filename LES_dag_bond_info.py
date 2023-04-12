@@ -101,7 +101,7 @@ with models.DAG(
     import sys
     import logging
 
-    ingestion_date = "2023-03-04"
+    ingestion_date = "2023-04-12"
     if ingestion_date is None:
         logging.error("No ingestion date set. DAG stopped!!")
         sys.exit(1)
@@ -110,8 +110,8 @@ with models.DAG(
     for rp in raw_prefixes:
         ed_code = rp.split("/")[-1]
 
-        # DEBUG
-        # if "SMESES" not in ed_code:
+        # # DEBUG
+        # if "LESMIT000432100120136" not in ed_code:
         #     continue
         start = EmptyOperator(task_id=f"{ed_code}_start")
         # bond_info TaskGroup
@@ -207,11 +207,11 @@ with models.DAG(
                 region=REGION,
                 batch_id=f"{ed_code.lower()}-bond-info-bronze",
             )
-        delete_silver = DataprocDeleteBatchOperator(
-            task_id=f"delete_silver_{ed_code}",
-            project_id=PROJECT_ID,
-            region=REGION,
-            batch_id=f"{ed_code.lower()}-bond-info-silver",
-        )
+            delete_silver = DataprocDeleteBatchOperator(
+                task_id=f"delete_silver_{ed_code}",
+                project_id=PROJECT_ID,
+                region=REGION,
+                batch_id=f"{ed_code.lower()}-bond-info-silver",
+            )
         end = EmptyOperator(task_id=f"{ed_code}_end")
         (start >> tg >> clean_up_tg >> end)

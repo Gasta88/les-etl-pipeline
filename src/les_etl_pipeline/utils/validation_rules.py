@@ -60,7 +60,7 @@ def asset_schema():
         },
         "AL18": {
             "type": "string",
-            "allowed": ["1", "2", "3", "4", "5", "6"],
+            "allowed": ["0", "1", "2", "3", "4", "5", "6"],
             "nullable": True,
             "meta": {"label": "Lessee Legal Form / Business Type"},
         },
@@ -80,13 +80,13 @@ def asset_schema():
         },
         "AL21": {
             "type": "string",
-            "allowed": ["1", "2", "3", "4", "5"],
+            "allowed": ["0", "1", "2", "3", "4", "5"],
             "nullable": True,
             "meta": {"label": "Customer segment"},
         },
         "AL22": {
             "type": "string",
-            "allowed": ["1", "2", "3", "4"],
+            "allowed": ["0", "1", "2", "3", "4"],
             "nullable": True,
             "meta": {"label": "Borrower Basel III Segment"},
         },
@@ -211,6 +211,13 @@ def asset_schema():
             "nullable": True,
             "meta": {"label": "Subsidised"},
         },
+        "AL48": {
+            "type": "datetime",
+            "coerce": TO_DATE,
+            "max": datetime.datetime.now(),
+            "nullable": True,
+            "meta": {"label": "Date Removed from the Pool"},
+        },
         "AL50": {
             "type": "datetime",
             "coerce": TO_DATE,
@@ -221,7 +228,7 @@ def asset_schema():
         "AL51": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "min": datetime.datetime(2012, 1, 1),
             "nullable": True,
             "meta": {"label": "Date of Lease Maturity"},
         },
@@ -268,19 +275,19 @@ def asset_schema():
         },
         "AL58": {
             "type": "string",
-            "allowed": ["1", "2", "3", "4"],
+            "allowed": ["0", "1", "2", "3", "4"],
             "nullable": True,
             "meta": {"label": "Repayment Method"},
         },
         "AL59": {
             "type": "string",
-            "allowed": ["1", "2", "3", "4", "5", "6", "7", "8"],
+            "allowed": ["0", "1", "2", "3", "4", "5", "6", "7", "8"],
             "nullable": True,
             "meta": {"label": "Principal Payment Frequency"},
         },
         "AL60": {
             "type": "string",
-            "allowed": ["1", "2", "3", "4", "5", "6", "7", "8"],
+            "allowed": ["0", "1", "2", "3", "4", "5", "6", "7", "8"],
             "nullable": True,
             "meta": {"label": "Interest Payment Frequency"},
         },
@@ -307,19 +314,19 @@ def asset_schema():
         },
         "AL64": {
             "type": "string",
-            "allowed": ["1", "2", "3", "4", "5", "6"],
+            "allowed": ["0", "1", "2", "3", "4", "5", "6"],
             "nullable": True,
             "meta": {"label": "Amortization Type"},
         },
         "AL66": {
             "type": "string",
-            "allowed": ["1", "2", "3", "4", "5", "6"],
+            "allowed": ["0", "1", "2", "3", "4", "5", "6"],
             "nullable": True,
             "meta": {"label": "Payment Method"},
         },
         "AL67": {
             "type": "string",
-            "allowed": ["1", "2", "3", "4", "5", "6", "7"],
+            "allowed": ["0", "1", "2", "3", "4", "5", "6", "7"],
             "nullable": True,
             "meta": {"label": "Product Type"},
         },
@@ -339,7 +346,7 @@ def asset_schema():
         },
         "AL70": {
             "type": "string",
-            "allowed": ["1", "2", "3", "4"],
+            "allowed": ["0", "1", "2", "3", "4"],
             "nullable": True,
             "meta": {"label": "Origination Channel / Arranging Bank or Division"},
         },
@@ -360,6 +367,7 @@ def asset_schema():
         "AL76": {
             "type": "string",
             "allowed": [
+                "0",
                 "1",
                 "2",
                 "3",
@@ -499,7 +507,6 @@ def asset_schema():
         "AL98": {
             "type": "number",
             "coerce": TO_NUMBER,
-            "min": 0.0,
             "nullable": True,
             "meta": {"label": "Arrears Balance"},
         },
@@ -554,7 +561,7 @@ def asset_schema():
         },
         "AL106": {
             "type": "string",
-            "allowed": ["1", "2", "3", "4"],
+            "allowed": ["0", "1", "2", "3", "4"],
             "nullable": True,
             "meta": {"label": "Reason for Default (Basel III definition)"},
         },
@@ -568,7 +575,6 @@ def asset_schema():
         "AL108": {
             "type": "number",
             "coerce": TO_NUMBER,
-            "min": 0.0,
             "nullable": True,
             "meta": {"label": "Default Amount"},
         },
@@ -589,13 +595,12 @@ def asset_schema():
         "AL111": {
             "type": "number",
             "coerce": TO_NUMBER,
-            "min": 0.0,
             "nullable": True,
             "meta": {"label": "Cumulative Recoveries"},
         },
         "AL112": {
             "type": "string",
-            "allowed": ["1", "2", "3", "4", "5", "6"],
+            "allowed": ["0", "1", "2", "3", "4", "5", "6"],
             "nullable": True,
             "meta": {"label": "Recovery Source"},
         },
@@ -615,7 +620,6 @@ def asset_schema():
         "AL115": {
             "type": "number",
             "coerce": TO_NUMBER,
-            "min": 0.0,
             "nullable": True,
             "meta": {"label": "Allocated Losses"},
         },
@@ -663,7 +667,7 @@ def asset_schema():
         },
         "AL122": {
             "type": "string",
-            "allowed": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
+            "allowed": ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
             "nullable": True,
             "meta": {"label": "Account Status"},
         },
@@ -676,14 +680,12 @@ def asset_schema():
         "AL124": {
             "type": "number",
             "coerce": TO_NUMBER,
-            "min": 0.0,
             "nullable": True,
             "meta": {"label": "Arrears 1 Month Ago"},
         },
         "AL125": {
             "type": "number",
             "coerce": TO_NUMBER,
-            "min": 0.0,
             "nullable": True,
             "meta": {"label": "Arrears 2 Month Ago"},
         },
@@ -703,14 +705,12 @@ def asset_schema():
         "AL128": {
             "type": "number",
             "coerce": TO_NUMBER,
-            "min": 0.0,
             "nullable": True,
             "meta": {"label": "Loss on Sale"},
         },
         "AL129": {
             "type": "number",
             "coerce": TO_NUMBER,
-            "min": 0.0,
             "nullable": True,
             "meta": {"label": "Residual Value Losses"},
         },
@@ -736,7 +736,7 @@ def asset_schema():
         },
         "AL137": {
             "type": "string",
-            "allowed": ["1", "2", "3", "4"],
+            "allowed": ["0", "1", "2", "3", "4"],
             "nullable": True,
             "meta": {"label": "New of Used Asset"},
         },
@@ -750,6 +750,7 @@ def asset_schema():
         "AL139": {
             "type": "string",
             "allowed": [
+                "0",
                 "1",
                 "2",
                 "3",
@@ -802,7 +803,7 @@ def asset_schema():
         },
         "AL144": {
             "type": "string",
-            "allowed": ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
+            "allowed": ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
             "nullable": True,
             "meta": {"label": "Original Valuation Type"},
         },
@@ -822,7 +823,7 @@ def asset_schema():
         },
         "AL147": {
             "type": "string",
-            "allowed": ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
+            "allowed": ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
             "nullable": True,
             "meta": {"label": "Updated Valuation Type"},
         },
@@ -922,16 +923,12 @@ def bond_info_schema():
         },
         "BL20": {"type": "string", "meta": {"label": "Contact Information"}},
         "BL25": {
-            "type": "number",
-            "coerce": TO_NUMBER,
-            "min": 0.0,
+            "type": "string",
             "nullable": True,
             "meta": {"label": "Original Principal Balance"},
         },
         "BL26": {
-            "type": "number",
-            "coerce": TO_NUMBER,
-            "min": 0.0,
+            "type": "string",
             "nullable": True,
             "meta": {"label": "Original Principal Balance"},
         },
@@ -970,6 +967,7 @@ def bond_info_schema():
         "BL32": {
             "type": "string",
             "allowed": [
+                "0",
                 "1",
                 "2",
                 "3",
@@ -1002,7 +1000,6 @@ def bond_info_schema():
         "BL34": {
             "type": "number",
             "coerce": TO_NUMBER,
-            "min": 0.0,
             "nullable": True,
             "meta": {"label": "Coupon Reference Rate"},
         },
@@ -1030,7 +1027,7 @@ def bond_info_schema():
         "BL38": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "min": datetime.datetime(2012, 1, 1, 0, 0),
             "meta": {"label": "Legal Maturity"},
         },
         "BL39": {
@@ -1048,7 +1045,7 @@ def bond_info_schema():
         },
         "BL41": {
             "type": "string",
-            "allowed": ["1", "2", "3", "4", "5"],
+            "allowed": ["0", "1", "2", "3", "4", "5"],
             "nullable": True,
             "meta": {"label": "Interest Payment Frequency"},
         },
