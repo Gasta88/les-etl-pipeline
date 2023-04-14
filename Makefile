@@ -50,7 +50,7 @@ build: clean ## Build Python Package with Dependencies
 	@cd ./${SRC_WITH_DEPS} && zip -x "*.git*" -x "*.DS_Store" -x "*.pyc" -x "*/*__pycache__*/" -x ".idea*" -r ../dist/${SRC_WITH_DEPS}.zip .
 	@rm -Rf ./${SRC_WITH_DEPS}
 	@rm -f requirements.txt
-	@cp ./src/main.py ./dist
+	@cp ./src/les_main.py ./dist
 	@mv ./dist/${SRC_WITH_DEPS}.zip ./dist/${APP_NAME}_${VERSION_NO}.zip
 	@gsutil cp -r ./dist gs://${CODE_BUCKET}
 	@gsutil cp -r dependencies/*.jar gs://${CODE_BUCKET}/dependencies/
@@ -62,7 +62,7 @@ build: clean ## Build Python Package with Dependencies
 # 	# --region=${REGION} \
 # 	# --enable-private-ip-google-access
 # 	@gcloud dataproc batches submit --project ${PROJECT_ID} --region ${REGION} pyspark \
-# 	gs://${CODE_BUCKET}/dist/main.py --py-files=gs://${CODE_BUCKET}/dist/${APP_NAME}_${VERSION_NO}.zip \
+# 	gs://${CODE_BUCKET}/dist/les_main.py --py-files=gs://${CODE_BUCKET}/dist/${APP_NAME}_${VERSION_NO}.zip \
 # 	--subnet default --properties spark.executor.instances=4,spark.driver.cores=8,spark.executor.cores=16,spark.executor.memory=64g,spark.app.name=loan_etl_pipeline \
 # 	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar \
 # 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
@@ -79,7 +79,7 @@ build: clean ## Build Python Package with Dependencies
 # 	# --region=${REGION} \
 # 	# --enable-private-ip-google-access
 # 	@gcloud dataproc batches submit --project ${PROJECT_ID} --region ${REGION} pyspark \
-# 	gs://${CODE_BUCKET}/dist/main.py --py-files=gs://${CODE_BUCKET}/dist/${APP_NAME}_${VERSION_NO}.zip \
+# 	gs://${CODE_BUCKET}/dist/les_main.py --py-files=gs://${CODE_BUCKET}/dist/${APP_NAME}_${VERSION_NO}.zip \
 # 	--subnet default --properties spark.executor.instances=4,spark.driver.cores=8,spark.executor.cores=16,spark.executor.memory=64g,spark.app.name=loan_etl_pipeline \
 # 	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar \
 # 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
@@ -95,7 +95,7 @@ build: clean ## Build Python Package with Dependencies
 # 	# --region=${REGION} \
 # 	# --enable-private-ip-google-access
 # 	@gcloud dataproc batches submit --project ${PROJECT_ID} --region ${REGION} pyspark \
-# 	gs://${CODE_BUCKET}/dist/main.py --py-files=gs://${CODE_BUCKET}/dist/${APP_NAME}_${VERSION_NO}.zip \
+# 	gs://${CODE_BUCKET}/dist/les_main.py --py-files=gs://${CODE_BUCKET}/dist/${APP_NAME}_${VERSION_NO}.zip \
 # 	--subnet default --properties spark.executor.instances=4,spark.driver.cores=8,spark.executor.cores=16,spark.executor.memory=64g,spark.app.name=loan_etl_pipeline \
 # 	--jars gs://${CODE_BUCKET}/dependencies/${DELTA_JAR_FILE},gs://${CODE_BUCKET}/dependencies/delta-storage-2.2.0.jar \
 # 	--metastore-service=projects/${PROJECT_ID}/locations/${REGION}/services/data-catalog-${PROJECT_ID} \
