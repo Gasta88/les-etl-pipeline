@@ -190,8 +190,8 @@ def get_columns_collection(df):
     """
     cols_dict = {
         "general": ["ed_code", "pcd_year", "pcd_month"]
-        + [f"AL{i}" for i in range(1, 5) if f"AL{i}" in df.columns],
-        "lease_info": [f"AL{i}" for i in range(5, 50) if f"AL{i}" in df.columns],
+        + [f"AL{i}" for i in range(1, 6) if f"AL{i}" in df.columns],
+        "lease_info": [f"AL{i}" for i in range(6, 50) if f"AL{i}" in df.columns],
         "lease_features": [f"AL{i}" for i in range(50, 74) if f"AL{i}" in df.columns],
         "interest_rate": [f"AL{i}" for i in range(74, 83) if f"AL{i}" in df.columns],
         "financial_info": [f"AL{i}" for i in range(83, 98) if f"AL{i}" in df.columns],

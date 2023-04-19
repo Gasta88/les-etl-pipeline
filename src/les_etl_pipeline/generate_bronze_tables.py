@@ -72,8 +72,10 @@ def generate_bronze_tables(
                         .save(f"gs://{data_bucketname}/{target_prefix}")
                     )
                 else:
-                    logger.info(f"Upsert data into {data_type.upper()} BRONZE")
-                    perform_scd2(spark, old_df, new_df, data_type)
+                    # logger.info(f"Upsert data into {data_type.upper()} BRONZE")
+                    # perform_scd2(spark, old_df, new_df, data_type)
+                    # TODO quick-fix
+                    continue
 
     logger.info(f"End {data_type.upper()} BRONZE job.")
     return 0
