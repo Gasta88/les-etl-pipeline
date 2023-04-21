@@ -43,12 +43,8 @@ def profile_bronze_data(
     # Pick Cerberus validator
     if data_type == "assets":
         validator = Validator(asset_schema())
-    if data_type == "collaterals":
-        validator = Validator(collateral_schema())
     if data_type == "bond_info":
         validator = Validator(bond_info_schema())
-    if data_type == "amortisation":
-        validator = Validator(amortisation_schema())
     # Get all CSV files from ED
     logger.info(f"Profile {ed_code} files.")
     all_new_files = get_csv_files(raw_bucketname, source_prefix, file_key, data_type)
