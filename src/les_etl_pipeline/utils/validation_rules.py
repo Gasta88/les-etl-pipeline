@@ -5,10 +5,13 @@ TO_NUMBER = lambda n: float(n)
 
 
 def TO_DATE(s):
-    try:
+    # Check number of hypens to understand formatting: 0 >> just year, 1 >> year-month, 2 >> year-month-day
+    if s.count("-") == 2:
         return datetime.datetime.strptime(s, "%Y-%m-%d")
-    except:
+    if s.count("-") == 1:
         return datetime.datetime.strptime(s, "%Y-%m")
+    if s.count("-") == 0:
+        return datetime.datetime.strptime(s, "%Y")
 
 
 def asset_schema():
