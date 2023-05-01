@@ -1,11 +1,34 @@
 from google.cloud import storage
 import csv
+from io import StringIO
 
 
 INITIAL_COL = {
     "assets": "AL1",
     "bond_info": "BL1",
 }
+
+
+def _correct_file_coding(raw_file_obj):
+    """
+    Check that the content of the CSV does not contain conding issues from EDW.
+
+    :param raw_file_obj: file handler from the raw CSV.
+    :return clean_file_obj: file object without conding issues.
+    """
+    file_check = (
+        raw_file_obj.read()
+        .decode("unicode-escape")
+        .encode("utf-8")
+        .decode("utf-8", "backslashreplace")
+        .replace("\ufeff", "")
+    )
+    if "\0" in file_check:
+        file_check = file_check.replace("\0", "")
+    if "\x00" in file_check:
+        file_check = file_check.replace("\x00", "")
+    clean_file_obj = StringIO(file_check)
+    return clean_file_obj
 
 
 def get_csv_files(bucket_name, prefix, file_key, data_type):
@@ -59,8 +82,9 @@ def profile_data(bucket_name, csv_f, data_type, validator):
     clean_content = []
     dirty_content = []
     try:
-        with open(dest_csv_f, "r") as f:
-            for i, line in enumerate(csv.reader(f)):
+        with open(dest_csv_f, "rb") as f:
+            clean_f = _correct_file_coding(f)
+            for i, line in enumerate(csv.reader(clean_f)):
                 curr_line = line
                 if i == 0:
                     col_names = curr_line
