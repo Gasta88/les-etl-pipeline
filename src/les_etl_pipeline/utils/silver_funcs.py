@@ -1,7 +1,5 @@
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, DoubleType, BooleanType, IntegerType
-from google.cloud import storage
-import csv
 
 
 def replace_no_data(df):
@@ -22,7 +20,7 @@ def replace_no_data(df):
 
 def replace_bool_data(df):
     """
-    Replace Y/N with boolean flags in the dataframe.
+    Replace Y/N with true/false flags to comform to Deals in the dataframe.
 
     :param df: Spark dataframe with loan asset data.
     :return df: Spark dataframe without Y/N values.
@@ -30,8 +28,8 @@ def replace_bool_data(df):
     for col_name in df.columns:
         df = df.withColumn(
             col_name,
-            F.when(F.col(col_name) == "Y", "True")
-            .when(F.col(col_name) == "N", "False")
+            F.when(F.col(col_name) == "Y", "true")
+            .when(F.col(col_name) == "N", "false")
             .otherwise(F.col(col_name)),
         )
     return df
