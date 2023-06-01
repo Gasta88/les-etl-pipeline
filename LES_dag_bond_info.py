@@ -90,13 +90,14 @@ default_args = {
     "region": REGION,
     "retries": 0,
 }
+# PROFILE + BRONZE
 with models.DAG(
     "les_bond_info",  # The id you will see in the DAG airflow page
     default_args=default_args,
     schedule_interval=None,  # Override to match your needs
     on_success_callback=cleanup_xcom,
     on_failure_callback=cleanup_xcom,
-    max_active_tasks=1,
+    max_active_tasks=10,
 ) as dag:
     import sys
     import logging
@@ -166,33 +167,8 @@ with models.DAG(
                 },
                 batch_id=f"{ed_code.lower()}-bond-info-bronze",
             )
-            silver_task = DataprocCreateBatchOperator(
-                task_id=f"silver_{ed_code}",
-                batch={
-                    "pyspark_batch": {
-                        "main_python_file_uri": PYTHON_FILE_LOCATION,
-                        "jar_file_uris": [
-                            SPARK_DELTA_JAR_FILE,
-                            SPARK_DELTA_STORE_JAR_FILE,
-                        ],
-                        "python_file_uris": [PY_FILES],
-                        "args": [
-                            f"--project={PROJECT_ID}",
-                            f"--raw-bucketname={RAW_BUCKET}",
-                            f"--data-bucketname={DATA_BUCKET}",
-                            "--source-prefix=LES/bronze/bond_info",
-                            "--target-prefix=LES/silver/bond_info",
-                            f"--ed-code={ed_code}",
-                            "--stage-name=silver_bond_info",
-                            f"--ingestion-date={ingestion_date}",
-                        ],
-                    },
-                    "environment_config": ENVIRONMENT_CONFIG,
-                    "runtime_config": RUNTIME_CONFIG,
-                },
-                batch_id=f"{ed_code.lower()}-bond-info-silver",
-            )
-            (profile_task >> bronze_task >> silver_task)
+
+            (profile_task >> bronze_task)
         # clean-up TaskGroup
         with TaskGroup(group_id=f"{ed_code}_clean_up") as clean_up_tg:
             delete_profile = DataprocDeleteBatchOperator(
@@ -207,11 +183,67 @@ with models.DAG(
                 region=REGION,
                 batch_id=f"{ed_code.lower()}-bond-info-bronze",
             )
-            delete_silver = DataprocDeleteBatchOperator(
-                task_id=f"delete_silver_{ed_code}",
-                project_id=PROJECT_ID,
-                region=REGION,
-                batch_id=f"{ed_code.lower()}-bond-info-silver",
-            )
         end = EmptyOperator(task_id=f"{ed_code}_end")
         (start >> tg >> clean_up_tg >> end)
+# -----------------------------------------------------------
+# ONLY SILVER
+# with models.DAG(
+#     "les_bond_info",  # The id you will see in the DAG airflow page
+#     default_args=default_args,
+#     schedule_interval=None,  # Override to match your needs
+#     on_success_callback=cleanup_xcom,
+#     on_failure_callback=cleanup_xcom,
+#     max_active_tasks=1,
+# ) as dag:
+#     import sys
+#     import logging
+
+#     ingestion_date = "2023-04-13"
+#     if ingestion_date is None:
+#         logging.error("No ingestion date set. DAG stopped!!")
+#         sys.exit(1)
+#     logging.info(f"Ingestion date: {ingestion_date}")
+#     raw_prefixes = get_raw_prefixes()
+#     for rp in raw_prefixes:
+#         ed_code = rp.split("/")[-1]
+
+#         # # DEBUG
+#         # if "LESMIT000432100120136" not in ed_code:
+#         #     continue
+#         start = EmptyOperator(task_id=f"{ed_code}_start")
+#         # bond_info TaskGroup
+#         silver_task = DataprocCreateBatchOperator(
+#             task_id=f"silver_{ed_code}",
+#             batch={
+#                 "pyspark_batch": {
+#                     "main_python_file_uri": PYTHON_FILE_LOCATION,
+#                     "jar_file_uris": [
+#                         SPARK_DELTA_JAR_FILE,
+#                         SPARK_DELTA_STORE_JAR_FILE,
+#                     ],
+#                     "python_file_uris": [PY_FILES],
+#                     "args": [
+#                         f"--project={PROJECT_ID}",
+#                         f"--raw-bucketname={RAW_BUCKET}",
+#                         f"--data-bucketname={DATA_BUCKET}",
+#                         "--source-prefix=LES/bronze/bond_info",
+#                         "--target-prefix=LES/silver/bond_info",
+#                         f"--ed-code={ed_code}",
+#                         "--stage-name=silver_bond_info",
+#                         f"--ingestion-date={ingestion_date}",
+#                     ],
+#                 },
+#                 "environment_config": ENVIRONMENT_CONFIG,
+#                 "runtime_config": RUNTIME_CONFIG,
+#             },
+#             batch_id=f"{ed_code.lower()}-bond-info-silver",
+#         )
+#         # clean-up TaskGroup
+#         delete_silver = DataprocDeleteBatchOperator(
+#             task_id=f"delete_silver_{ed_code}",
+#             project_id=PROJECT_ID,
+#             # region=REGION,
+#             batch_id=f"{ed_code.lower()}-bond-info-silver",
+#         )
+#         end = EmptyOperator(task_id=f"{ed_code}_end")
+#         (start >> silver_task >> delete_silver >> end)

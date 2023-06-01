@@ -45,3 +45,7 @@ Run the following command to prepare the code and uploa it onto GCP:
 ```
 
 Upload the desired DAG file onto Google Cloud Composer and start the workflow manually.
+Each DAG file should be run in two ways:
+
+- First, to perform `profile` and `bronze data' generation while having a _max_active_tasks_ parameter greater than 1. This promotes paralellism in preparing bronze level data.
+- Second, edit the DAG to run only the `silver data` generation with _max_active_tasks_ parameter equal to 1. this is necessary to avoid concurrent writes on the parquet file.
