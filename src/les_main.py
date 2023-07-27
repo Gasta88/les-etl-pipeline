@@ -1,8 +1,4 @@
 import argparse
-from src.utils.spark_setup import start_spark
-
-# Bronze profile packages
-from src.les_etl_pipeline.profile_bronze_data import profile_bronze_data
 
 # Bronze layer packages
 from src.les_etl_pipeline.generate_bronze_tables import generate_bronze_tables
@@ -12,10 +8,51 @@ from src.les_etl_pipeline.generate_deal_details_bronze import (
 
 # Silver layer packages
 from src.les_etl_pipeline.generate_asset_silver import generate_asset_silver
+from src.les_etl_pipeline.generate_collateral_silver import generate_collateral_silver
 from src.les_etl_pipeline.generate_bond_info_silver import generate_bond_info_silver
+from src.les_etl_pipeline.generate_amortisation_silver import (
+    generate_amortisation_silver,
+)
 from src.les_etl_pipeline.generate_deal_details_silver import (
     generate_deal_details_silver,
 )
+from pyspark.sql import SparkSession
+from delta import *
+
+
+def start_spark():
+    """
+    Create Spark application using Delta Lake dependencies.
+
+    :param app_name: Name of the Spark App
+    :return: SparkSession
+    """
+
+    spark = (
+        SparkSession.builder.config(
+            "spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension"
+        )
+        .config(
+            "spark.sql.catalog.spark_catalog",
+            "org.apache.spark.sql.delta.catalog.DeltaCatalog",
+        )
+        .config("spark.jars.packages", "io.delta:delta-core:2.1.0")
+        .config(
+            "spark.delta.logStore.gs.impl",
+            "io.delta.storage.GCSLogStore",
+        )
+        .config("spark.sql.parquet.datetimeRebaseModeInRead", "CORRECTED")
+        .config("spark.sql.parquet.datetimeRebaseModeInWrite", "CORRECTED")
+        .config("spark.sql.sources.partitionOverwriteMode", "DYNAMIC")
+        .config("spark.hadoop.mapreduce.fileoutputcommitter.algorithm.version", "2")
+        .config("spark.hadoop.parquet.enable.summary-metadata", "false")
+        .config("spark.sql.parquet.mergeSchema", "false")
+        .config("spark.sql.parquet.filterPushdown", "true")
+        .config("spark.sql.hive.metastorePartitionPruning", "true")
+        .getOrCreate()
+    )
+    spark.conf.set("mapreduce.fileoutputcommitter.marksuccessfuljobs", "false")
+    return spark
 
 
 def run(
@@ -40,48 +77,26 @@ def run(
     :return: None
     """
     spark = start_spark()
-    # ----------------Bronze Quality layer ETL
-    if stage_name == "profile_bronze_asset":
-        status = profile_bronze_data(
+
+    bronze_tables = {"bronze_asset": "assets", "bronze_bond_info": "bond_info"}
+
+    silver_tables = {
+        "silver_asset": generate_asset_silver,
+        "silver_bond_info": generate_bond_info_silver,
+    }
+
+    if stage_name in bronze_tables:
+        status = generate_bronze_tables(
+            spark,
             raw_bucketname,
             data_bucketname,
             source_prefix,
-            file_key,
-            "assets",
-            ingestion_date,
-        )
-    if stage_name == "profile_bronze_bond_info":
-        status = profile_bronze_data(
-            raw_bucketname,
-            data_bucketname,
-            source_prefix,
-            file_key,
-            "bond_info",
-            ingestion_date,
-        )
-
-    # ----------------Bronze layer ETL
-    if stage_name == "bronze_asset":
-        status = generate_bronze_tables(
-            spark,
-            data_bucketname,
-            source_prefix,
             target_prefix,
-            "assets",
+            bronze_tables[stage_name],
+            file_key,
             ingestion_date,
         )
-
-    if stage_name == "bronze_bond_info":
-        status = generate_bronze_tables(
-            spark,
-            data_bucketname,
-            source_prefix,
-            target_prefix,
-            "bond_info",
-            ingestion_date,
-        )
-
-    if stage_name == "bronze_deal_details":
+    elif stage_name == "bronze_deal_details":
         status = generate_deal_details_bronze(
             spark,
             raw_bucketname,
@@ -90,32 +105,24 @@ def run(
             target_prefix,
             file_key,
         )
-
-    # ----------------Silver layer ETL
-    if stage_name == "silver_asset":
-        status = generate_asset_silver(
-            spark,
-            data_bucketname,
-            source_prefix,
-            target_prefix,
-            ed_code,
-            ingestion_date,
-        )
-
-    if stage_name == "silver_bond_info":
-        status = generate_bond_info_silver(
-            spark,
-            data_bucketname,
-            source_prefix,
-            target_prefix,
-            ed_code,
-            ingestion_date,
-        )
-
-    if stage_name == "silver_deal_details":
+    elif stage_name == "silver_deal_details":
         status = generate_deal_details_silver(
-            spark, data_bucketname, source_prefix, target_prefix
+            spark,
+            data_bucketname,
+            source_prefix,
+            target_prefix,
         )
+    elif stage_name in silver_tables:
+        status = silver_tables[stage_name](
+            spark,
+            data_bucketname,
+            source_prefix,
+            target_prefix,
+            ed_code,
+            ingestion_date,
+        )
+    else:
+        raise ValueError(f"Invalid stage_name: {stage_name}")
 
 
 if __name__ == "__main__":

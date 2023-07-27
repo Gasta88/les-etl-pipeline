@@ -2,9 +2,7 @@ import logging
 import sys
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, StringType, DoubleType, BooleanType, IntegerType
-from src.les_etl_pipeline.utils.silver_funcs import (
-    cast_to_datatype,
-)
+from src.les_etl_pipeline.utils.silver_funcs import cast_to_datatype
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -44,6 +42,7 @@ def set_job_params():
         "DealSize": DoubleType(),
         "DealVersion": IntegerType(),
         "ed_code": StringType(),
+        "part": StringType(),
         "ISIN": StringType(),
         "IsActiveDeal": BooleanType(),
         "IsECBEligible": BooleanType(),
@@ -72,18 +71,9 @@ def set_job_params():
     return config
 
 
-def process_deal_info(df):
-    """
-    Extract deal info dimension from bronze Spark dataframe.
-
-    :param df: Spark bronze dataframe.
-    :return new_df: silver type Spark dataframe.
-    """
-    new_df = df.dropDuplicates()
-    return new_df
-
-
-def generate_deal_details_silver(spark, bucket_name, source_prefix, target_prefix):
+def generate_deal_details_silver(
+    spark, bucket_name, source_prefix, target_prefix, tries=5
+):
     """
     Run main steps of the module.
 
@@ -91,6 +81,7 @@ def generate_deal_details_silver(spark, bucket_name, source_prefix, target_prefi
     :param bucket_name: GS bucket where files are stored.
     :param source_prefix: specific bucket prefix from where to collect bronze data.
     :param target_prefix: specific bucket prefix from where to deposit silver data.
+    :param tries: number of tries before giving up
     :return status: 0 if successful.
     """
     logger.info("Start DEAL DETAILS SILVER job.")
@@ -104,14 +95,21 @@ def generate_deal_details_silver(spark, bucket_name, source_prefix, target_prefi
     logger.info("Cast data to correct types.")
     cleaned_df = cast_to_datatype(bronze_df, run_props["DEAL_DETAILS_COLUMNS"])
     logger.info("Generate deal info dataframe")
-    deal_info_df = process_deal_info(cleaned_df)
+    deal_info_df = cleaned_df.dropDuplicates()
 
     logger.info("Write dataframe")
-
-    (
-        deal_info_df.write.format("parquet")
-        .mode("overwrite")
-        .save(f"gs://{bucket_name}/{target_prefix}/deal_info_table")
-    )
+    for i in range(tries):
+        try:
+            (
+                deal_info_df.write.format("parquet")
+                .partitionBy("part")
+                # Only one ed_code+part per job, so it's best to overwrite than append
+                .mode("overwrite")
+                .save(f"gs://{bucket_name}/{target_prefix}/deal_info_table")
+            )
+        except Exception as e:
+            logger.error(f"Writing exception: {e}.Try again.")
+            continue
+        break
     logger.info("End DEAL DETAILS SILVER job.")
     return 0

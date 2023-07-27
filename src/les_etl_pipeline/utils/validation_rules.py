@@ -2,9 +2,18 @@ import datetime
 
 
 TO_NUMBER = lambda n: float(n)
+# max date must be in this century
+MAX_DATETIME = datetime.datetime(2100, 12, 31, 0, 0)
+MIN_DATETIME = datetime.datetime(2012, 1, 1, 0, 0)
 
 
 def TO_DATE(s):
+    """
+    Parse a string into a datetime object, depending on the number of hyphens in the string.
+
+    :param s: A string representing a date in one of three formats: year (YYYY), year-month (YYYY-MM), or year-month-day (YYYY-MM-DD)
+    :return: A datetime object representing the parsed date.
+    """
     # Check number of hypens to understand formatting: 0 >> just year, 1 >> year-month, 2 >> year-month-day
     if s.count("-") == 2:
         return datetime.datetime.strptime(s, "%Y-%m-%d")
@@ -14,11 +23,34 @@ def TO_DATE(s):
         return datetime.datetime.strptime(s, "%Y")
 
 
+COMMON_SCHEMA = {
+    "ed_code": {
+        "type": "string",
+        "meta": {"label": "Deal Code"},
+    },
+    "part": {
+        "type": "string",
+        "meta": {"label": "Partition Key"},
+    },
+    "filename": {
+        "type": "string",
+        "meta": {"label": "Raw Filename"},
+    },
+    "pcd": {
+        "type": "datetime",
+        "coerce": TO_DATE,
+        "min": MIN_DATETIME,
+        "max": MAX_DATETIME,
+        "meta": {"label": "Extracted Pool Cut-off Date"},
+    },
+}
+
+
 def asset_schema():
     """
     Return validation schema for ASSETS data type.
     """
-    schema = {
+    schema = COMMON_SCHEMA | {
         "AL1": {
             "type": "datetime",
             "coerce": TO_DATE,
@@ -845,7 +877,7 @@ def bond_info_schema():
     """
     Return validation schema for BOND_INFO data type.
     """
-    schema = {
+    schema = COMMON_SCHEMA | {
         "BL1": {
             "type": "datetime",
             "coerce": TO_DATE,

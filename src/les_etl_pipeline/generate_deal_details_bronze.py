@@ -61,20 +61,17 @@ def get_old_df(spark, bucket_name, prefix, pcd, ed_code):
     :return df: Spark dataframe.
     """
     storage_client = storage.Client(project="dataops-369610")
-    part_pcd = pcd.replace("-", "")
-    partition_prefix = f"{prefix}/part={ed_code}_{part_pcd}"
+    partition_prefix = f"{prefix}/part={ed_code}_{pcd}"
     files_in_partition = [
         b.name for b in storage_client.list_blobs(bucket_name, prefix=partition_prefix)
     ]
-    if files_in_partition == []:
+    if not files_in_partition:
         return None
-    else:
-        df = (
-            spark.read.format("delta")
-            .load(f"gs://{bucket_name}/{prefix}")
-            .where(f"part={ed_code}_{part_pcd}")
-        )
-        return df
+    return (
+        spark.read.format("delta")
+        .load(f"gs://{bucket_name}/{prefix}")
+        .where(f"part={ed_code}_{pcd}")
+    )
 
 
 def create_dataframe(spark, bucket_name, xml_file):
@@ -94,25 +91,17 @@ def create_dataframe(spark, bucket_name, xml_file):
     blob.download_to_filename(dest_xml_f)
     xml_data = objectify.parse(dest_xml_f)  # Parse XML data
     root = xml_data.getroot()  # Root element
-
     data = []
     cols = []
-    for i in range(
-        len(
-            root.getchildren()[1]
-            .getchildren()[0]
-            .getchildren()[1]
-            .getchildren()[0]
-            .getchildren()
-        )
-    ):
-        child = (
-            root.getchildren()[1]
-            .getchildren()[0]
-            .getchildren()[1]
-            .getchildren()[0]
-            .getchildren()[i]
-        )
+    children = (
+        root.getchildren()[1]
+        .getchildren()[0]
+        .getchildren()[1]
+        .getchildren()[0]
+        .getchildren()
+    )
+    for i in range(len(children)):
+        child = children[i]
         tag = re.sub(r"{[^}]*}", "", child.tag)
         if tag == "ISIN":
             # is array
@@ -138,37 +127,31 @@ def create_dataframe(spark, bucket_name, xml_file):
     data = ["" if v is None else v for v in data]
     df = pd.DataFrame(data).T  # Create DataFrame and transpose it
     df.columns = cols  # Update column names
-    pcd = df["PoolCutOffDate"].values[0].split("T")[0]
+    pcd = df["PoolCutOffDate"].values[0].split("T")[0].replace("-", "")
     # Conver from Pandas to Spark dataframe and add SCD-2 columns
     spark_df = (
         spark.createDataFrame(df)
-        .withColumnRenamed("EDCode", "ed_code")
         .replace("", None)
-        .withColumn("year", F.year(F.col("PoolCutOffDate")))
-        .withColumn("month", F.month(F.col("PoolCutOffDate")))
+        .withColumnRenamed("EDCode", "ed_code")
         .withColumn("valid_from", F.lit(F.current_timestamp()).cast(TimestampType()))
         .withColumn("valid_to", F.lit("").cast(TimestampType()))
         .withColumn("iscurrent", F.lit(1).cast("int"))
         .withColumn(
-            "checksum",
-            F.md5(
-                F.concat(
-                    F.col("ed_code"),
-                    F.col("PoolCutOffDate"),
-                )
-            ),
+            "checksum", F.md5(F.concat(F.col("ed_code"), F.col("PoolCutOffDate")))
         )
-        .withColumn(
-            "part",
-            F.concat(F.col("ed_code"), F.lit("_"), F.col("year"), F.col("month")),
-        )
-        .drop("year", "month")
+        .withColumn("part", F.concat(F.col("ed_code"), F.lit("_"), F.lit(pcd)))
     )
     return (pcd, spark_df)
 
 
 def generate_deal_details_bronze(
-    spark, raw_bucketname, data_bucketname, source_prefix, target_prefix, file_key
+    spark,
+    raw_bucketname,
+    data_bucketname,
+    source_prefix,
+    target_prefix,
+    file_key,
+    tries=5,
 ):
     """
     Run main steps of the module.
@@ -179,6 +162,7 @@ def generate_deal_details_bronze(
     :param source_prefix: specific bucket prefix from where to collect XML files.
     :param target_prefix: specific bucket prefix from where to save Delta Lake files.
     :param file_key: label for file name that helps with the cherry picking with Deal_Details.
+    :param tries: number of tries to write the data on GCS.
     :return status: 0 is successful.
     """
     # Deal Details behaves differently and it has function on its own.
@@ -188,26 +172,30 @@ def generate_deal_details_bronze(
     logger.info("Start DEAL DETAILS BRONZE job.")
     xml_file = get_raw_file(raw_bucketname, source_prefix, file_key)
     logger.info(f"Create NEW {ed_code} dataframe")
-    if len(xml_file) is None:
+    if not xml_file:
         logger.warning("No new XML file to retrieve. Workflow stopped!")
-        sys.exit(1)
-    else:
-        logger.info(f"Retrieved deal details data XML files.")
-        pcd, new_df = create_dataframe(spark, raw_bucketname, xml_file)
-
-        logger.info("Retrieve OLD dataframe.")
-        old_df = get_old_df(spark, data_bucketname, target_prefix, pcd, ed_code)
-        if old_df is None:
-            logger.info("Initial load into DEAL DETAILS BRONZE")
-            (
-                new_df.write.partitionBy("part")
-                .format("delta")
-                .mode("append")
-                .save(f"gs://{data_bucketname}/{target_prefix}")
-            )
-        else:
-            logger.info("Upsert data into DEAL DETAILS BRONZE")
-            perform_scd2(spark, old_df, new_df, data_type)
-
+        return 1
+    logger.info(f"Retrieved deal details data XML files.")
+    pcd, new_df = create_dataframe(spark, raw_bucketname, xml_file)
+    logger.info("Retrieve OLD dataframe.")
+    old_df = get_old_df(spark, data_bucketname, target_prefix, pcd, ed_code)
+    for i in range(tries):
+        try:
+            if old_df is None:
+                logger.info("Initial load into DEAL DETAILS BRONZE")
+                (
+                    new_df.write.partitionBy("part")
+                    .format("delta")
+                    # .mode("append")
+                    .mode("overwrite")
+                    .save(f"gs://{data_bucketname}/{target_prefix}")
+                )
+            else:
+                logger.info("Upsert data into DEAL DETAILS BRONZE")
+                perform_scd2(spark, old_df, new_df, data_type)
+        except Exception as e:
+            logger.error(f"Writing exception: {e}.Try again.")
+            continue
+        break
     logger.info("End DEAL DETAILS BRONZE job.")
     return 0
