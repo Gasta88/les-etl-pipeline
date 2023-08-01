@@ -89,15 +89,12 @@ with models.DAG(
     on_failure_callback=cleanup_xcom,
     max_active_tasks=20,
 ) as dag:
-    import sys
-    import logging
-
     raw_prefixes = get_raw_prefixes()
     for rp in raw_prefixes:
         ed_code = rp.split("/")[-1]
 
         # # DEBUG
-        # if "SMESES" not in ed_code:
+        # if "LESSES" not in ed_code:
         #     continue
         start = EmptyOperator(task_id=f"{ed_code}_start")
         # deal details TaskGroup

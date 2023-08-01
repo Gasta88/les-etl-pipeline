@@ -8,11 +8,7 @@ from src.les_etl_pipeline.generate_deal_details_bronze import (
 
 # Silver layer packages
 from src.les_etl_pipeline.generate_asset_silver import generate_asset_silver
-from src.les_etl_pipeline.generate_collateral_silver import generate_collateral_silver
 from src.les_etl_pipeline.generate_bond_info_silver import generate_bond_info_silver
-from src.les_etl_pipeline.generate_amortisation_silver import (
-    generate_amortisation_silver,
-)
 from src.les_etl_pipeline.generate_deal_details_silver import (
     generate_deal_details_silver,
 )

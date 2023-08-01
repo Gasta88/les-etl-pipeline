@@ -26,7 +26,7 @@ def get_columns_collection(df):
     :param df: Bond Info bronze Spark dataframe.
     :return cols_dict: collection of columns labelled by topic.
     """
-    general_cols = ["ed_code", "pcd_year", "pcd_month", "BL1", "BL2"]
+    general_cols = ["ed_code", "part", "BL1", "BL2"]
     cols_dict = {
         "bond_info": general_cols
         + [f"BL{i}" for i in range(3, 19) if f"BL{i}" in df.columns],

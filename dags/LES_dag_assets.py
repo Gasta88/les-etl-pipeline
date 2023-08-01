@@ -92,7 +92,7 @@ with models.DAG(
     import sys
     import logging
 
-    ingestion_date = "2023-07-27"
+    ingestion_date = "2023-08-01"
     if ingestion_date is None:
         logging.error("No ingestion date set. DAG stopped!!")
         sys.exit(1)
@@ -102,7 +102,7 @@ with models.DAG(
         ed_code = rp.split("/")[-1]
 
         # DEBUG
-        # if "SMESES" not in ed_code:
+        # if "LESSES" not in ed_code:
         #     continue
         start = EmptyOperator(task_id=f"{ed_code}_start")
         # assets TaskGroup

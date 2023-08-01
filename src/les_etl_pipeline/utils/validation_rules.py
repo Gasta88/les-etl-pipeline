@@ -54,7 +54,7 @@ def asset_schema():
         "AL1": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "min": datetime.datetime(2012, 1, 1, 0, 0),
+            "min": MIN_DATETIME,
             "max": datetime.datetime(2030, 12, 31, 0, 0),
             "meta": {"label": "Pool Cut-off Date"},
         },
@@ -69,7 +69,7 @@ def asset_schema():
         "AL6": {"type": "string", "nullable": True, "meta": {"label": "Originator"}},
         "AL7": {
             "type": "string",
-            "allowed": ["Y", "N"],
+            "allowed": ["y", "n"],
             "nullable": True,
             "meta": {"label": "Regulated Lease"},
         },
@@ -102,14 +102,14 @@ def asset_schema():
         "AL19": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "nullable": True,
             "meta": {"label": "Obligor Incorporation Date"},
         },
         "AL20": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "nullable": True,
             "meta": {"label": "Obligor is a Customer since?"},
         },
@@ -127,13 +127,13 @@ def asset_schema():
         },
         "AL23": {
             "type": "string",
-            "allowed": ["Y", "N"],
+            "allowed": ["y", "n"],
             "nullable": True,
             "meta": {"label": "Originator Affiliate?"},
         },
         "AL29": {
             "type": "string",
-            "allowed": ["Y", "N"],
+            "allowed": ["y", "n"],
             "nullable": True,
             "meta": {"label": "Syndicated"},
         },
@@ -242,21 +242,21 @@ def asset_schema():
         },
         "AL47": {
             "type": "string",
-            "allowed": ["Y", "N"],
+            "allowed": ["y", "n"],
             "nullable": True,
             "meta": {"label": "Subsidised"},
         },
         "AL48": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "nullable": True,
             "meta": {"label": "Date Removed from the Pool"},
         },
         "AL50": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "nullable": True,
             "meta": {"label": "Lease Origination Date"},
         },
@@ -270,7 +270,7 @@ def asset_schema():
         "AL52": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "nullable": True,
             "meta": {"label": "Pool Addition Date"},
         },
@@ -375,7 +375,7 @@ def asset_schema():
         "AL69": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "nullable": True,
             "meta": {"label": "Date of Updated Residual Valuation of Asset"},
         },
@@ -535,7 +535,7 @@ def asset_schema():
         "AL95": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "nullable": True,
             "meta": {"label": "Date of Financials"},
         },
@@ -555,14 +555,14 @@ def asset_schema():
         "AL100": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "nullable": True,
             "meta": {"label": "Date Last Current"},
         },
         "AL101": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "nullable": True,
             "meta": {"label": "Date Last in Arrears"},
         },
@@ -582,13 +582,13 @@ def asset_schema():
         },
         "AL104": {
             "type": "string",
-            "allowed": ["Y", "N"],
+            "allowed": ["y", "n"],
             "nullable": True,
             "meta": {"label": "Default or Foreclosure on the Lease"},
         },
         "AL105": {
             "type": "string",
-            "allowed": ["Y", "N"],
+            "allowed": ["y", "n"],
             "nullable": True,
             "meta": {
                 "label": "Default or Foreclosure on the Lease per Basel III definition"
@@ -603,7 +603,7 @@ def asset_schema():
         "AL107": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "nullable": True,
             "meta": {"label": "Default Date"},
         },
@@ -623,7 +623,7 @@ def asset_schema():
         "AL110": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "nullable": True,
             "meta": {"label": "Legal Proceedings Start Date"},
         },
@@ -642,13 +642,13 @@ def asset_schema():
         "AL113": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "nullable": True,
             "meta": {"label": "Work-out Process Started"},
         },
         "AL114": {
             "type": "string",
-            "allowed": ["Y", "N"],
+            "allowed": ["y", "n"],
             "nullable": True,
             "meta": {"label": "Work-out Process Complete"},
         },
@@ -661,14 +661,14 @@ def asset_schema():
         "AL116": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "nullable": True,
             "meta": {"label": "Redemption Dates"},
         },
         "AL117": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "nullable": True,
             "meta": {"label": "Date Loss Allocated"},
         },
@@ -689,7 +689,7 @@ def asset_schema():
         "AL120": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "nullable": True,
             "meta": {"label": "Date of End of Work-out"},
         },
@@ -708,7 +708,7 @@ def asset_schema():
         },
         "AL123": {
             "type": "string",
-            "allowed": ["Y", "N"],
+            "allowed": ["y", "n"],
             "nullable": True,
             "meta": {"label": "Lease Ever in Arrears"},
         },
@@ -726,7 +726,7 @@ def asset_schema():
         },
         "AL126": {
             "type": "string",
-            "allowed": ["Y", "N"],
+            "allowed": ["y", "n"],
             "nullable": True,
             "meta": {"label": "Litigation"},
         },
@@ -813,7 +813,7 @@ def asset_schema():
         },
         "AL140": {
             "type": "string",
-            "allowed": ["Y", "N"],
+            "allowed": ["y", "n"],
             "nullable": True,
             "meta": {"label": "Asset Insurance"},
         },
@@ -845,7 +845,7 @@ def asset_schema():
         "AL145": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "nullable": True,
             "meta": {"label": "Original Valuation Date"},
         },
@@ -865,7 +865,7 @@ def asset_schema():
         "AL148": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "nullable": True,
             "meta": {"label": "Updated Valuation Date"},
         },
@@ -881,19 +881,19 @@ def bond_info_schema():
         "BL1": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "meta": {"label": "Report Date"},
         },
         "BL2": {"type": "string", "meta": {"label": "Issuer"}},
         "BL4": {
             "type": "string",
-            "allowed": ["Y", "N"],
+            "allowed": ["y", "n"],
             "nullable": True,
             "meta": {"label": "All Reserve Accounts at Target Balance"},
         },
         "BL5": {
             "type": "string",
-            "allowed": ["Y", "N"],
+            "allowed": ["y", "n"],
             "nullable": True,
             "meta": {"label": "Drawings under Liquidity Facility"},
         },
@@ -906,7 +906,7 @@ def bond_info_schema():
         },
         "BL12": {
             "type": "string",
-            "allowed": ["Y", "N"],
+            "allowed": ["y", "n"],
             "nullable": True,
             "meta": {"label": "Trigger Measurements/Ratios"},
         },
@@ -948,7 +948,7 @@ def bond_info_schema():
         "BL18": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "nullable": True,
             "meta": {"label": "Revolving Period End Date"},
         },
@@ -970,14 +970,14 @@ def bond_info_schema():
         "BL27": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "nullable": True,
             "meta": {"label": "Interest Payment Date"},
         },
         "BL28": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "nullable": True,
             "meta": {"label": "Principal Payment Date"},
         },
@@ -1062,19 +1062,19 @@ def bond_info_schema():
         "BL38": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "min": datetime.datetime(2012, 1, 1, 0, 0),
+            "min": MIN_DATETIME,
             "meta": {"label": "Legal Maturity"},
         },
         "BL39": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "meta": {"label": "Bond Issue Date"},
         },
         "BL40": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "nullable": True,
             "meta": {"label": "Scheduled Maturity Date"},
         },
@@ -1087,7 +1087,7 @@ def bond_info_schema():
         "BL42": {
             "type": "datetime",
             "coerce": TO_DATE,
-            "max": datetime.datetime.now(),
+            "max": MAX_DATETIME,
             "nullable": True,
             "meta": {"label": "Step-Up Date"},
         },

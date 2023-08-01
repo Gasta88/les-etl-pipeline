@@ -23,18 +23,12 @@ def _correct_file_coding(raw_file_obj):
     """
     Check the content of the CSV for encoding issues and fix them.
 
+
     :param raw_file_obj: file handler from the raw CSV.
     :return clean_file_obj: file object without encoding issues.
     """
     content = raw_file_obj.read()
-    decoded_content = (
-        content.decode("unicode-escape")
-        .encode("utf-8")
-        .decode("utf-8", "backslashreplace")
-    )
-    fixed_content = (
-        decoded_content.replace("\ufeff", "").replace("\0", "").replace("\x00", "")
-    )
+    fixed_content = content.replace("\ufeff", "").replace("\0", "").replace("\x00", "")
     clean_file_obj = StringIO(unidecode(fixed_content))
     return clean_file_obj
 
@@ -81,7 +75,7 @@ def create_dataframe(spark, bucket_name, csv_f, data_type):
     blob = bucket.blob(csv_f)
     dest_csv_f = f'/tmp/{csv_f.split("/")[-1]}'
     blob.download_to_filename(dest_csv_f)
-    with open(dest_csv_f, "rb") as f:
+    with open(dest_csv_f, "rU") as f:
         clean_f = _correct_file_coding(f)
         reader = csv.reader(clean_f, delimiter=",", quoting=csv.QUOTE_MINIMAL)
         content = []

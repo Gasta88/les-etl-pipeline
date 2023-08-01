@@ -1,7 +1,7 @@
 import logging
 import sys
 import pyspark.sql.functions as F
-from src.sme_etl_pipeline.utils.silver_funcs import (
+from src.les_etl_pipeline.utils.silver_funcs import (
     cast_to_datatype,
     ASSET_COLUMNS,
     profile_data,
@@ -26,7 +26,7 @@ def get_columns_collection(df):
     :param df: Asset bronze Spark dataframe.
     :return cols_dict: collection of columns labelled by topic.
     """
-    general_cols = ["ed_code", "pcd_year", "pcd_month"] + [
+    general_cols = ["ed_code", "part"] + [
         f"AL{i}" for i in range(1, 6) if f"AL{i}" in df.columns
     ]
     cols_dict = {
