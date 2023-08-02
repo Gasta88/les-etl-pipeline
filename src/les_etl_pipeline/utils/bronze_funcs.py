@@ -213,7 +213,7 @@ def get_csv_files(bucket_name, prefix, file_key, data_type):
         for b in storage_client.list_blobs(bucket_name, prefix=prefix)
         if b.name.endswith(".csv")
         and file_key in b.name
-        and (data_type != "assets" or "Labeled0M" not in b.name)
+        and (data_type != "assets" or "Labeled" not in b.name)
     ]
     return all_files
 
