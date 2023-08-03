@@ -75,7 +75,7 @@ def create_dataframe(spark, bucket_name, csv_f, data_type):
     blob = bucket.blob(csv_f)
     dest_csv_f = f'/tmp/{csv_f.split("/")[-1]}'
     blob.download_to_filename(dest_csv_f)
-    with open(dest_csv_f, "rU") as f:
+    with open(dest_csv_f, "rU", errors="ignore") as f:
         clean_f = _correct_file_coding(f)
         reader = csv.reader(clean_f, delimiter=",", quoting=csv.QUOTE_MINIMAL)
         content = []
