@@ -14,10 +14,9 @@ from airflow.decorators import task
 # Prod Var definitions
 PROJECT_ID = "dataops-369610"
 REGION = "europe-west3"
-CODE_BUCKET = "data-lake-code-847515094398"
+CODE_BUCKET = "data-lake-code-v2-847515094398"
 RAW_BUCKET = "algoritmica_data"
-DATA_BUCKET = "algoritmica_data_lake"
-# DATA_BUCKET = "fgasta_data_lake_test"
+DATA_BUCKET = "algoritmica_data_lake_v2"
 PHS_CLUSTER = "spark-hist-srv-dataops-369610"
 METASTORE_CLUSTER = "data-catalog-dataops-369610"
 
@@ -64,21 +63,13 @@ def cleanup_xcom(session=None, **kwargs):
 
 def get_raw_prefixes():
     """
-    Retrive refixes from raw bucket to start a DAG in it.
+    Retrieve prefixes from raw bucket to start a DAG in it.
     """
     storage_client = storage.Client(project="dataops-369610")
     bucket = storage_client.get_bucket(RAW_BUCKET)
+    blobs = bucket.list_blobs(prefix="edw_data/downloaded-data/LES")
     raw_prefixes = list(
-        set(
-            [
-                "/".join(b.name.split("/")[:-1])
-                for b in storage_client.list_blobs(
-                    bucket.name,
-                    prefix="edw_data/downloaded-data/LES",
-                )
-                if b.name.endswith(".csv")
-            ]
-        )
+        set([b.name.split("/")[-2] for b in blobs if b.name.endswith(".csv")])
     )
     return raw_prefixes
 
@@ -90,58 +81,24 @@ default_args = {
     "region": REGION,
     "retries": 0,
 }
-# PROFILE + BRONZE
 with models.DAG(
-    "les_assets",  # The id you will see in the DAG airflow page
+    "les_deal_details",  # The id you will see in the DAG airflow page
     default_args=default_args,
     schedule_interval=None,  # Override to match your needs
     on_success_callback=cleanup_xcom,
     on_failure_callback=cleanup_xcom,
-    max_active_tasks=10,
+    max_active_tasks=20,
 ) as dag:
-    import sys
-    import logging
-
-    ingestion_date = "2023-04-13"
-    if ingestion_date is None:
-        logging.error("No ingestion date set. DAG stopped!!")
-        sys.exit(1)
-    logging.info(f"Ingestion date: {ingestion_date}")
     raw_prefixes = get_raw_prefixes()
     for rp in raw_prefixes:
         ed_code = rp.split("/")[-1]
 
         # # DEBUG
-        # if "LESMIT000432100120136" not in ed_code:
+        # if "LESSES" not in ed_code:
         #     continue
         start = EmptyOperator(task_id=f"{ed_code}_start")
-        # assets TaskGroup
-        with TaskGroup(group_id=f"{ed_code}_assets") as tg:
-            profile_task = DataprocCreateBatchOperator(
-                task_id=f"profile_{ed_code}",
-                batch={
-                    "pyspark_batch": {
-                        "main_python_file_uri": PYTHON_FILE_LOCATION,
-                        "jar_file_uris": [
-                            SPARK_DELTA_JAR_FILE,
-                            SPARK_DELTA_STORE_JAR_FILE,
-                        ],
-                        "python_file_uris": [PY_FILES],
-                        "args": [
-                            f"--project={PROJECT_ID}",
-                            f"--raw-bucketname={RAW_BUCKET}",
-                            f"--data-bucketname={DATA_BUCKET}",
-                            f"--source-prefix=edw_data/downloaded-data/LES/{ed_code}",
-                            "--file-key=Loan_Data",
-                            "--stage-name=profile_bronze_asset",
-                            f"--ingestion-date={ingestion_date}",
-                        ],
-                    },
-                    "environment_config": ENVIRONMENT_CONFIG,
-                    "runtime_config": RUNTIME_CONFIG,
-                },
-                batch_id=f"{ed_code.lower()}-assets-profile",
-            )
+        # deal details TaskGroup
+        with TaskGroup(group_id=f"{ed_code}_deal_details") as tg:
             bronze_task = DataprocCreateBatchOperator(
                 task_id=f"bronze_{ed_code}",
                 batch={
@@ -157,92 +114,55 @@ with models.DAG(
                             f"--raw-bucketname={RAW_BUCKET}",
                             f"--data-bucketname={DATA_BUCKET}",
                             f"--source-prefix=edw_data/downloaded-data/LES/{ed_code}",
-                            "--target-prefix=LES/bronze/assets",
-                            "--stage-name=bronze_asset",
-                            f"--ingestion-date={ingestion_date}",
+                            "--target-prefix=LES/bronze/deal_details",
+                            "--file-key=Deal_Details",
+                            "--stage-name=bronze_deal_details",
                         ],
                     },
                     "environment_config": ENVIRONMENT_CONFIG,
                     "runtime_config": RUNTIME_CONFIG,
                 },
-                batch_id=f"{ed_code.lower()}-assets-bronze",
+                batch_id=f"{ed_code.lower()}-deal-details-bronze",
             )
-            (profile_task >> bronze_task)
+            silver_task = DataprocCreateBatchOperator(
+                task_id=f"silver_{ed_code}",
+                batch={
+                    "pyspark_batch": {
+                        "main_python_file_uri": PYTHON_FILE_LOCATION,
+                        "jar_file_uris": [
+                            SPARK_DELTA_JAR_FILE,
+                            SPARK_DELTA_STORE_JAR_FILE,
+                        ],
+                        "python_file_uris": [PY_FILES],
+                        "args": [
+                            f"--project={PROJECT_ID}",
+                            f"--raw-bucketname={RAW_BUCKET}",
+                            f"--data-bucketname={DATA_BUCKET}",
+                            "--source-prefix=LES/bronze/deal_details",
+                            "--target-prefix=LES/silver/deal_details",
+                            f"--ed-code={ed_code}",
+                            "--stage-name=silver_deal_details",
+                        ],
+                    },
+                    "environment_config": ENVIRONMENT_CONFIG,
+                    "runtime_config": RUNTIME_CONFIG,
+                },
+                batch_id=f"{ed_code.lower()}-deal-details-silver",
+            )
+            (bronze_task >> silver_task)
         # clean-up TaskGroup
         with TaskGroup(group_id=f"{ed_code}_clean_up") as clean_up_tg:
-            delete_profile = DataprocDeleteBatchOperator(
-                task_id=f"delete_profile_{ed_code}",
-                project_id=PROJECT_ID,
-                region=REGION,
-                batch_id=f"{ed_code.lower()}-assets-profile",
-            )
             delete_bronze = DataprocDeleteBatchOperator(
                 task_id=f"delete_bronze_{ed_code}",
                 project_id=PROJECT_ID,
                 region=REGION,
-                batch_id=f"{ed_code.lower()}-assets-bronze",
+                batch_id=f"{ed_code.lower()}-deal-details-bronze",
+            )
+            delete_silver = DataprocDeleteBatchOperator(
+                task_id=f"delete_silver_{ed_code}",
+                project_id=PROJECT_ID,
+                region=REGION,
+                batch_id=f"{ed_code.lower()}-deal-details-silver",
             )
         end = EmptyOperator(task_id=f"{ed_code}_end")
         (start >> tg >> clean_up_tg >> end)
-# -----------------------------------------------------------
-# ONLY SILVER
-# with models.DAG(
-#     "les_assets",  # The id you will see in the DAG airflow page
-#     default_args=default_args,
-#     schedule_interval=None,  # Override to match your needs
-#     on_success_callback=cleanup_xcom,
-#     on_failure_callback=cleanup_xcom,
-#     max_active_tasks=1,
-# ) as dag:
-#     import sys
-#     import logging
-
-#     ingestion_date = "2023-04-13"
-#     if ingestion_date is None:
-#         logging.error("No ingestion date set. DAG stopped!!")
-#         sys.exit(1)
-#     logging.info(f"Ingestion date: {ingestion_date}")
-#     raw_prefixes = get_raw_prefixes()
-#     for rp in raw_prefixes:
-#         ed_code = rp.split("/")[-1]
-
-#         # # DEBUG
-#         # if "LESMIT000432100120136" not in ed_code:
-#         #     continue
-#         start = EmptyOperator(task_id=f"{ed_code}_start")
-#         # assets TaskGroup
-#         silver_task = DataprocCreateBatchOperator(
-#             task_id=f"silver_{ed_code}",
-#             batch={
-#                 "pyspark_batch": {
-#                     "main_python_file_uri": PYTHON_FILE_LOCATION,
-#                     "jar_file_uris": [
-#                         SPARK_DELTA_JAR_FILE,
-#                         SPARK_DELTA_STORE_JAR_FILE,
-#                     ],
-#                     "python_file_uris": [PY_FILES],
-#                     "args": [
-#                         f"--project={PROJECT_ID}",
-#                         f"--raw-bucketname={RAW_BUCKET}",
-#                         f"--data-bucketname={DATA_BUCKET}",
-#                         "--source-prefix=LES/bronze/assets",
-#                         "--target-prefix=LES/silver/assets",
-#                         f"--ed-code={ed_code}",
-#                         "--stage-name=silver_asset",
-#                         f"--ingestion-date={ingestion_date}",
-#                     ],
-#                 },
-#                 "environment_config": ENVIRONMENT_CONFIG,
-#                 "runtime_config": RUNTIME_CONFIG,
-#             },
-#             batch_id=f"{ed_code.lower()}-assets-silver",
-#         )
-#         # clean-up TaskGroup
-#         delete_silver = DataprocDeleteBatchOperator(
-#             task_id=f"delete_silver_{ed_code}",
-#             project_id=PROJECT_ID,
-#             # region=REGION,
-#             batch_id=f"{ed_code.lower()}-assets-silver",
-#         )
-#         end = EmptyOperator(task_id=f"{ed_code}_end")
-#         (start >> silver_task >> delete_silver >> end)
