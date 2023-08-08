@@ -96,7 +96,7 @@ def create_dataframe(spark, bucket_name, csv_f, data_type):
                 try:
                     clean_line = [
                         None
-                        if (el == "")
+                        if (el.strip() == "")
                         or (el.startswith("ND"))
                         or (el == "No Collateral")
                         else el.lower().strip()

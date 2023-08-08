@@ -24,26 +24,25 @@ def get_columns_collection(df):
     Get collection of dataframe columns divided by topic.
 
     :param df: Asset bronze Spark dataframe.
-    :return cols_dict: collection of columns labelled by topic.
+    :return primary_cols: list of general columns shared among tables.
+    :return secondary_cols: collection of columns labelled by topic.
     """
-    general_cols = ["ed_code", "part"] + [
+    primary_cols = ["ed_code", "part"] + [
         f"AL{i}" for i in range(1, 6) if f"AL{i}" in df.columns
     ]
-    cols_dict = {
-        "lease_info": general_cols
-        + [f"AL{i}" for i in range(6, 50) if f"AL{i}" in df.columns],
-        "lease_features": general_cols
-        + [f"AL{i}" for i in range(50, 74) if f"AL{i}" in df.columns],
-        "interest_rate": general_cols
-        + [f"AL{i}" for i in range(74, 83) if f"AL{i}" in df.columns],
-        "financial_info": general_cols
-        + [f"AL{i}" for i in range(83, 98) if f"AL{i}" in df.columns],
-        "performance_info": general_cols
-        + [f"AL{i}" for i in range(98, 133) if f"AL{i}" in df.columns],
-        "collateral_info": general_cols
-        + [f"AL{i}" for i in range(133, 154) if f"AL{i}" in df.columns],
+    secondary_cols = {
+        "lease_info": [f"AL{i}" for i in range(6, 50) if f"AL{i}" in df.columns],
+        "lease_features": [f"AL{i}" for i in range(50, 74) if f"AL{i}" in df.columns],
+        "interest_rate": [f"AL{i}" for i in range(74, 83) if f"AL{i}" in df.columns],
+        "financial_info": [f"AL{i}" for i in range(83, 98) if f"AL{i}" in df.columns],
+        "performance_info": [
+            f"AL{i}" for i in range(98, 133) if f"AL{i}" in df.columns
+        ],
+        "collateral_info": [
+            f"AL{i}" for i in range(133, 154) if f"AL{i}" in df.columns
+        ],
     }
-    return cols_dict
+    return (primary_cols, secondary_cols)
 
 
 def generate_asset_silver(
@@ -96,14 +95,19 @@ def generate_asset_silver(
             continue
         logger.info("Cleaning values.")
         cleaned_df = cast_to_datatype(good_df, ASSET_COLUMNS)
-        columns = get_columns_collection(bronze_df)
-        for table_name, cols_list in columns.items():
+        primary_columns, secondary_columns = get_columns_collection(bronze_df)
+        for table_name, secondary_cols_list in secondary_columns.items():
             logger.info(f"Generate {table_name} dataframe")
             for i in range(tries):
                 try:
-                    cleaned_df.select(cols_list).dropDuplicates().write.format(
-                        "parquet"
-                    ).partitionBy("part").mode("overwrite").save(
+                    drop_null_cleaned_df = cleaned_df.na.drop(
+                        how="all", subset=primary_columns
+                    )
+                    drop_null_cleaned_df.select(
+                        primary_columns + secondary_cols_list
+                    ).dropDuplicates().write.format("parquet").partitionBy("part").mode(
+                        "overwrite"
+                    ).save(
                         f"gs://{bucket_name}/{target_prefix}/{table_name}"
                     )
                 except Exception as e:

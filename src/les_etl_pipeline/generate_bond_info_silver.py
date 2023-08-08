@@ -24,18 +24,16 @@ def get_columns_collection(df):
     Get collection of dataframe columns divided by topic.
 
     :param df: Bond Info bronze Spark dataframe.
-    :return cols_dict: collection of columns labelled by topic.
+    :return primary_cols: list of general columns shared among tables.
+    :return secondary_cols: collection of columns labelled by topic.
     """
-    general_cols = ["ed_code", "part", "BL1", "BL2"]
-    cols_dict = {
-        "bond_info": general_cols
-        + [f"BL{i}" for i in range(3, 19) if f"BL{i}" in df.columns],
-        "transaction_info": general_cols
-        + [f"BL{i}" for i in range(19, 25) if f"BL{i}" in df.columns],
-        "tranche_info": general_cols
-        + [f"BL{i}" for i in range(25, 51) if f"BL{i}" in df.columns],
+    primary_cols = ["ed_code", "part", "BL1", "BL2"]
+    secondary_cols = {
+        "bond_info": [f"BL{i}" for i in range(3, 19) if f"BL{i}" in df.columns],
+        "transaction_info": [f"BL{i}" for i in range(19, 25) if f"BL{i}" in df.columns],
+        "tranche_info": [f"BL{i}" for i in range(25, 51) if f"BL{i}" in df.columns],
     }
-    return cols_dict
+    return (primary_cols, secondary_cols)
 
 
 def generate_bond_info_silver(
@@ -88,14 +86,19 @@ def generate_bond_info_silver(
             continue
         logger.info("Cleaning values.")
         cleaned_df = cast_to_datatype(good_df, BOND_COLUMNS)
-        columns = get_columns_collection(bronze_df)
-        for table_name, cols_list in columns.items():
+        primary_columns, secondary_columns = get_columns_collection(bronze_df)
+        for table_name, secondary_cols_list in secondary_columns.items():
             logger.info(f"Generate {table_name} dataframe")
             for i in range(tries):
                 try:
-                    cleaned_df.select(cols_list).dropDuplicates().write.format(
-                        "parquet"
-                    ).partitionBy("part").mode("overwrite").save(
+                    drop_null_cleaned_df = cleaned_df.na.drop(
+                        how="all", subset=primary_columns
+                    )
+                    drop_null_cleaned_df.select(
+                        primary_columns + secondary_cols_list
+                    ).dropDuplicates().write.format("parquet").partitionBy("part").mode(
+                        "overwrite"
+                    ).save(
                         f"gs://{bucket_name}/{target_prefix}/{table_name}"
                     )
                 except Exception as e:
