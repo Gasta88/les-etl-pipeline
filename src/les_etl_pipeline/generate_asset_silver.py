@@ -101,7 +101,7 @@ def generate_asset_silver(
             for i in range(tries):
                 try:
                     drop_null_cleaned_df = cleaned_df.na.drop(
-                        how="all", subset=secondary_columns
+                        how="all", subset=secondary_cols_list
                     )
                     drop_null_cleaned_df.select(
                         primary_columns + secondary_cols_list
