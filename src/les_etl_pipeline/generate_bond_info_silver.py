@@ -92,7 +92,7 @@ def generate_bond_info_silver(
             for i in range(tries):
                 try:
                     drop_null_cleaned_df = cleaned_df.na.drop(
-                        how="all", subset=primary_columns
+                        how="all", subset=secondary_columns
                     )
                     drop_null_cleaned_df.select(
                         primary_columns + secondary_cols_list
