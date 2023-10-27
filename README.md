@@ -1,4 +1,4 @@
-# LES ETl pipeline
+# LES ETL pipeline
 
 This repository hosts the ETL that creates the Algoritmica data lakehouse.
 
