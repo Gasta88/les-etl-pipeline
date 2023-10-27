@@ -1,9 +1,9 @@
-PROJECT_ID ?= dataops-369610
+PROJECT_ID ?= my-dataops-369611
 REGION ?= europe-west3
 PROJECT_NUMBER ?= $$(gcloud projects list --filter=${PROJECT_ID} --format="value(PROJECT_NUMBER)")
 CODE_BUCKET ?= data-lake-code-v2-${PROJECT_NUMBER}
-RAW_BUCKET ?= algoritmica_data
-DATA_BUCKET ?= algoritmica_data_lake_v2
+RAW_BUCKET ?= my_data
+DATA_BUCKET ?= my_data_lake_v2
 PHS_BUCKET ?= spark-hist-repo-${PROJECT_NUMBER}
 APP_NAME ?= $$(cat pyproject.toml| grep name | cut -d" " -f3 | sed  's/"//g')
 VERSION_NO ?= $$(poetry version --short)

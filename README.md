@@ -23,14 +23,14 @@ The **Bronze** and **Silver** layers are manipulated via Dataproc Serverless for
 - For BI metrics generation (a.k.a. indexes), _Looker Studio_ is used to prepare dashboards and plots.
 - For ML feature engineering, _Dataproc Serverless_ or _DataFlow_ is used to elaborate futher the data.
 
-Two stages of data profiling are applied to the ETL. These are divided into:
+Data profiling rules are applied to the ETL. These are a set of rules that check basic data quality for the EDW raw data after storing the files in the _Bronze layer_. Some examples are:
 
-- **bronze level profiling**: set of rules that check basic data quality for the EDW raw data before storing the files in the _Bronze layer_. Some examples are: primary key columns are unique and complete, tables are not empty, columns that should not hold **NULL** values are correct and minimum set of compulsory columns are not missing.
-- **silver level profiling**: set of rules that check quality of _Silver layer_ tables before allowing them to be processed in the _Gold layer_. Depending on the asset class and file type, these rules can be very heterogenous.
+- primary key columns are unique and complete
+- tables are not empty
+- columns that should not hold **NULL** values are correct
+- minimum set of compulsory columns are not missing.
 
-## Data assumptions
-
-TBD
+All of them are available in `src/les_etl_pipeline/utils/validation_rules.py`
 
 ## How to run the project
 
@@ -45,7 +45,3 @@ Run the following command to prepare the code and uploa it onto GCP:
 ```
 
 Upload the desired DAG file onto Google Cloud Composer and start the workflow manually.
-Each DAG file should be run in two ways:
-
-- First, to perform `profile` and `bronze data' generation while having a _max_active_tasks_ parameter greater than 1. This promotes paralellism in preparing bronze level data.
-- Second, edit the DAG to run only the `silver data` generation with _max_active_tasks_ parameter equal to 1. this is necessary to avoid concurrent writes on the parquet file.

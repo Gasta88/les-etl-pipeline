@@ -143,60 +143,6 @@ def create_dataframe(spark, bucket_name, csv_f, data_type):
     return (df, errors)
 
 
-def perform_scd2(source_df, target_table, data_type):
-    """
-    Perform SCD-2 to update legacy data at the bronze level tables.
-
-    :param source_df: Pyspark dataframe with data from most recent fileset.
-    :param target_table: Delta Lake table with data from old fileset.
-    :param data_type: type of data to handle, ex: amortisation, assets, collaterals.
-    :return new_target_df: PySpark dataframe with new data.
-    """
-    target_df = target_table.toDF()
-    new_data_to_insert = (
-        source_df.alias("updates")
-        .join(target_df.alias("target"), PRIMARY_COLS[data_type])
-        .where("target.iscurrent=1 AND updates.checksum <> target.checksum")
-    )
-
-    merge_cols = [
-        f"{col} AS mergeKey_{i}" for i, col in enumerate(PRIMARY_COLS[data_type])
-    ]
-    null_merge_cols = [
-        f"NULL AS mergeKey_{i}" for i, _ in enumerate(PRIMARY_COLS[data_type])
-    ]
-    stage_updates = new_data_to_insert.selectExpr(*null_merge_cols, "updates.*").union(
-        source_df.selectExpr(*merge_cols, "*")
-    )
-    upsert_join_condition = " AND ".join(
-        [
-            f"target.{col} = mergeKey_{i}"
-            for i, col in enumerate(PRIMARY_COLS[data_type])
-        ]
-    )
-    target_table.alias("target").merge(
-        stage_updates.alias("staged_updates"), upsert_join_condition
-    ).whenMatchedUpdate(
-        condition="target.iscurrent = true AND target.checksum <> staged_updates.checksum",
-        set={  # Set current to false and endDate to source's effective date.
-            "iscurrent": 0,
-            "valid_to": "staged_updates.valid_from",
-        },
-    ).whenNotMatchedInsert(
-        # TODO: SET ALL VALUE TO BE WRITTEN
-        values={
-            "customerid": "staged_updates.customerId",
-            "name": "staged_updates.name",
-            "address": "staged_updates.address",
-            "current": "true",
-            "effectiveDate": "staged_updates.effectiveDate",  # Set current to true along with the new address and its effective date.
-            "endDate": "null",
-        }
-    ).execute()
-    new_target_df = target_table.toDF()
-    return new_target_df
-
-
 def get_csv_files(bucket_name, prefix, file_key, data_type):
     """
     Return list of source files that satisfy the file_key parameter from EDW.

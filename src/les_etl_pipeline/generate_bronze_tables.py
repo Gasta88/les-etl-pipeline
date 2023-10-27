@@ -4,7 +4,6 @@ from google.cloud import storage
 from src.les_etl_pipeline.utils.bronze_funcs import (
     get_old_table,
     create_dataframe,
-    perform_scd2,
     get_csv_files,
     get_clean_dumps,
 )
@@ -78,11 +77,7 @@ def generate_bronze_tables(
             try:
                 logger.info(f"Load into {data_type.upper()} BRONZE")
                 if old_table is not None:
-                    # TODO: fix SCD2 when subsequent data loads are performed
-                    # logger.info(f"Upsert data into {data_type.upper()} BRONZE")
-                    # new_df = perform_scd2(new_df, old_table, data_type)
                     continue
-                # No SCD Type2 performed
                 (
                     new_df.write.partitionBy("part")
                     .format("delta")

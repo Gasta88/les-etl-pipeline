@@ -131,8 +131,6 @@ venv.bak/
 # archive
 *.zip
 
-# data
-data/
 
 #clean up file to be left out from git
 out.sh
