@@ -1,0 +1,4 @@
+Pool Cut-off Date,AL2,AL3,AL4,AL5,AL8,AL10,AL56
+Description,Pool Identifier,Servicer Name,Backup Servicer Name,Lease Identifier,Lessee Identifier,Currency,Current Balance
+2023-08-01,POOL001,Servicer A,,Lease 1,LESSOR1,EUR,100.50
+2023-08-01,POOL002,ND,Backup B,Lease 2,LESSOR2,USD,200.25
