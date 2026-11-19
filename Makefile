@@ -1,5 +1,5 @@
-PROJECT_ID ?= my-dataops-369611
-REGION ?= europe-west3
+PROJECT_ID ?= $(GCP_PROJECT_ID)
+REGION ?= $(if $(GCP_REGION),$(GCP_REGION),europe-west3)
 PROJECT_NUMBER ?= $$(gcloud projects list --filter=${PROJECT_ID} --format="value(PROJECT_NUMBER)")
 CODE_BUCKET ?= data-lake-code-v2-${PROJECT_NUMBER}
 RAW_BUCKET ?= my_data
@@ -16,7 +16,19 @@ SRC_WITH_DEPS ?= src_with_deps
 help: ## This is help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-setup: ## Setup Buckets and Dataset for Demo
+check-env: ## Fail fast when GCP_PROJECT_ID is not configured
+	@test -n "$(PROJECT_ID)" || (echo "ERROR: set GCP_PROJECT_ID (or PROJECT_ID)" && exit 1)
+
+fetch-jars: ## Download the Spark JARs required by the DAGs
+	@mkdir -p dependencies
+	@curl -fL -o dependencies/delta-core_2.13-2.1.0.jar https://repo1.maven.org/maven2/io/delta/delta-core_2.13/2.1.0/delta-core_2.13-2.1.0.jar
+	@curl -fL -o dependencies/delta-storage-2.2.0.jar https://repo1.maven.org/maven2/io/delta/delta-storage/2.2.0/delta-storage-2.2.0.jar
+	@curl -fL -o dependencies/gcs-connector-1.9.4-hadoop3.jar https://repo1.maven.org/maven2/com/google/cloud/bigdataoss/gcs-connector/1.9.4-hadoop3/gcs-connector-1.9.4-hadoop3.jar
+
+demo: ## Run bronze -> silver locally on synthetic fixtures (no GCP required)
+	@poetry run python scripts/local_demo.py
+
+setup: check-env ## Setup Buckets and Dataset for Demo
 	@echo "Project=${PROJECT_ID}--${PROJECT_NUMBER}--${CODE_BUCKET}"
 	@gsutil mb -c standard -l ${REGION} -p ${PROJECT_ID} gs://${CODE_BUCKET}
 	@echo "The Following Buckets created - ${CODE_BUCKET},${DATA_BUCKET}"
@@ -37,10 +49,10 @@ clean: ## CleanUp Prior to Build
 	@rm -Rf ./${SRC_WITH_DEPS}
 	@rm -f requirements.txt
 
-build: clean ## Build Python Package with Dependencies
+build: check-env clean fetch-jars ## Build Python Package with Dependencies
 	@echo "Packaging Code and Dependencies for ${APP_NAME}-${VERSION_NO}"
 	@mkdir -p ./dist
-	@poetry update
+	@poetry install --no-interaction
 	@poetry export -f requirements.txt --without-hashes -o requirements.txt
 	@poetry run pip install . -r requirements.txt -t ${SRC_WITH_DEPS}
 	@cd ./${SRC_WITH_DEPS}

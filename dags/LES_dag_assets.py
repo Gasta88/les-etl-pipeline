@@ -1,3 +1,5 @@
+import os
+
 from google.cloud import storage
 from airflow import models
 from airflow.providers.google.cloud.operators.dataproc import (
@@ -11,14 +13,14 @@ from airflow.utils.db import provide_session
 from airflow.models import XCom
 from airflow.decorators import task
 
-# Prod Var definitions
-PROJECT_ID = "dataops-369610"
-REGION = "europe-west3"
-CODE_BUCKET = "data-lake-code-v2-847515094398"
-RAW_BUCKET = "algoritmica_data"
-DATA_BUCKET = "algoritmica_data_lake_v2"
-PHS_CLUSTER = "spark-hist-srv-dataops-369610"
-METASTORE_CLUSTER = "data-catalog-dataops-369610"
+# Runtime configuration, overridable via environment variables (see .env.example)
+PROJECT_ID = os.getenv("GCP_PROJECT_ID", "your-gcp-project-id")
+REGION = os.getenv("GCP_REGION", "europe-west3")
+CODE_BUCKET = os.getenv("CODE_BUCKET", f"data-lake-code-v2-{PROJECT_ID}")
+RAW_BUCKET = os.getenv("RAW_BUCKET", "my_data")
+DATA_BUCKET = os.getenv("DATA_BUCKET", "my_data_lake_v2")
+PHS_CLUSTER = os.getenv("PHS_CLUSTER", f"spark-hist-srv-{PROJECT_ID}")
+METASTORE_CLUSTER = os.getenv("METASTORE_SERVICE", f"data-catalog-{PROJECT_ID}")
 
 SUBNETWORK_URI = f"projects/{PROJECT_ID}/regions/{REGION}/subnetworks/default"
 PYTHON_FILE_LOCATION = f"gs://{CODE_BUCKET}/dist/les_main.py"
@@ -65,7 +67,7 @@ def get_raw_prefixes():
     """
     Retrieve prefixes from raw bucket to start a DAG in it.
     """
-    storage_client = storage.Client(project="dataops-369610")
+    storage_client = storage.Client(project=PROJECT_ID)
     bucket = storage_client.get_bucket(RAW_BUCKET)
     blobs = bucket.list_blobs(prefix="edw_data/downloaded-data/LES")
     raw_prefixes = list(

@@ -9,6 +9,7 @@ from pyspark.sql.types import (
     TimestampType,
 )
 from src.les_etl_pipeline.utils.bronze_funcs import perform_scd2
+from src.les_etl_pipeline.utils.config import get_project_id
 from delta import *
 
 # Setup logger
@@ -29,7 +30,7 @@ def get_raw_file(bucket_name, prefix, file_key):
     :param prefix: specific bucket prefix from where to collect files.
     :param file_key: label for file name that helps with the cherry picking.
     """
-    storage_client = storage.Client(project="dataops-369610")
+    storage_client = storage.Client(project=get_project_id())
     all_files = [
         b.name
         for b in storage_client.list_blobs(bucket_name, prefix=prefix)
@@ -60,7 +61,7 @@ def get_old_df(spark, bucket_name, prefix, pcd, ed_code):
     :param ed_code: deal code to look up for legacy data.
     :return df: Spark dataframe.
     """
-    storage_client = storage.Client(project="dataops-369610")
+    storage_client = storage.Client(project=get_project_id())
     partition_prefix = f"{prefix}/part={ed_code}_{pcd}"
     files_in_partition = [
         b.name for b in storage_client.list_blobs(bucket_name, prefix=partition_prefix)
@@ -74,45 +75,39 @@ def get_old_df(spark, bucket_name, prefix, pcd, ed_code):
     )
 
 
-def create_dataframe(spark, bucket_name, xml_file):
+def parse_deal_details_xml(spark, xml_path):
     """
-    Read files and generate one PySpark DataFrame from them.
+    Parse a local deal-details XML file into a bronze-level Spark DataFrame.
+
+    Kept separate from GCS download so it can be exercised offline with a
+    synthetic fixture.
 
     :param spark: SparkSession object.
-    :param bucket_name: GS bucket where files are stored.
-    :param xml_file: file to be read to generate the dataframe.
-    :return df: PySpark dataframe.
+    :param xml_path: local path to the XML file.
     :return pcd: pool cutoff date.
+    :return spark_df: PySpark dataframe.
     """
-    storage_client = storage.Client(project="dataops-369610")
-    bucket = storage_client.get_bucket(bucket_name)
-    blob = bucket.blob(xml_file)
-    dest_xml_f = f'/tmp/{xml_file.split("/")[-1]}'
-    blob.download_to_filename(dest_xml_f)
-    xml_data = objectify.parse(dest_xml_f)  # Parse XML data
+    xml_data = objectify.parse(xml_path)  # Parse XML data
     root = xml_data.getroot()  # Root element
     data = []
     cols = []
-    children = (
-        root.getchildren()[1]
-        .getchildren()[0]
-        .getchildren()[1]
-        .getchildren()[0]
-        .getchildren()
-    )
-    for i in range(len(children)):
-        child = children[i]
+    wrapper = list(root.iterchildren())[1]
+    inner = list(wrapper.iterchildren())[0]
+    deal_node = list(inner.iterchildren())[1]
+    deal_data = list(deal_node.iterchildren())[0]
+    children = list(deal_data.iterchildren())
+    for child in children:
         tag = re.sub(r"{[^}]*}", "", child.tag)
         if tag == "ISIN":
             # is array
-            data.append(";".join(map(str, child.getchildren())))
+            data.append(";".join(str(el) for el in child.iterchildren()))
             cols.append(tag)
         elif tag in ["Country", "DealVisibleToOrg", "DealVisibleToUser"]:
             # usually null values
             continue
         elif tag == "Submissions":
             # get Submission metadata
-            submission_children = child.getchildren()[0].getchildren()
+            submission_children = list(list(child.iterchildren())[0].iterchildren())
             for submission_child in submission_children:
                 tag = re.sub(r"{[^}]*}", "", submission_child.tag)
                 if tag in ["MetricData", "IsProvisional", "IsRestructured"]:
@@ -128,9 +123,11 @@ def create_dataframe(spark, bucket_name, xml_file):
     df = pd.DataFrame(data).T  # Create DataFrame and transpose it
     df.columns = cols  # Update column names
     pcd = df["PoolCutOffDate"].values[0].split("T")[0].replace("-", "")
-    # Conver from Pandas to Spark dataframe and add SCD-2 columns
+    # Convert from Pandas to Spark dataframe and add SCD-2 columns.
+    # Use records rather than the pandas DataFrame directly: pyspark 3.3 calls
+    # DataFrame.iteritems(), which pandas 2.x removed.
     spark_df = (
-        spark.createDataFrame(df)
+        spark.createDataFrame(df.to_dict("records"))
         .replace("", None)
         .withColumnRenamed("EDCode", "ed_code")
         .withColumn("valid_from", F.lit(F.current_timestamp()).cast(TimestampType()))
@@ -142,6 +139,24 @@ def create_dataframe(spark, bucket_name, xml_file):
         .withColumn("part", F.concat(F.col("ed_code"), F.lit("_"), F.lit(pcd)))
     )
     return (pcd, spark_df)
+
+
+def create_dataframe(spark, bucket_name, xml_file):
+    """
+    Download a deal-details XML file from GCS and parse it into a DataFrame.
+
+    :param spark: SparkSession object.
+    :param bucket_name: GS bucket where files are stored.
+    :param xml_file: file to be read to generate the dataframe.
+    :return df: PySpark dataframe.
+    :return pcd: pool cutoff date.
+    """
+    storage_client = storage.Client(project=get_project_id())
+    bucket = storage_client.get_bucket(bucket_name)
+    blob = bucket.blob(xml_file)
+    dest_xml_f = f'/tmp/{xml_file.split("/")[-1]}'
+    blob.download_to_filename(dest_xml_f)
+    return parse_deal_details_xml(spark, dest_xml_f)
 
 
 def generate_deal_details_bronze(
@@ -192,7 +207,13 @@ def generate_deal_details_bronze(
                 )
             else:
                 logger.info("Upsert data into DEAL DETAILS BRONZE")
-                perform_scd2(spark, old_df, new_df, data_type)
+                merged_df = perform_scd2(spark, old_df, new_df, data_type)
+                (
+                    merged_df.write.partitionBy("part")
+                    .format("delta")
+                    .mode("overwrite")
+                    .save(f"gs://{data_bucketname}/{target_prefix}")
+                )
         except Exception as e:
             logger.error(f"Writing exception: {e}.Try again.")
             continue
