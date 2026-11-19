@@ -9,6 +9,7 @@ from src.les_etl_pipeline.utils.bronze_funcs import (
 )
 from delta import *
 import pandas as pd
+from src.les_etl_pipeline.utils.config import get_project_id
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -47,7 +48,7 @@ def generate_bronze_tables(
     """
     logger.info(f"Start {data_type.upper()} BRONZE job.")
     ed_code = source_prefix.split("/")[-1]
-    storage_client = storage.Client(project="dataops-369610")
+    storage_client = storage.Client(project=get_project_id())
     bucket = storage_client.get_bucket(data_bucketname)
     logger.info(f"Check for clean_dumps on the {ingestion_date}e.")
     all_clean_dumps = get_clean_dumps(data_bucketname, data_type, ingestion_date)

@@ -21,6 +21,8 @@ def cast_to_datatype(df, columns):
     :return df: Spark dataframe with correct values.
     """
     for col_name, data_type in columns.items():
+        if col_name not in df.columns:
+            continue
         if data_type == BooleanType():
             df = df.withColumn(
                 col_name, F.when(F.col(col_name) == ("y"), True).otherwise(False)

@@ -5,6 +5,7 @@ import csv
 from io import StringIO
 from unidecode import unidecode
 from delta.tables import *
+from src.les_etl_pipeline.utils.config import get_project_id
 
 
 PRIMARY_COLS = {
@@ -44,7 +45,7 @@ def get_old_table(spark, bucket_name, prefix, pcd, ed_code):
     :param ed_code: deal code to look up for legacy data.
     :return df: Spark dataframe.
     """
-    storage_client = storage.Client(project="dataops-369610")
+    storage_client = storage.Client(project=get_project_id())
     pcd = pcd.replace("-", "")
     partition_prefix = f"{prefix}/part={ed_code}_{pcd}"
     files_in_partition = [
@@ -59,59 +60,57 @@ def get_old_table(spark, bucket_name, prefix, pcd, ed_code):
     )
 
 
-def create_dataframe(spark, bucket_name, csv_f, data_type):
+def parse_csv_file(spark, csv_file_obj, data_type, csv_f):
     """
-    Read files and generate one PySpark DataFrame from them.
+    Parse a CSV file object into a bronze-level Spark DataFrame.
+
+    Kept separate from GCS download so the parsing logic can be exercised
+    offline against a local file or fixture.
 
     :param spark: SparkSession object.
-    :param bucket_name: GS bucket where files are stored.
-    :param csv_f: CSV file to be read and profile.
-    :param data_type: type of data to handle, ex: amortisation, assets, collaterals.
-    :return df: PySpark datafram for loan asset data.
+    :param csv_file_obj: open text file object with the raw CSV.
+    :param data_type: type of data to handle, ex: assets, bond_info.
+    :param csv_f: original object name, used to derive ``pcd`` and ``ed_code``.
+    :return df: PySpark dataframe for the raw data.
+    :return errors: newline-joined parsing errors, or None.
     """
-    storage_client = storage.Client(project="dataops-369610")
-    bucket = storage_client.get_bucket(bucket_name)
     errors = []
-    blob = bucket.blob(csv_f)
-    dest_csv_f = f'/tmp/{csv_f.split("/")[-1]}'
-    blob.download_to_filename(dest_csv_f)
-    with open(dest_csv_f, "rU", errors="ignore") as f:
-        clean_f = _correct_file_coding(f)
-        reader = csv.reader(clean_f, delimiter=",", quoting=csv.QUOTE_MINIMAL)
-        content = []
-        for i, line in enumerate(reader):
-            if data_type == "amortisation":
-                # Just check that AS3 is present instead of the hundreds of columns that the file has.
-                curr_line = line[:121]
-            else:
-                curr_line = line
-            if i == 0:
-                col_names = curr_line
-                col_names[0] = INITIAL_COL[data_type]
-            elif i == 1:
+    clean_f = _correct_file_coding(csv_file_obj)
+    reader = csv.reader(clean_f, delimiter=",", quoting=csv.QUOTE_MINIMAL)
+    content = []
+    for i, line in enumerate(reader):
+        if data_type == "amortisation":
+            # Just check that AS3 is present instead of the hundreds of columns that the file has.
+            curr_line = line[:121]
+        else:
+            curr_line = line
+        if i == 0:
+            col_names = curr_line
+            col_names[0] = INITIAL_COL[data_type]
+        elif i == 1:
+            continue
+        elif not curr_line:
+            continue
+        else:
+            try:
+                clean_line = [
+                    None
+                    if (el.strip() == "")
+                    or (el.startswith("ND"))
+                    or (el == "No Collateral")
+                    else el.lower().strip()
+                    for el in curr_line
+                ]
+                record = {
+                    col_names[i]: clean_line[i] for i in range(len(clean_line))
+                }
+                record["filename"] = csv_f
+                record["pcd"] = "-".join(csv_f.split("/")[-1].split("_")[1:4])
+                record["ed_code"] = csv_f.split("/")[-1].split("_")[0]
+                content.append(record)
+            except Exception:
+                errors.append(f"Error in line {i}: {line}")
                 continue
-            elif not curr_line:
-                continue
-            else:
-                try:
-                    clean_line = [
-                        None
-                        if (el.strip() == "")
-                        or (el.startswith("ND"))
-                        or (el == "No Collateral")
-                        else el.lower().strip()
-                        for el in curr_line
-                    ]
-                    record = {
-                        col_names[i]: clean_line[i] for i in range(len(clean_line))
-                    }
-                    record["filename"] = csv_f
-                    record["pcd"] = "-".join(csv_f.split("/")[-1].split("_")[1:4])
-                    record["ed_code"] = csv_f.split("/")[-1].split("_")[0]
-                    content.append(record)
-                except Exception as e:
-                    errors.append(f"Error in line {i}: {line}")
-                    continue
     if not content:
         return (None, "ERROR: empty dataframe")
     checksum_cols = [F.col("ed_code"), F.col("pcd")] + [
@@ -143,6 +142,88 @@ def create_dataframe(spark, bucket_name, csv_f, data_type):
     return (df, errors)
 
 
+def create_dataframe(spark, bucket_name, csv_f, data_type):
+    """
+    Download a CSV file from GCS and parse it into a bronze-level DataFrame.
+
+    :param spark: SparkSession object.
+    :param bucket_name: GS bucket where files are stored.
+    :param csv_f: CSV file to be read and profile.
+    :param data_type: type of data to handle, ex: assets, bond_info.
+    :return df: PySpark dataframe for the raw data.
+    :return errors: newline-joined parsing errors, or None.
+    """
+    storage_client = storage.Client(project=get_project_id())
+    bucket = storage_client.get_bucket(bucket_name)
+    blob = bucket.blob(csv_f)
+    dest_csv_f = f'/tmp/{csv_f.split("/")[-1]}'
+    blob.download_to_filename(dest_csv_f)
+    with open(dest_csv_f, "r", errors="ignore") as f:
+        return parse_csv_file(spark, f, data_type, csv_f)
+
+
+def perform_scd2(spark, old_df, new_df, data_type):
+    """
+    Merge a new fileset into the existing bronze data using SCD-2 semantics.
+
+    Rows whose business key already exists with a different checksum are closed
+    (``iscurrent`` set to 0 and ``valid_to`` set to the new ``valid_from``) and
+    the new version is inserted. Rows with a new key are inserted. Unchanged
+    rows are left untouched.
+
+    This function is pure with respect to storage: it returns the merged
+    DataFrame and never writes it. The caller decides where to persist it.
+
+    :param spark: SparkSession object (kept for call-site symmetry).
+    :param old_df: DataFrame with the current bronze table.
+    :param new_df: DataFrame with the most recent fileset.
+    :param data_type: type of data to handle, ex: assets, bond_info, deal_details.
+    :return merged_df: DataFrame with the SCD-2 merged data.
+    """
+    key_cols = PRIMARY_COLS[data_type]
+
+    old_current = old_df.filter(F.col("iscurrent") == 1)
+    old_history = old_df.filter(F.col("iscurrent") == 0)
+
+    old_keys = old_current.select(*key_cols).distinct()
+
+    changed_keys = (
+        old_current.select(*key_cols, F.col("checksum").alias("old_checksum"))
+        .join(
+            new_df.select(*key_cols, F.col("checksum").alias("new_checksum")),
+            on=key_cols,
+            how="inner",
+        )
+        .filter(F.col("old_checksum") != F.col("new_checksum"))
+        .select(*key_cols)
+        .distinct()
+    )
+
+    new_valid_from = new_df.select(
+        *key_cols, F.col("valid_from").alias("new_valid_from")
+    )
+    closed = (
+        old_current.alias("old")
+        .join(changed_keys.alias("changed"), on=key_cols, how="inner")
+        .join(new_valid_from.alias("new"), on=key_cols, how="inner")
+        .select(*[F.col(f"old.{col}") for col in old_df.columns], "new.new_valid_from")
+        .withColumn("iscurrent", F.lit(0))
+        .withColumn("valid_to", F.col("new_valid_from"))
+        .drop("new_valid_from")
+    )
+
+    kept = old_current.join(changed_keys, on=key_cols, how="left_anti")
+
+    unchanged_keys = old_keys.join(changed_keys, on=key_cols, how="left_anti")
+    inserted = new_df.join(unchanged_keys, on=key_cols, how="left_anti")
+
+    return (
+        old_history.unionByName(closed)
+        .unionByName(kept)
+        .unionByName(inserted)
+    )
+
+
 def get_csv_files(bucket_name, prefix, file_key, data_type):
     """
     Return list of source files that satisfy the file_key parameter from EDW.
@@ -153,7 +234,7 @@ def get_csv_files(bucket_name, prefix, file_key, data_type):
     :param data_type: type of data to handle, ex: amortisation, assets, collaterals.
     :return all_files: list of desired files from source_dir.
     """
-    storage_client = storage.Client(project="dataops-369610")
+    storage_client = storage.Client(project=get_project_id())
     all_files = [
         b.name
         for b in storage_client.list_blobs(bucket_name, prefix=prefix)
@@ -173,7 +254,7 @@ def get_clean_dumps(bucket_name, data_type, ingestion_date):
     :param ingestion_date: The date of ingestion.
     :return all_clean_dumps: A list of clean dump names.
     """
-    storage_client = storage.Client(project="dataops-369610")
+    storage_client = storage.Client(project=get_project_id())
     all_clean_dumps = [
         b.name
         for b in storage_client.list_blobs(
